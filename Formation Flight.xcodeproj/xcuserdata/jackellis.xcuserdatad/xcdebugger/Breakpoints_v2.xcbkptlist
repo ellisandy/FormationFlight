@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "BD7F08A6-A38E-435D-B229-70A9AA334881"
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "4320AC3B-5265-46ED-9006-01D3EB80B440"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/ContentView.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "21"
+            endingLineNumber = "21"
+            landmarkName = "body"
+            landmarkType = "24">
+            <Locations>
+               <Location
+                  uuid = "4320AC3B-5265-46ED-9006-01D3EB80B440 - 4f27ad12f51f3baf"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 () -&gt; &lt;&lt;opaque return type of SwiftUI.DynamicViewContent.onDelete(perform: Swift.Optional&lt;(Foundation.IndexSet) -&gt; ()&gt;) -&gt; some&gt;&gt;.0 in closure #1 () -&gt; &lt;&lt;opaque return type of SwiftUI.View.toolbar&lt;&#x3c4;_0_0 where &#x3c4;_1_0: SwiftUI.ToolbarContent&gt;(content: () -&gt; &#x3c4;_1_0) -&gt; some&gt;&gt;.0 in Formation_Flight.ContentView.body.getter : some"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "21"
+                  endingLineNumber = "21"
+                  offsetFromSymbolStart = "288">
+               </Location>
+               <Location
+                  uuid = "4320AC3B-5265-46ED-9006-01D3EB80B440 - ae23e8a380677300"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 (Formation_Flight.Flight) -&gt; SwiftUI.NavigationLink&lt;SwiftUI.Text, Formation_Flight.HomeView&gt; in closure #1 () -&gt; &lt;&lt;opaque return type of SwiftUI.DynamicViewContent.onDelete(perform: Swift.Optional&lt;(Foundation.IndexSet) -&gt; ()&gt;) -&gt; some&gt;&gt;.0 in closure #1 () -&gt; &lt;&lt;opaque return type of SwiftUI.View.toolbar&lt;&#x3c4;_0_0 where &#x3c4;_1_0: SwiftUI.ToolbarContent&gt;(content: () -&gt; &#x3c4;_1_0) -&gt; some&gt;&gt;.0 in Formation_Flight.ContentView.body.getter : some"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "21"
+                  endingLineNumber = "21"
+                  offsetFromSymbolStart = "212">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1B734CE6-3BC8-43D2-991E-295A10F114C9"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/View/ContentView.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "83"
+            endingLineNumber = "83"
+            landmarkName = "didDismissEditor()"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "1B734CE6-3BC8-43D2-991E-295A10F114C9 - 182b511a178121f"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.ContentView.didDismissEditor() -&gt; ()"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/View/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "86"
+                  endingLineNumber = "86"
+                  offsetFromSymbolStart = "2016">
+               </Location>
+               <Location
+                  uuid = "1B734CE6-3BC8-43D2-991E-295A10F114C9 - 182b511a178121f"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.ContentView.didDismissEditor() -&gt; ()"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/View/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "86"
+                  endingLineNumber = "86"
+                  offsetFromSymbolStart = "2072">
+               </Location>
+               <Location
+                  uuid = "1B734CE6-3BC8-43D2-991E-295A10F114C9 - 182b511a1781ddd"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.ContentView.didDismissEditor() -&gt; ()"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/View/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "84"
+                  endingLineNumber = "84"
+                  offsetFromSymbolStart = "2076">
+               </Location>
+               <Location
+                  uuid = "1B734CE6-3BC8-43D2-991E-295A10F114C9 - 182b511a1781ddd"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.ContentView.didDismissEditor() -&gt; ()"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/View/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "84"
+                  endingLineNumber = "84"
+                  offsetFromSymbolStart = "2132">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.SymbolicBreakpoint">
+         <BreakpointContent
+            uuid = "3A3FE297-E3C0-478B-9F5A-3F49EE410BFB"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            symbolName = ""
+            moduleName = "">
+            <Locations>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "7D4D610F-8975-4C0A-BEC8-FE4AF1293645"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/View/FlightView.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "17"
+            endingLineNumber = "17"
+            landmarkName = "init(flight:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "7D4D610F-8975-4C0A-BEC8-FE4AF1293645 - ddc2717e2eef2773"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.FlightView.init(flight: Formation_Flight.Flight) -&gt; Formation_Flight.FlightView"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/View/FlightView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "23"
+                  endingLineNumber = "23"
+                  offsetFromSymbolStart = "540">
+               </Location>
+               <Location
+                  uuid = "7D4D610F-8975-4C0A-BEC8-FE4AF1293645 - ddc2717e2eef2773"
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.FlightView.init(flight: Formation_Flight.Flight) -&gt; Formation_Flight.FlightView"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/View/FlightView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "23"
+                  endingLineNumber = "23"
+                  offsetFromSymbolStart = "660">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1A28EF15-86A6-4C61-AA50-F34F6D8DB62E"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/Model/UserLocation.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "27"
+            endingLineNumber = "27"
+            landmarkName = "getAuthStatus()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "161F2AB0-9540-4E43-9894-60C59C53FDD6"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/DataProviders/LocationProvider.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "64"
+            endingLineNumber = "64"
+            landmarkName = "locationManager(_:didUpdateLocations:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "161F2AB0-9540-4E43-9894-60C59C53FDD6 - 8a00a9571a73aae2"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.LocationProvider.locationManager(_: __C.CLLocationManager, didUpdateLocations: Swift.Array&lt;__C.CLLocation&gt;) -&gt; ()"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/DataProviders/LocationProvider.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "60"
+                  endingLineNumber = "60"
+                  offsetFromSymbolStart = "136">
+               </Location>
+               <Location
+                  uuid = "161F2AB0-9540-4E43-9894-60C59C53FDD6 - 8a00a9571a73ab66"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Formation_Flight.LocationProvider.locationManager(_: __C.CLLocationManager, didUpdateLocations: Swift.Array&lt;__C.CLLocation&gt;) -&gt; ()"
+                  moduleName = "Formation Flight"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20Flight/DataProviders/LocationProvider.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "64"
+                  endingLineNumber = "64"
+                  offsetFromSymbolStart = "136">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "FAEF5E12-1EF1-48F2-A782-0B3D007C6B15"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/DataProviders/LocationProvider.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "26"
+            endingLineNumber = "26"
+            landmarkName = "startMonitoring()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "4C6A8412-0D31-4551-9B21-69D296169020"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Formation Flight/DataProviders/LocationProvider.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "27"
+            endingLineNumber = "27"
+            landmarkName = "startMonitoring()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>

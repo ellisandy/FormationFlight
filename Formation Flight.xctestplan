@@ -1,0 +1,40 @@
+{
+  "configurations" : [
+    {
+      "id" : "7E95F762-E9F1-4B0D-8BAB-5B3A53C8A578",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "locationScenario" : {
+      "identifier" : "..\/..\/Formation Flight\/TestAssets\/Location.gpx"
+    },
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Formation Flight.xcodeproj",
+      "identifier" : "C29255552B2D648C0064F41F",
+      "name" : "Formation Flight"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Formation Flight.xcodeproj",
+        "identifier" : "C29255692B2D648D0064F41F",
+        "name" : "Formation FlightTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Formation Flight.xcodeproj",
+        "identifier" : "C29255732B2D648D0064F41F",
+        "name" : "Formation FlightUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

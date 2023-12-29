@@ -7,12 +7,13 @@
 
 import SwiftUI
 import SwiftData
+import CoreLocation
 
 @main
 struct Formation_FlightApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Flight.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -24,7 +25,7 @@ struct Formation_FlightApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup {
+        return WindowGroup {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
