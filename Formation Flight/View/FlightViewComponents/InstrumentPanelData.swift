@@ -15,13 +15,13 @@ typealias Meters = Double
 /// Data Struct to contain the required information for the Instrument panel
 @Observable
 class InstrumentPanelData {
-    var currentETA: Seconds
-    var ETADelta: Seconds
-    var course: Heading
-    var currentTrueAirspeed: MetersPerSeconds
-    var targetTrueAirspeed: MetersPerSeconds
-    var distanceToNext: Meters
-    var distanceToFinal: Meters
+    var currentETA: Measurement<Dimension>
+    var ETADelta: Measurement<Dimension>
+    var course: Measurement<Dimension>
+    var currentTrueAirspeed: Measurement<Dimension>
+    var targetTrueAirspeed: Measurement<Dimension>
+    var distanceToNext: Measurement<Dimension>
+    var distanceToFinal: Measurement<Dimension>
 
     
     /// Initializer for Data Structure which cosntains the telemetry for the Instrument Panel
@@ -32,7 +32,13 @@ class InstrumentPanelData {
     ///   - groundSpeed: Current Ground Speed measured in meters per second
     ///   - targetGroundSpeed: Adjusted Recommended adjusted ground speed to close the gap for ToT
     ///   - distanceToNext: Meters to the Next Check Point
-    init(currentETA: Seconds, ETADelta: Seconds, course: Heading, currentTrueAirSpeed: MetersPerSeconds, targetTrueAirSpeed: MetersPerSeconds, distanceToNext: Meters, distanceToFinal: Meters) {
+    init(currentETA: Measurement<Dimension>,
+         ETADelta: Measurement<Dimension>,
+         course: Measurement<Dimension>,
+         currentTrueAirSpeed: Measurement<Dimension>,
+         targetTrueAirSpeed: Measurement<Dimension>,
+         distanceToNext: Measurement<Dimension>,
+         distanceToFinal: Measurement<Dimension>) {
         self.currentETA = currentETA
         self.ETADelta = ETADelta
         self.course = course

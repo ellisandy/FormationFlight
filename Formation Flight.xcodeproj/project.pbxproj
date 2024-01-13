@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		C20E378B2B3F5062002F8DCC /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C20E378A2B3F5062002F8DCC /* Launch Screen.storyboard */; };
-		C20E378D2B3F5765002F8DCC /* CLLocationDistance+Conversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20E378C2B3F5765002F8DCC /* CLLocationDistance+Conversions.swift */; };
 		C20E37942B3FCE57002F8DCC /* InstrumentComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20E37932B3FCE57002F8DCC /* InstrumentComponent.swift */; };
 		C20E37972B40AEF0002F8DCC /* SettingsEditorForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20E37962B40AEF0002F8DCC /* SettingsEditorForm.swift */; };
 		C20E37992B40BA0B002F8DCC /* SettingsEditorConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20E37982B40BA0B002F8DCC /* SettingsEditorConfig.swift */; };
@@ -30,7 +29,6 @@
 		C291E6792B41FD25008CFAAD /* Double+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E6782B41FD25008CFAAD /* Double+Extensions.swift */; };
 		C291E67B2B420D6D008CFAAD /* Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */; };
 		C291E67E2B4263E4008CFAAD /* CLLocation+Conversions_Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E67D2B4263E4008CFAAD /* CLLocation+Conversions_Tests.swift */; };
-		C291E6802B465948008CFAAD /* Vectors_Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E67F2B465948008CFAAD /* Vectors_Extensions.swift */; };
 		C292555A2B2D648C0064F41F /* Formation_FlightApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29255592B2D648C0064F41F /* Formation_FlightApp.swift */; };
 		C292555C2B2D648C0064F41F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C292555B2B2D648C0064F41F /* ContentView.swift */; };
 		C29255602B2D648D0064F41F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C292555F2B2D648D0064F41F /* Assets.xcassets */; };
@@ -60,7 +58,6 @@
 
 /* Begin PBXFileReference section */
 		C20E378A2B3F5062002F8DCC /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = "Launch Screen.storyboard"; path = "Formation Flight/View/Launch Screen.storyboard"; sourceTree = "<group>"; };
-		C20E378C2B3F5765002F8DCC /* CLLocationDistance+Conversions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocationDistance+Conversions.swift"; sourceTree = "<group>"; };
 		C20E37932B3FCE57002F8DCC /* InstrumentComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentComponent.swift; sourceTree = "<group>"; };
 		C20E37962B40AEF0002F8DCC /* SettingsEditorForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsEditorForm.swift; sourceTree = "<group>"; };
 		C20E37982B40BA0B002F8DCC /* SettingsEditorConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsEditorConfig.swift; sourceTree = "<group>"; };
@@ -83,7 +80,6 @@
 		C291E6782B41FD25008CFAAD /* Double+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Double+Extensions.swift"; sourceTree = "<group>"; };
 		C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extensions.swift"; sourceTree = "<group>"; };
 		C291E67D2B4263E4008CFAAD /* CLLocation+Conversions_Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocation+Conversions_Tests.swift"; sourceTree = "<group>"; };
-		C291E67F2B465948008CFAAD /* Vectors_Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vectors_Extensions.swift; sourceTree = "<group>"; };
 		C29255562B2D648C0064F41F /* Formation Flight.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Formation Flight.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C29255592B2D648C0064F41F /* Formation_FlightApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formation_FlightApp.swift; sourceTree = "<group>"; };
 		C292555B2B2D648C0064F41F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -201,10 +197,8 @@
 			isa = PBXGroup;
 			children = (
 				C2218E802B3F4D7800D5D569 /* CLLocation+Conversions.swift */,
-				C20E378C2B3F5765002F8DCC /* CLLocationDistance+Conversions.swift */,
 				C291E6782B41FD25008CFAAD /* Double+Extensions.swift */,
 				C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */,
-				C291E67F2B465948008CFAAD /* Vectors_Extensions.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -453,11 +447,9 @@
 				C2218E6E2B38A7C300D5D569 /* FlightEditorForm.swift in Sources */,
 				C294A83B2B2F706B008A9B0F /* Flight.swift in Sources */,
 				C2218E772B3E5B1200D5D569 /* LocationProvider.swift in Sources */,
-				C291E6802B465948008CFAAD /* Vectors_Extensions.swift in Sources */,
 				C2218E732B3E174E00D5D569 /* FlightView.swift in Sources */,
 				C20E379F2B40CD92002F8DCC /* InstrumentPanelData.swift in Sources */,
 				C20E37992B40BA0B002F8DCC /* SettingsEditorConfig.swift in Sources */,
-				C20E378D2B3F5765002F8DCC /* CLLocationDistance+Conversions.swift in Sources */,
 				C20E379D2B40C9D1002F8DCC /* InstrumentPanel.swift in Sources */,
 				C2218E812B3F4D7800D5D569 /* CLLocation+Conversions.swift in Sources */,
 				C291E67B2B420D6D008CFAAD /* Date+Extensions.swift in Sources */,

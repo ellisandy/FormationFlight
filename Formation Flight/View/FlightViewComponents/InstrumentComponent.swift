@@ -9,7 +9,7 @@ import SwiftUI
 
 struct InstrumentComponent: View {
     @State var infoType: InFlightInfo
-    @Binding var infoValue: Double
+    @Binding var infoValue: Measurement<Dimension>
     @State var infoStaus: InfoStatus
     @Binding var settingsConfig: SettingsEditorConfig
     
@@ -33,21 +33,34 @@ struct InstrumentComponent: View {
     // TODO: Change Units as needed
     func doubleToText() -> String? {
         // Shortcut to Nil
-        if infoValue == 0.0 { return nil }
+        if infoValue.value == 0.0 { return nil }
         
-        if self.infoType == .course {
-            return infoValue.toBearingString()
+        // TODO: Add specific Formatting for Unit type and such
+        switch self.infoValue.unit {
+        case is UnitAngle:
+            return String(infoValue.value)
+        case is UnitLength:
+            return String(infoValue.value)
+        case is UnitSpeed:
+            return String(infoValue.value)
+        default:
+            return String(infoValue.value)
         }
-        
-        if self.infoType == .tot || self.infoType == .totDrift {
-            return infoValue.toTimeString()
-        }
-        
-        if self.infoType == .currentTAS || self.infoType == .targetTAS {
-            return infoValue.toAirSpeedString()
-        }
-        
-        return String(self.infoValue)
+//        
+//        if self.infoType == .course {
+//            
+//            return infoValue.toBearingString()
+//        }
+//        
+//        if self.infoType == .tot || self.infoType == .totDrift {
+//            return infoValue.toTimeString()
+//        }
+//        
+//        if self.infoType == .currentTAS || self.infoType == .targetTAS {
+//            return infoValue.toAirSpeedString()
+//        }
+//        
+//        return String(self.infoValue)
     }
 }
 
@@ -102,5 +115,5 @@ extension InstrumentComponent {
 }
 
 #Preview {
-    InstrumentComponent(infoType: .course, infoValue: .constant(30.0), infoStaus: .good, settingsConfig: .constant(.emptyConfig()))
+    InstrumentComponent(infoType: .tot, infoValue: .constant(Measurement(value: 30.0, unit: UnitDuration.seconds)), infoStaus: .good, settingsConfig: .constant(.emptyConfig()))
 }

@@ -60,7 +60,7 @@ struct FlightView: View {
         panelData.course = temp.course
         panelData.currentTrueAirspeed = temp.currentTrueAirspeed
         panelData.targetTrueAirspeed = temp.targetTrueAirspeed
-        panelData.distanceToNext = temp.targetTrueAirspeed
+        panelData.distanceToNext = temp.distanceToNext
     }
 }
 
@@ -68,5 +68,13 @@ struct FlightView: View {
     let flightPreview = Flight.emptyFlight()
     flightPreview.title = "Test Flight"
     
-    return FlightView(flight: flightPreview, settingsConfig: .constant(.emptyConfig()), panelData: InstrumentPanelData.init(currentETA: 0, ETADelta: 0, course: 0, currentTrueAirSpeed: 0, targetTrueAirSpeed: 0, distanceToNext: 0, distanceToFinal: 0))
+    return FlightView(flight: flightPreview, 
+                      settingsConfig: .constant(.emptyConfig()),
+                      panelData: InstrumentPanelData.init(currentETA: Measurement(value: 0.0, unit: UnitDuration.seconds),
+                                                          ETADelta: Measurement(value: 0.0, unit: UnitDuration.seconds),
+                                                          course: Measurement(value: 0.0, unit: UnitAngle.degrees),
+                                                          currentTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
+                                                          targetTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
+                                                          distanceToNext: Measurement(value: 0.0, unit: UnitLength.meters),
+                                                          distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters)))
 }

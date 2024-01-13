@@ -68,13 +68,13 @@ final class Flight_Test: XCTestCase {
                                     speed: speed,
                                     timestamp: startDate)
         
-        let expectedPanelData = InstrumentPanelData(currentETA: expectedTOT,
-                                                    ETADelta: 0.0,
-                                                    course: expectedBearing,
-                                                    currentTrueAirSpeed: speed,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: expectedTOT, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: 0.0, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: expectedBearing, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -82,12 +82,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.1, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target GroundSpeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.1, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
 
     func testProvideInstrumentPanelDataWithHalfSpeedSuccess() throws {
@@ -115,13 +115,13 @@ final class Flight_Test: XCTestCase {
                                     timestamp: startDate)
         
         // if I'm going half the speed, it will take twice as long
-        let expectedPanelData = InstrumentPanelData(currentETA: 600.0,
-                                                    ETADelta: 600.0,
-                                                    course: expectedBearing,
-                                                    currentTrueAirSpeed: speed / 2,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: expectedBearing, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed / 2, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -129,12 +129,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.1, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target GroundSpeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.1, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
     
     func testProvideInstrumentPanelDataWithDoubleSpeedSuccess() throws {
@@ -162,13 +162,13 @@ final class Flight_Test: XCTestCase {
                                     timestamp: startDate)
         
         // if I'm going double the speed, it'll take half the time
-        let expectedPanelData = InstrumentPanelData(currentETA: 600.0,
-                                                    ETADelta: -300.0,
-                                                    course: expectedBearing,
-                                                    currentTrueAirSpeed: speed * 2,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: -300.0, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: expectedBearing, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed * 2, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -176,12 +176,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.1, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target GroundSpeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.1, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
 
     func testProvideInstrumentPanelDataWithFiftyKnotHeadWindSuccess() throws {
@@ -196,7 +196,7 @@ final class Flight_Test: XCTestCase {
         let windDirection = 90.0
         
         // Fifty Knot Head Wind (from the bearing)
-        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection)
+        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
         sut.targetSpeed = speed
         sut.missionDate = missionDate
         sut.interceptTime = startDate
@@ -214,13 +214,13 @@ final class Flight_Test: XCTestCase {
                                     timestamp: startDate)
         
         // if I have a fifty knot head wind
-        let expectedPanelData = InstrumentPanelData(currentETA: 600.0,
-                                                    ETADelta: 600.0,
-                                                    course: expectedBearing,
-                                                    currentTrueAirSpeed: speed,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: expectedBearing, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -228,12 +228,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.1, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target True Airspeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.1, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
     
     func testProvideInstrumentPanelDataWithFiftyKnotTailWindSuccess() throws {
@@ -248,7 +248,7 @@ final class Flight_Test: XCTestCase {
         let windDirection = 270.0
         
         // Fifty Knot Head Wind (from the bearing)
-        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection)
+        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
         sut.targetSpeed = speed
         sut.missionDate = missionDate
         sut.interceptTime = startDate
@@ -266,13 +266,13 @@ final class Flight_Test: XCTestCase {
                                     timestamp: startDate)
         
         // if I have a fifty knot head wind
-        let expectedPanelData = InstrumentPanelData(currentETA: 600.0,
-                                                    ETADelta: -200.0,
-                                                    course: expectedBearing,
-                                                    currentTrueAirSpeed: speed,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: -200.0, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: expectedBearing, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -280,12 +280,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.1, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target GroundSpeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.1, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
     
     func testProvideInstrumentPanelDataWithFiftyKnotQuarteringTailWindSuccess() throws {
@@ -300,7 +300,7 @@ final class Flight_Test: XCTestCase {
         let windDirection = 210.0
         
         // Fifty Knot Head Wind (from the bearing)
-        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection)
+        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
         sut.targetSpeed = speed
         sut.missionDate = missionDate
         sut.interceptTime = startDate
@@ -319,13 +319,13 @@ final class Flight_Test: XCTestCase {
                                     timestamp: startDate)
         
         // if I have a fifty knot head wind
-        let expectedPanelData = InstrumentPanelData(currentETA: 600.0,
-                                                    ETADelta: -79.24,
-                                                    course: 116,
-                                                    currentTrueAirSpeed: speed,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: -79.24, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: 116, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -333,12 +333,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.5, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target GroundSpeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.5, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
     
     func testProvideInstrumentPanelDataWithFiftyKnotQuarteringHeadWindSuccess() throws {
@@ -352,7 +352,7 @@ final class Flight_Test: XCTestCase {
         let windVelocity = 50.0
         let windDirection = 150.0
         
-        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection)
+        sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
         sut.targetSpeed = speed
         sut.missionDate = missionDate
         sut.interceptTime = startDate
@@ -370,13 +370,13 @@ final class Flight_Test: XCTestCase {
                                     timestamp: startDate)
         
         // if I have a fifty knot head wind
-        let expectedPanelData = InstrumentPanelData(currentETA: 600.0,
-                                                    ETADelta: 319.9854471991,
-                                                    course: 116,
-                                                    currentTrueAirSpeed: speed,
-                                                    targetTrueAirSpeed: speed,
-                                                    distanceToNext: expectedDistance,
-                                                    distanceToFinal: 0)
+        let expectedPanelData = InstrumentPanelData(currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+                                                    ETADelta: Measurement(value: 319.9854471991, unit: UnitDuration.seconds),
+                                                    course: Measurement(value: 116, unit: UnitAngle.degrees),
+                                                    currentTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    targetTrueAirSpeed: Measurement(value: speed, unit: UnitSpeed.metersPerSecond),
+                                                    distanceToNext: Measurement(value: expectedDistance, unit: UnitLength.meters),
+                                                    distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters))
         
         // Action
         let actualPanelData = sut.provideInstrumentPanelData(from: currentLoc)
@@ -384,12 +384,12 @@ final class Flight_Test: XCTestCase {
         // Assert
         XCTAssertEqual(sut.title, "XCT Test Flight" ,"Title should not be empty")
         
-        XCTAssertEqual(actualPanelData.currentETA, expectedPanelData.currentETA, accuracy: 0.1, "Time on Target is not within Range")
-        XCTAssertEqual(actualPanelData.ETADelta, expectedPanelData.ETADelta, accuracy: 0.1, "Time on Target Drift is not within Range")
-        XCTAssertEqual(actualPanelData.course, expectedPanelData.course, accuracy: 0.5, "Course is not within Range")
-        XCTAssertEqual(actualPanelData.currentTrueAirspeed, expectedPanelData.currentTrueAirspeed, accuracy: 0.1, "Groundspeed  is not within Range")
-        XCTAssertEqual(actualPanelData.targetTrueAirspeed, expectedPanelData.targetTrueAirspeed, accuracy: 0.1, "Target GroundSpeed is not within Range")
-        XCTAssertEqual(actualPanelData.distanceToNext, expectedPanelData.distanceToNext, accuracy: 0.1, "Distance to next is not within Range")
+        XCTAssertEqual(actualPanelData.currentETA.value, expectedPanelData.currentETA.value, accuracy: 0.1, "Time on Target is not within Range")
+        XCTAssertEqual(actualPanelData.ETADelta.value, expectedPanelData.ETADelta.value, accuracy: 0.1, "Time on Target Drift is not within Range")
+        XCTAssertEqual(actualPanelData.course.value, expectedPanelData.course.value, accuracy: 0.5, "Course is not within Range")
+        XCTAssertEqual(actualPanelData.currentTrueAirspeed.value, expectedPanelData.currentTrueAirspeed.value, accuracy: 0.1, "Groundspeed  is not within Range")
+        XCTAssertEqual(actualPanelData.targetTrueAirspeed.value, expectedPanelData.targetTrueAirspeed.value, accuracy: 0.1, "Target GroundSpeed is not within Range")
+        XCTAssertEqual(actualPanelData.distanceToNext.value, expectedPanelData.distanceToNext.value, accuracy: 0.1, "Distance to next is not within Range")
     }
 
     // MARK: - WindComponents
@@ -397,7 +397,7 @@ final class Flight_Test: XCTestCase {
         let bearing = 0.0
         
         // Wind from the north
-        let sut = Winds(velocity: 10, direction: 0.0)
+        let sut = Winds(velocity: 10, direction: 0.0, velocityUnit: .metersPerSecond)
         
         XCTAssertEqual(sut.windComponents(given: bearing).windEffectiveVelocity, -10.0, accuracy: 0.001)
     }
@@ -406,7 +406,7 @@ final class Flight_Test: XCTestCase {
         let bearing = 0.0
         
         // Wind from the north
-        let sut = Winds(velocity: 10, direction: 180.0)
+        let sut = Winds(velocity: 10, direction: 180.0, velocityUnit: .metersPerSecond)
         
         XCTAssertEqual(sut.windComponents(given: bearing).windEffectiveVelocity, 10.0, accuracy: 0.001)
     }
@@ -415,7 +415,7 @@ final class Flight_Test: XCTestCase {
         let bearing = 0.0
         
         // Wind from the north
-        let sut = Winds(velocity: 10, direction: 120)
+        let sut = Winds(velocity: 10, direction: 120, velocityUnit: .metersPerSecond)
         
         XCTAssertEqual(sut.windComponents(given: bearing).windEffectiveVelocity, 5.0, accuracy: 0.001)
     }
@@ -424,7 +424,7 @@ final class Flight_Test: XCTestCase {
         let bearing = 0.0
         
         // Wind from the north
-        let sut = Winds(velocity: 10, direction: 60.0)
+        let sut = Winds(velocity: 10, direction: 60.0, velocityUnit: .metersPerSecond)
         
         XCTAssertEqual(sut.windComponents(given: bearing).windEffectiveVelocity, -5.0, accuracy: 0.001)
     }
@@ -433,7 +433,7 @@ final class Flight_Test: XCTestCase {
         let bearing = 0.0
         
         // Wind from the north
-        let sut = Winds(velocity: 10, direction: 90.0)
+        let sut = Winds(velocity: 10, direction: 90.0, velocityUnit: .metersPerSecond)
         
         XCTAssertEqual(sut.windComponents(given: bearing).windEffectiveVelocity, 0.0, accuracy: 0.001)
     }
@@ -487,14 +487,13 @@ final class Flight_Test: XCTestCase {
     }
     
     func testFind60kMetersAway() {
-        let distance = startLocation.distance(from: endLocation)
+        let distance: Double = startLocation.distance(from: endLocation)
         
         XCTAssertEqual(distance, expectedDistance, accuracy: 0.001, "Not within 60,000 Meters")
     }
     
     func testFindBearingBetweenTwoPoints() {
-        let bearing = startLocation.getCourse(to: endLocation)
-        //FlightCalculationProvider.getBearingBetweenTwoPoints(point1: startLocation, point2: endLocation)
+        let bearing = startLocation.getCourse(to: endLocation).converted(to: .degrees).value
         
         XCTAssertEqual(bearing, expectedBearing, accuracy: 0.1, "Bearings do not equal 90 Degrees")
     }

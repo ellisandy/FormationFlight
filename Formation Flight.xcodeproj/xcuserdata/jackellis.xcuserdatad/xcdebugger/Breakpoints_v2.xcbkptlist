@@ -62,8 +62,8 @@
             filePath = "Formation Flight/View/ContentView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "100"
-            endingLineNumber = "100"
+            startingLineNumber = "106"
+            endingLineNumber = "106"
             landmarkName = "didDismissEditor()"
             landmarkType = "7">
             <Locations>
@@ -408,8 +408,8 @@
             filePath = "Formation Flight/Extensions/CLLocation+Conversions.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "75"
-            endingLineNumber = "75"
+            startingLineNumber = "82"
+            endingLineNumber = "82"
             landmarkName = "getTime(to:with:)"
             landmarkType = "7">
             <Locations>
@@ -568,69 +568,6 @@
                   startingLineNumber = "258"
                   endingLineNumber = "258"
                   offsetFromSymbolStart = "1000">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "BA41F1B4-7D83-4508-BE0A-110443EA2A37"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "Formation FlightTests/Flight_Test.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "390"
-            endingLineNumber = "390"
-            landmarkName = "testProvideInstrumentPanelDataWithFiftyKnotQuarteringHeadWindSuccess()"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "BA41F1B4-7D83-4508-BE0A-110443EA2A37 - 98dfbccaf6a4051d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Formation_FlightTests.Flight_Test.testProvideInstrumentPanelDataWithFiftyKnotQuarteringHeadWindSuccess() throws -&gt; ()"
-                  moduleName = "Formation FlightTests"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20FlightTests/Flight_Test.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "391"
-                  endingLineNumber = "391"
-                  offsetFromSymbolStart = "2128">
-               </Location>
-               <Location
-                  uuid = "BA41F1B4-7D83-4508-BE0A-110443EA2A37 - 98dfbccaf6a4051d"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Formation_FlightTests.Flight_Test.testProvideInstrumentPanelDataWithFiftyKnotQuarteringHeadWindSuccess() throws -&gt; ()"
-                  moduleName = "Formation FlightTests"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20FlightTests/Flight_Test.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "391"
-                  endingLineNumber = "391"
-                  offsetFromSymbolStart = "2124">
-               </Location>
-               <Location
-                  uuid = "BA41F1B4-7D83-4508-BE0A-110443EA2A37 - 98dfbccaf6a4057c"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Formation_FlightTests.Flight_Test.testProvideInstrumentPanelDataWithFiftyKnotQuarteringHeadWindSuccess() throws -&gt; ()"
-                  moduleName = "Formation FlightTests"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/jackellis/Library/Mobile%20Documents/com~apple~CloudDocs/Development/iOS%20Developmet/Formation%20Flight/Formation%20FlightTests/Flight_Test.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "390"
-                  endingLineNumber = "390"
-                  offsetFromSymbolStart = "2124">
                </Location>
             </Locations>
          </BreakpointContent>

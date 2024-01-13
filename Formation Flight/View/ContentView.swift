@@ -82,7 +82,13 @@ struct ContentView: View {
             if selectedFlight != nil {
                 FlightView(flight: selectedFlight!,
                            settingsConfig: $settingsConfig,
-                           panelData: InstrumentPanelData.init(currentETA: 0, ETADelta: 0, course: 0, currentTrueAirSpeed: 0, targetTrueAirSpeed: 0, distanceToNext: 0, distanceToFinal: 0))
+                           panelData: InstrumentPanelData.init(currentETA: Measurement(value: 0.0, unit: UnitDuration.seconds),
+                                                               ETADelta: Measurement(value: 0.0, unit: UnitDuration.seconds),
+                                                               course: Measurement(value: 0.0, unit: UnitAngle.degrees),
+                                                               currentTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
+                                                               targetTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
+                                                               distanceToNext: Measurement(value: 0.0, unit: UnitLength.meters),
+                                                               distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters)))
             } else {
                 Text("No Flight Selected").fontWeight(.bold)
             }

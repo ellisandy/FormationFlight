@@ -21,7 +21,7 @@ final class CLLocation_Conversions_Test: XCTestCase {
     
     // MARK: - getTrueAirSpeed()
     func testGetTrueAirSpeedWithTenKnotHeadWind() {
-        let winds = Winds(velocity: 50, direction: 0)
+        let winds = Winds(velocity: 50, direction: 0, velocityUnit: .metersPerSecond)
         let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
                                   altitude: 0,
                                   horizontalAccuracy: 0,
@@ -32,11 +32,11 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                   speedAccuracy: 0,
                                   timestamp: Date.now)
         
-        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!, 100.0, accuracy: 0.1)
+        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
     }
     
     func testGetTrueAirSpeedWithTenKnotTailWind() {
-        let winds = Winds(velocity: 50, direction: 180)
+        let winds = Winds(velocity: 50, direction: 180, velocityUnit: .metersPerSecond)
         let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
                                   altitude: 0,
                                   horizontalAccuracy: 0,
@@ -47,11 +47,11 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                   speedAccuracy: 0,
                                   timestamp: Date.now)
         
-        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!, 100.0, accuracy: 0.1)
+        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
     }
     
     func testGetTrueAirSpeedWithTenKnotDirectCrossWind() {
-        let winds = Winds(velocity: 50, direction: 90)
+        let winds = Winds(velocity: 50, direction: 90, velocityUnit: .metersPerSecond)
         let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
                                   altitude: 0,
                                   horizontalAccuracy: 0,
@@ -62,11 +62,11 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                   speedAccuracy: 0,
                                   timestamp: Date.now)
         
-        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!, 100.0, accuracy: 0.1)
+        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
     }
     
     func testGetTrueAirSpeedWithTenKnotQuarteringHeadind() {
-        let winds = Winds(velocity: 50, direction: 60)
+        let winds = Winds(velocity: 50, direction: 60, velocityUnit: .metersPerSecond)
         let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
                                   altitude: 0,
                                   horizontalAccuracy: 0,
@@ -77,11 +77,11 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                   speedAccuracy: 0,
                                   timestamp: Date.now)
         
-        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!, 100.0, accuracy: 0.1)
+        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
     }
     
     func testGetTrueAirSpeedWithTenKnotQuarteringTailWind() {
-        let winds = Winds(velocity: 50, direction: 120)
+        let winds = Winds(velocity: 50, direction: 120, velocityUnit: .metersPerSecond)
         let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
                                   altitude: 0,
                                   horizontalAccuracy: 0,
@@ -92,14 +92,14 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                   speedAccuracy: 0,
                                   timestamp: Date.now)
         
-        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!, 100.0, accuracy: 0.1)
+        XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
     }
     
     // MARK: - testPerformanceExample()
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
         self.measure {
-            let winds = Winds(velocity: 10, direction: 180)
+            let winds = Winds(velocity: 10, direction: 180, velocityUnit: .metersPerSecond)
             let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
                                       altitude: 0,
                                       horizontalAccuracy: 0,
@@ -110,7 +110,7 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                       speedAccuracy: 0,
                                       timestamp: Date.now)
             
-            XCTAssertEqual(location.getTrueAirSpeed(with: winds)!, 100.0, accuracy: 0.1)
+            XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
         }
     }
     
@@ -119,56 +119,56 @@ final class CLLocation_Conversions_Test: XCTestCase {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 1.0, longitude: 0.0)
         
-        XCTAssertEqual(p1.getCourse(to: p2), 0.0, accuracy: 0)
+        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 0.0, accuracy: 0)
     }
     
     func testGetCourse_South() {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 1.0, longitude: 0.0)
         
-        XCTAssertEqual(p2.getCourse(to: p1), 180.0, accuracy: 0)
+        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 180.0, accuracy: 0)
     }
     
     func testGetCourse_East() {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 0.0, longitude: 1.0)
         
-        XCTAssertEqual(p1.getCourse(to: p2), 90.0, accuracy: 0)
+        XCTAssertEqual(p1.getCourse(to: p2), Measurement<UnitAngle>(value: 90.0, unit: UnitAngle.degrees))
     }
     
     func testGetCourse_West() {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 0.0, longitude: 1.0)
         
-        XCTAssertEqual(p2.getCourse(to: p1), 270.0, accuracy: 0)
+        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 270.0, accuracy: 0)
     }
     
     func testGetCourse_RealWorld_1() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
         
-        XCTAssertEqual(p1.getCourse(to: p2), 0.0, accuracy: 1.0)
+        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 0.0, accuracy: 1.0)
     }
     
     func testGetCourse_RealWorld_2() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.42570, longitude: -122.36455)
         
-        XCTAssertEqual(p1.getCourse(to: p2), 90.0, accuracy: 1.0)
+        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 90.0, accuracy: 1.0)
     }
     
     func testGetCourse_RealWorld_3() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.42570, longitude: -122.36455)
         
-        XCTAssertEqual(p2.getCourse(to: p1), 270.0, accuracy: 1.0)
+        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 270.0, accuracy: 1.0)
     }
     
     func testGetCourse_RealWorld_4() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
         
-        XCTAssertEqual(p2.getCourse(to: p1), 180.0, accuracy: 1.0)
+        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 180.0, accuracy: 1.0)
     }
     
     
@@ -176,7 +176,7 @@ final class CLLocation_Conversions_Test: XCTestCase {
         let p1 = HOME_LOCATION.getCLLocation()
         let p2 = BVS_LOCATION.getCLLocation()
         
-        XCTAssertEqual(p1.getCourse(to: p2), 333.0, accuracy: 1.0)
+        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 333.0, accuracy: 1.0)
     }
     
     // 100 Meters/Second
@@ -209,12 +209,12 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                timestamp: Date.now)
         let unwrappedTime = try XCTUnwrap(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
         
-        XCTAssertEqual(unwrappedTime, EXPECTED_ETA, accuracy: 0.1)
+        XCTAssertEqual(unwrappedTime.converted(to: .seconds).value, EXPECTED_ETA, accuracy: 0.1)
     }
     
     // Head Winds assuming bearing of due east
     func testGetTime_100Meters_HeadWind() throws {
-        let winds = Winds(velocity: 50, direction: 90)
+        let winds = Winds(velocity: 50, direction: 90, velocityUnit: .metersPerSecond)
         let adjustedETA = EXPECTED_DISTANCE / 50
         let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate,
                                                altitude: 0, 
@@ -225,12 +225,12 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                timestamp: Date.now)
         let unwrappedTime = try XCTUnwrap(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
         
-        XCTAssertEqual(unwrappedTime, adjustedETA, accuracy: 0.1)
+        XCTAssertEqual(unwrappedTime.converted(to: .seconds).value, adjustedETA, accuracy: 0.1)
     }
     
     // Tail Winds assuming bearing of due east
     func testGetTime_100Meters_TailWind() throws {
-        let winds = Winds(velocity: 50, direction: 270)
+        let winds = Winds(velocity: 50, direction: 270, velocityUnit: .metersPerSecond)
         let adjustedETA = EXPECTED_DISTANCE / (DEFAULT_SPEED + 50)
         let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate, 
                                                altitude: 0,
@@ -241,12 +241,12 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                timestamp: Date.now)
         let unwrappedTime = try XCTUnwrap(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
         
-        XCTAssertEqual(unwrappedTime, adjustedETA, accuracy: 0.1)
+        XCTAssertEqual(unwrappedTime.converted(to: .seconds).value, adjustedETA, accuracy: 0.1)
     }
     
     // Direct Cross Wind assuming bearing of due east
     func testGetTime_100Meters_DirectCrossWind() throws {
-        let winds = Winds(velocity: 50, direction: 180)
+        let winds = Winds(velocity: 50, direction: 180, velocityUnit: .metersPerSecond)
         let adjustedETA = 60000 / 86.6  // estimated Ground Speed
         let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate,
                                                altitude: 0,
@@ -257,12 +257,12 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                timestamp: Date.now)
         let unwrappedTime = try XCTUnwrap(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
         
-        XCTAssertEqual(unwrappedTime, adjustedETA, accuracy: 0.1)
+        XCTAssertEqual(unwrappedTime.converted(to: .seconds).value, adjustedETA, accuracy: 0.1)
     }
     
     // Quartering Tail Wind assuming bearing of due east
     func testGetTime_100Meters_QuarteringTailWind() throws {
-        let winds = Winds(velocity: 50, direction: 210)
+        let winds = Winds(velocity: 50, direction: 210, velocityUnit: .metersPerSecond)
         let adjustedETA = EXPECTED_DISTANCE / 115.1421613913769
         let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate,
                                                altitude: 0,
@@ -273,12 +273,12 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                timestamp: Date.now)
         let unwrappedTime = try XCTUnwrap(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
         
-        XCTAssertEqual(unwrappedTime, adjustedETA, accuracy: 0.1)
+        XCTAssertEqual(unwrappedTime.converted(to: .seconds).value, adjustedETA, accuracy: 0.1)
     }
     
     // Quartering Head Wind assuming bearing of due east
     func testGetTime_100Meters_QuarteringHeadWind() throws {
-        let winds = Winds(velocity: 50, direction: 150)
+        let winds = Winds(velocity: 50, direction: 150, velocityUnit: .metersPerSecond)
         let adjustedETA = EXPECTED_DISTANCE / (65.142161391376902)
         let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate,
                                                altitude: 0,
@@ -289,12 +289,12 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                timestamp: Date.now)
         let unwrappedTime = try XCTUnwrap(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
         
-        XCTAssertEqual(unwrappedTime, adjustedETA, accuracy: 0.1)
+        XCTAssertEqual(unwrappedTime.converted(to: .seconds).value, adjustedETA, accuracy: 0.1)
     }
     
     // Quartering Head Wind assuming bearing of due east
     func testGetTime_100Meters_NoSpeed() {
-        let winds = Winds(velocity: 10, direction: 60)
+        let winds = Winds(velocity: 10, direction: 60, velocityUnit: .metersPerSecond)
 
         XCTAssertNil(START_LOCATION.getTime(to: END_LOCATION, with: winds))
     }

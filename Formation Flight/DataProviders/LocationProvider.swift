@@ -13,9 +13,9 @@ class LocationProvider: NSObject, CLLocationManagerDelegate {
     var locationManager: CLLocationManager = CLLocationManager()
     var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
-    var speedInKnots: Double = -1
-    var altitudeInFeet: Double = -1
-    var course: Double = -1
+    var speed: Measurement<Dimension> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
+    var altitude: Measurement<Dimension> = Measurement(value: -1.0, unit: UnitLength.meters)
+    var course: Measurement<Dimension> = Measurement(value: -1.0, unit: UnitAngle.degrees)
     
     init(clManager: CLLocationManager = CLLocationManager()) {
         super.init()
@@ -64,16 +64,16 @@ class LocationProvider: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         print("LocationProvider: location Updated")
 
-        if let unwrappedSpeed = locations.last?.speedInKnots {
-            speedInKnots = unwrappedSpeed
+        if let unwrappedSpeed = locations.last?.speed {
+            speed = Measurement(value: unwrappedSpeed, unit: UnitSpeed.metersPerSecond)
         }
         
-        if let unwrappedAltitude = locations.last?.altitudeInFeet {
-            altitudeInFeet = unwrappedAltitude
+        if let unwrappedAltitude = locations.last?.altitude {
+            altitude = Measurement(value: unwrappedAltitude, unit: UnitLength.meters)
         }
         
         if let unwrappedCourse = locations.last?.course {
-            course = unwrappedCourse
+            course = Measurement(value: unwrappedCourse, unit: UnitAngle.degrees)
         }
         
         

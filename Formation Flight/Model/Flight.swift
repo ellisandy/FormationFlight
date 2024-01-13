@@ -15,7 +15,7 @@ final class Flight {
     var title: String = ""
     var missionDate: Date = Date.now
     var targetAltitude: Double = 0
-    var targetSpeed: Double = 0
+    var targetSpeed: Double = 0.0
     var expectedWinds: Winds = Winds(velocity: 0, direction: 0)
     var checkPoints: [CheckPoint] = []
     var interceptTime: Date = Date.now
@@ -45,7 +45,7 @@ final class Flight {
 
 extension Flight {
     static func emptyFlight() -> Flight {
-        return Flight(title: "", missionDate: Date.now, targetAltitude: 500, targetSpeed: 100, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [], interceptTime: Date.now)
+        return Flight(title: "", missionDate: Date.now, targetAltitude: 500, targetSpeed: 100.0, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [], interceptTime: Date.now)
     }
     
     func validFlight() -> Bool {
@@ -82,21 +82,51 @@ extension Flight {
 }
 
 struct Winds: Codable, Hashable {
-    var velocity: Double
-    var direction: Double
+    var velocityAsMetersPerSecond: Double
+    var directionAsDegrees: Double
+
+//    init(velocity: Double, direction: Double) {
+//        self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: UnitSpeed.knots).converted(to: .metersPerSecond).value
+//        self.directionAsDegrees = direction
+//    }
+//    
+//    init(velocity: Double, direction: Double, velocityUnit: UnitSpeed) {
+//        self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: velocityUnit).converted(to: .metersPerSecond).value
+//        self.directionAsDegrees = Measurement(value: direction, unit: UnitAngle.degrees).value
+//    }
     
+    init(velocity: Double, direction: Double, velocityUnit: UnitSpeed = UnitSpeed.knots, directionUnit: UnitAngle = UnitAngle.degrees) {
+        self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: velocityUnit).converted(to: .metersPerSecond).value
+        self.directionAsDegrees = Measurement(value: direction, unit: directionUnit).converted(to: .degrees).value
+    }
+
     var windVelocityAsText: String {
-        get { velocity == 0 ? "" : "\(velocity)" }
-        set { velocity = Double(newValue) ?? 0 }
+        get { velocity.value == 0 ? "" : "\(velocity.value)" }
+        set { velocity.value = Double(newValue) ?? 0 }
     }
     
     var windDirectionAsText: String {
-        get { direction == 0 ? "" : "\(direction)"}
-        set { direction = Double(newValue) ?? 0 }
+        get { direction.value == 0 ? "" : "\(direction.value)"}
+        set { direction.value = Double(newValue) ?? 0 }
+    }
+    
+    @Transient var velocity: Measurement<UnitSpeed> {
+                get {
+                    return Measurement<UnitSpeed>(value: velocityAsMetersPerSecond, unit: .metersPerSecond)
+                }
+                set { velocityAsMetersPerSecond = newValue.value}
+    }
+    @Transient var direction: Measurement<UnitAngle> {
+        get {
+            return Measurement(value: directionAsDegrees, unit: .degrees)
+        }
+        set {
+            directionAsDegrees = newValue.converted(to: .degrees).value
+        }
     }
     
     func windComponents(given bearing: Double) -> (windCorrectionAngle: Double, windEffectiveVelocity: Double) {
-        let windEffectiveVelocity = (velocity * cos((direction - bearing).degreesToRadians)) * -1
+        let windEffectiveVelocity = (velocity.value * cos((direction.value - bearing).degreesToRadians)) * -1
         
         return (0, windEffectiveVelocity)
     }

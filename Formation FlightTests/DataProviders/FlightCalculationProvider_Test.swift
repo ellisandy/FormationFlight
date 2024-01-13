@@ -33,7 +33,7 @@ final class FlightCalculationProvider_Test: XCTestCase {
         
         let sut = FlightCalculationProvider.calculateData(currentLocation: p1, targetLocation: p2, winds: winds, groundSpeed: speed)
         
-        XCTAssertEqual(sut.course, 90.0, accuracy: 1.0)
-        XCTAssertEqual(sut.ETA, 878.43, accuracy: 1.0)
+        XCTAssertEqual(sut.course.converted(to: .degrees).value, 90.0, accuracy: 1.0)
+        XCTAssertEqual(sut.ETA.converted(to: .seconds).value, 878.43, accuracy: 1.0)
     }
 }
