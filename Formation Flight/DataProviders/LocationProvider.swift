@@ -11,6 +11,7 @@ import CoreLocation
 @Observable
 class LocationProvider: NSObject, CLLocationManagerDelegate {
     var locationManager: CLLocationManager = CLLocationManager()
+    var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
     var speedInKnots: Double = -1
     var altitudeInFeet: Double = -1
@@ -74,5 +75,8 @@ class LocationProvider: NSObject, CLLocationManagerDelegate {
         if let unwrappedCourse = locations.last?.course {
             course = unwrappedCourse
         }
+        
+        
+            (updateDelegate ?? {})()
     }
 }

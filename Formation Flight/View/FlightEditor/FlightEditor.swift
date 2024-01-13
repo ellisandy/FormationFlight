@@ -9,7 +9,7 @@ import SwiftUI
 
 struct FlightEditor: View {
     @Binding var config: FlightEditorConfig
-
+    
     var body: some View {
         NavigationStack {
             FlightEditorForm(config: $config)

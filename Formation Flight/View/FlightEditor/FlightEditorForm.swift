@@ -40,7 +40,7 @@ struct FlightEditorForm: View {
                 }
 
                 TextField(text: $config.flight.expectedWinds.windVelocityAsText, prompt: Text("Wind Velocity")) {
-                    Text("Wind Velocity 2")
+                    Text("Wind Velocity")
                 }
             }
             Section("Flight Plan") {

@@ -1,0 +1,33 @@
+{
+  "configurations" : [
+    {
+      "id" : "0DF329C1-3DD6-4799-A54D-E259D0585092",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Formation Flight.xcodeproj",
+        "identifier" : "C29255692B2D648D0064F41F",
+        "name" : "Formation FlightTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Formation Flight.xcodeproj",
+        "identifier" : "C29255732B2D648D0064F41F",
+        "name" : "Formation FlightUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

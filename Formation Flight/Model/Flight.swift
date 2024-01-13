@@ -7,7 +7,7 @@
 
 import Foundation
 import SwiftData
-import CoreLocation
+import MapKit
 
 /// Individual Planned Flight
 @Model
@@ -34,11 +34,11 @@ final class Flight {
     init(title: String, missionDate: Date, targetAltitude: Double, targetSpeed: Double, expectedWinds: Winds, checkPoints: [CheckPoint], interceptTime: Date) {
         self.title = title
         self.missionDate = missionDate
-        self.targetAltitude = targetAltitude
-        self.targetSpeed = targetSpeed
+        self.targetAltitude = targetAltitude // TODO: Remove
+        self.targetSpeed = targetSpeed // TODO: Reconsider if this is needed
         self.expectedWinds = expectedWinds
         self.checkPoints = checkPoints
-        self.interceptTime = interceptTime
+        self.interceptTime = interceptTime // TODO: Remove
     }
 
 }
@@ -47,12 +47,6 @@ extension Flight {
     static func emptyFlight() -> Flight {
         return Flight(title: "", missionDate: Date.now, targetAltitude: 500, targetSpeed: 100, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [], interceptTime: Date.now)
     }
-    
-    static var acceptableAltitudes: [Int] = {
-        return (0...10).map { i in
-            (i * 50) + 500
-        }
-    }()
     
     func validFlight() -> Bool {
         var validStatus = true
@@ -63,44 +57,49 @@ extension Flight {
         
         return validStatus
     }
-
-    /*
-     CLLocationCoordinate2D routeCoord[routeLocations.count];
-     for (int i = 0; i < routeLocations.count; i++ )
-     {
-      id location =[routeLocations objectAtIndex:i];
-      routeCoord[i] = CLLocationCoordine2DMake([[location objectForKey:@"Lat"]floatValue], [[location objectForKey:@"Lon"]floatValue]);
-     }
-     // create your route Polyline
-     MKPolyline *poly = [MKPolyline polylineWithCoordinates:routeCoord count:routeLocations.count];
-
-     // first remove previously added overlays if any then add your newly created route polyline
-     [self.mapView addOverlay:poly];
-     */
     
     func getCLCoordinate2D() -> [CLLocationCoordinate2D] {
         return self.checkPoints.map { checkpoint in
             CLLocationCoordinate2D(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
         }
     }
+    
+    func getCLLocation() -> [CLLocation] {
+        return self.checkPoints.map { cp in
+            CLLocation(latitude: cp.latitude, longitude: cp.longitude)
+        }
+    }
+    
+    func getCLCoordinate2D(userLocation startPoint: CLLocationCoordinate2D?) -> [CLLocationCoordinate2D] {
+        if startPoint == nil { return getCLCoordinate2D() }
+        
+        var locations = getCLCoordinate2D()
+        //SAFE
+        locations.insert(startPoint!, at: 0)
+        
+        return locations
+    }
 }
 
 struct Winds: Codable, Hashable {
-    var velocity: Int
-    var direction: Int
+    var velocity: Double
+    var direction: Double
     
     var windVelocityAsText: String {
         get { velocity == 0 ? "" : "\(velocity)" }
-        set { velocity = Int(newValue) ?? 0 }
+        set { velocity = Double(newValue) ?? 0 }
     }
     
     var windDirectionAsText: String {
         get { direction == 0 ? "" : "\(direction)"}
-        set { direction = Int(newValue) ?? 0 }
+        set { direction = Double(newValue) ?? 0 }
     }
     
-    func something() {}
-    func somethingElse() {}
+    func windComponents(given bearing: Double) -> (windCorrectionAngle: Double, windEffectiveVelocity: Double) {
+        let windEffectiveVelocity = (velocity * cos((direction - bearing).degreesToRadians)) * -1
+        
+        return (0, windEffectiveVelocity)
+    }
 }
 
 struct CheckPoint: Codable, Hashable, Identifiable {
@@ -111,6 +110,14 @@ struct CheckPoint: Codable, Hashable, Identifiable {
     
     func getCLCoordinate() -> CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+    
+    func getCLLocation() -> CLLocation {
+        CLLocation(latitude: latitude, longitude: longitude)
+    }
+    
+    func mapPoint() -> MKMapPoint {
+        MKMapPoint(getCLCoordinate())
     }
 }
 
