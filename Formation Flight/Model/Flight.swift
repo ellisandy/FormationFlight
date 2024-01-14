@@ -79,21 +79,55 @@ extension Flight {
         
         return locations
     }
+    
+    // FIXME: Add functionality to compute all CheckPoints
+    func provideInstrumentPanelData(from currentLocation: CLLocation) -> InstrumentPanelData {
+        let actualTOT = currentLocation.getTime(to: getCLLocation(), with: expectedWinds)?.converted(to: .seconds).value // Getting Actual ToT
+        let tot = Date.now.secondsUntil(time: missionDate)
+        let etaDelta = actualTOT! - tot // FIXME: This should handle Optionals
+        
+        let distance = currentLocation.distance(from: getCLLocation())
+                
+        let currentTrueAirSpeed = currentLocation.getTrueAirSpeed(with: expectedWinds)
+        let course = currentLocation.getCourse(to: getCLLocation().first!)
+        let heading = currentLocation.getHeading(airspeed: currentTrueAirSpeed!, winds: expectedWinds, course: course)
+        
+        let targetAirspeed = calculateTargetSpeed(actualETA: actualTOT!, targetETA: tot, distance: distance)
+        
+        return InstrumentPanelData(currentETA: Measurement(value: tot, unit: UnitDuration.seconds),
+                                   ETADelta: Measurement(value: etaDelta, unit: UnitDuration.seconds),
+                                   course: Measurement(value: heading.value, unit: heading.unit),
+                                   currentTrueAirSpeed: Measurement(value: currentTrueAirSpeed!.value, unit: currentTrueAirSpeed!.unit),
+                                   targetTrueAirSpeed: Measurement(value: (targetAirspeed), unit: UnitSpeed.metersPerSecond),
+                                   distanceToNext: Measurement(value: distance, unit: UnitLength.meters),
+                                   // FIXME: This should be the total distance.
+                                   distanceToFinal: Measurement(value: distance, unit: UnitLength.meters))
+    }
+
+    // FIXME: This is still wrong... this isn't accounting for winds. It's also starting with a bunch of
+    //       assumptions, and moving forward.
+    func calculateTargetSpeed(actualETA: TimeInterval, targetETA: TimeInterval, distance: Double) -> Double {
+        // We know the distance.
+        
+        // I need to know the new TAS.
+        
+        // I can calculate distance over the time to get the target ground speed.
+        
+        // Need to take the wind compoenent at the baring, get the wind component, then re-calculate the TAS.
+        
+        // Calculate the required speed to cover the remaining distance in the remaining time
+        // Example:
+        let requiredSpeed = distance / targetETA
+
+        return requiredSpeed
+    }
 }
+
+
 
 struct Winds: Codable, Hashable {
     var velocityAsMetersPerSecond: Double
     var directionAsDegrees: Double
-
-//    init(velocity: Double, direction: Double) {
-//        self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: UnitSpeed.knots).converted(to: .metersPerSecond).value
-//        self.directionAsDegrees = direction
-//    }
-//    
-//    init(velocity: Double, direction: Double, velocityUnit: UnitSpeed) {
-//        self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: velocityUnit).converted(to: .metersPerSecond).value
-//        self.directionAsDegrees = Measurement(value: direction, unit: UnitAngle.degrees).value
-//    }
     
     init(velocity: Double, direction: Double, velocityUnit: UnitSpeed = UnitSpeed.knots, directionUnit: UnitAngle = UnitAngle.degrees) {
         self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: velocityUnit).converted(to: .metersPerSecond).value
@@ -111,10 +145,12 @@ struct Winds: Codable, Hashable {
     }
     
     @Transient var velocity: Measurement<UnitSpeed> {
-                get {
-                    return Measurement<UnitSpeed>(value: velocityAsMetersPerSecond, unit: .metersPerSecond)
-                }
-                set { velocityAsMetersPerSecond = newValue.value}
+        get {
+            return Measurement<UnitSpeed>(value: velocityAsMetersPerSecond, unit: .metersPerSecond)
+        }
+        set {
+            velocityAsMetersPerSecond = newValue.value
+        }
     }
     @Transient var direction: Measurement<UnitAngle> {
         get {
@@ -151,7 +187,6 @@ struct CheckPoint: Codable, Hashable, Identifiable {
     }
 }
 
-// 48.42564384298293, -122.37958153333842
 let HOME_LOCATION = CheckPoint(id: UUID(), name: "Home", longitude: -122.379581, latitude: 48.425643)
 let TREE_FARM_LOCATION = CheckPoint(id: UUID(), name: "Tree Farm", longitude: -122.36519, latitude: 48.42076)
 let BVS_LOCATION = CheckPoint(id: UUID(), name: "BVS Airport", longitude: -122.41299, latitude: 48.46915)

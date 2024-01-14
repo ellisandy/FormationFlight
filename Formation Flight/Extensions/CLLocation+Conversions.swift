@@ -47,43 +47,8 @@ extension CLLocation {
         
         return Measurement(value: courseDegrees, unit: UnitAngle.degrees)
     }
-    
-    func getTime(to destination: CLLocation, with winds: Winds) -> Measurement<UnitDuration>? {
-        
-        // Bail out if there's not a valid speed
-        if speed < 0 { return nil }
-        
-        // Bail out if there's not a valid course
-        if course < 0 { return nil }
-        
-        let distanceToDestination: Double = distance(from: destination)
-        guard let tas = getTrueAirSpeed(with: winds) else {
-            return nil
-        }
-        
-        let bearing = getCourse(to: destination)
-        
-        let tasMetersPerSecond: Double = tas.converted(to: .metersPerSecond).value
-        let windVelocityMetersPerSecond: Double = winds.velocity.converted(to: .metersPerSecond).value
-        let bearingNextRadians: Double = bearing.converted(to: .radians).value
-        let windDirectionRadian: Double = winds.direction.converted(to: .radians).value
-        
-        let wca = asin(windVelocityMetersPerSecond /
-                       tasMetersPerSecond *
-                       sin(bearingNextRadians - (180.0.degreesToRadians - windDirectionRadian)))
-                        
-        let airspeed = sqrt(pow(tasMetersPerSecond, 2) +
-                            pow(windVelocityMetersPerSecond, 2) -
-                            (2 *
-                             tasMetersPerSecond *
-                             windVelocityMetersPerSecond *
-                             cos(bearingNextRadians - windDirectionRadian + wca)))
-        
-        return Measurement(value: (distanceToDestination / airspeed), unit: .seconds)
-    }
 
     func getTime(to destinations: [CLLocation], with winds: Winds) -> Measurement<UnitDuration>? {
-        
         // Bail out if there's not a valid speed
         if speed < 0 { return nil }
         
@@ -93,49 +58,61 @@ extension CLLocation {
         // Bail out if destinations is empty
         if destinations.isEmpty { return nil }
         
-        let distanceToDestination = distance(from: destinations)
         guard let tas = getTrueAirSpeed(with: winds) else {
             return nil
         }
-        let bearing = getCourse(to: destinations.first!)
+        
+        let distanceToDestination = distance(from: destinations)
 
-        let tasMetersPerSecond: Double = tas.converted(to: .metersPerSecond).value
-        let windVelocityMetersPerSecond: Double = winds.velocity.converted(to: .metersPerSecond).value
-        let bearingNextRadians: Double = bearing.converted(to: .radians).value
-        let windDirectionRadian: Double = winds.direction.converted(to: .radians).value
-        
-        
-        let wca = asin(windVelocityMetersPerSecond /
-                       tasMetersPerSecond *
-                       sin(bearingNextRadians - (180.0.degreesToRadians - windDirectionRadian)))
-                        
-        let airspeed = sqrt(pow(tasMetersPerSecond, 2) + pow(windVelocityMetersPerSecond, 2) -
-                            (2 * tasMetersPerSecond * windVelocityMetersPerSecond * cos(bearingNextRadians - windDirectionRadian + wca)))
-        
-        return Measurement(value: (distanceToDestination / airspeed), unit: .seconds)
+        // FIXME: Calculate Multiple Destinations
+        let course = getCourse(to: destinations.first!)
+
+        let groundSpeed = calculateGroundSpeed(tas: tas, winds: winds, course: course)
+
+        return Measurement(value: (distanceToDestination / groundSpeed), unit: .seconds)
+    }
+    
+    func getTime(to destination: CLLocation, with winds: Winds) -> Measurement<UnitDuration>? {
+        return getTime(to: [destination], with: winds)
     }
     
     // TODO: Add Documenetation
-    func getTimeHeadingAndDistance(to destination: CLLocation, with winds: Winds) -> (time: Measurement<UnitDuration>?, heading: Measurement<UnitAngle>?, distance: Measurement<UnitLength>, targetAirspeed: Measurement<UnitSpeed>?) {
-        let distanceToDestination: Measurement<UnitLength> = distance(from: destination)
-        let bearing = getCourse(to: destination)
-
-        // Bail out if there's not a valid speed
-        if speed < 0 { return (nil, nil, distanceToDestination, nil) }
-        
-        // Bail out if there's not a valid course
-        if course < 0 { return (nil, nil, distanceToDestination, nil) }
-        
-        guard let tas = getTrueAirSpeed(with: winds) else {
-            return (nil, nil, distanceToDestination, nil)
-        }
-        
-        let tasMetersPerSecond: Double = tas.converted(to: .metersPerSecond).value
+//    func getTimeHeadingAndDistance(to destination: CLLocation, with winds: Winds) -> (time: Measurement<UnitDuration>?, heading: Measurement<UnitAngle>?, distance: Measurement<UnitLength>, targetAirspeed: Measurement<UnitSpeed>?) {
+//        let distanceToDestination: Measurement<UnitLength> = distance(from: destination)  //FIXME: Distance to Final
+//        let expectedCourse = getCourse(to: destination)
+//
+//        // Bail out if there's not a valid speed
+//        if speed < 0 { return (nil, nil, distanceToDestination, nil) }
+//        
+//        // Bail out if there's not a valid course
+//        if course < 0 { return (nil, nil, distanceToDestination, nil) }
+//        
+//        guard let tas = getTrueAirSpeed(with: winds) else {
+//            return (nil, nil, distanceToDestination, nil)
+//        }
+//        
+//        let combinedVector = combineDirectionAndVelocity(airspeed: tas, winds: winds, course: expectedCourse)
+//        
+//        let heading = atan2(combinedVector.y, combinedVector.x).radiansToDegrees
+//
+//        let airspeed = calculateGroundSpeed(tas: tas, winds: winds, course: expectedCourse)
+//        
+//        let time = distanceToDestination.converted(to: .meters).value / airspeed
+//
+//        return (Measurement(value: time, unit: .seconds),
+//                Measurement(value: heading, unit: .degrees),
+//                distanceToDestination,
+//                Measurement(value: airspeed, unit: .metersPerSecond))
+//    }
+//    
+    
+    func getHeading(airspeed: Measurement<UnitSpeed>, winds: Winds, course: Measurement<UnitAngle>) -> Measurement<UnitAngle> {
+        let tasMetersPerSecond: Double = airspeed.converted(to: .metersPerSecond).value
         let windVelocityMetersPerSecond: Double = winds.velocity.converted(to: .metersPerSecond).value
-        let bearingNextRadians: Double = bearing.converted(to: .radians).value
+        let bearingNextRadians: Double = course.converted(to: .radians).value
         let windDirectionRadian: Double = winds.direction.converted(to: .radians).value
         
-        let wca = asin(windVelocityMetersPerSecond / tasMetersPerSecond * sin(bearingNextRadians - (180.0.degreesToRadians - windDirectionRadian)))
+        let wca = calculateWindCorrectionAngle(tas: airspeed, winds: winds, course: course)
         
         let airComponent = SIMD2(x: tasMetersPerSecond * cos(bearingNextRadians),
                                  y: tasMetersPerSecond * sin(bearingNextRadians))
@@ -143,17 +120,9 @@ extension CLLocation {
                                   y: windVelocityMetersPerSecond * sin(windDirectionRadian + wca))
         
         let combinedVector = airComponent + windComponent
-        
         let heading = atan2(combinedVector.y, combinedVector.x).radiansToDegrees
-        let airspeed = sqrt(pow(tasMetersPerSecond, 2) + pow(windVelocityMetersPerSecond, 2) -
-                            (2 * tasMetersPerSecond * windVelocityMetersPerSecond * cos(bearingNextRadians - windDirectionRadian + wca)))
-        
-        let time = distanceToDestination.converted(to: .meters).value / airspeed
 
-        return (Measurement(value: time, unit: .seconds),
-                Measurement(value: heading, unit: .degrees),
-                distanceToDestination,
-                Measurement(value: airspeed, unit: .metersPerSecond))
+        return Measurement(value: heading, unit: UnitAngle.degrees)
     }
     
     func distance(from locations: [CLLocation]) -> CLLocationDistance {
@@ -171,4 +140,35 @@ extension CLLocation {
     func distance(from location: CLLocation) -> Measurement<UnitLength> {
         return Measurement(value: distance(from: location), unit: .meters)
     }
+    
+    fileprivate func calculateWindCorrectionAngle(tas: Measurement<UnitSpeed>, winds: Winds, course: Measurement<UnitAngle>) -> Double {
+
+        let tasMetersPerSecond: Double = tas.converted(to: .metersPerSecond).value
+        let windVelocityMetersPerSecond: Double = winds.velocity.converted(to: .metersPerSecond).value
+        let bearingNextRadians: Double = course.converted(to: .radians).value
+        let windDirectionRadian: Double = winds.direction.converted(to: .radians).value
+
+        return asin(windVelocityMetersPerSecond /
+                    tasMetersPerSecond *
+                    sin(bearingNextRadians - (180.0.degreesToRadians - windDirectionRadian)))
+    }
+    
+    fileprivate func calculateGroundSpeed(tas: Measurement<UnitSpeed>,
+                                          winds: Winds,
+                                          course: Measurement<UnitAngle>) -> Double {
+        let tasMetersPerSecond: Double = tas.converted(to: .metersPerSecond).value
+        let windVelocityMetersPerSecond: Double = winds.velocity.converted(to: .metersPerSecond).value
+        let bearingNextRadians: Double = course.converted(to: .radians).value
+        let windDirectionRadian: Double = winds.direction.converted(to: .radians).value
+        
+        let wca = calculateWindCorrectionAngle(tas: tas, winds: winds, course: course)
+        
+        return sqrt(pow(tasMetersPerSecond, 2) +
+                    pow(windVelocityMetersPerSecond, 2) -
+                    (2 *
+                     tasMetersPerSecond *
+                     windVelocityMetersPerSecond *
+                     cos(bearingNextRadians - windDirectionRadian + wca)))
+    }
+
 }
