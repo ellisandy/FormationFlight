@@ -13,20 +13,28 @@ struct SettingsEditorForm: View {
     var body: some View {
         
         Form {
-            Section("Speed Unit") {
+            Section("Units") {
                 Picker("Speed Unit", selection: $settingsEditorConfig.speedUnit) {
                     ForEach(SettingsEditorConfig.SpeedUnit.allCases) { unit in
-                        Text(unit.rawValue.uppercased())
+                        Text(unit.rawValue)
                     }
-                }.pickerStyle(.segmented)
+                }.pickerStyle(.automatic)
+                Picker("Distance Unit", selection: $settingsEditorConfig.distanceUnit) {
+                    ForEach(SettingsEditorConfig.DistanceUnit.allCases) { unit in
+                        Text(unit.rawValue)
+                    }
+                }.pickerStyle(.automatic)
             }
-            Section("Time on Target Drift Tolerance") {
-                
+            Section {
                 TextField("Yellow Variance", value: $settingsEditorConfig.yellowTolerance, formatter: windDirectionFormatter)
                     .keyboardType(.numberPad)
                 
-                TextField("Yellow Red", value: $settingsEditorConfig.redTolerance, formatter: windDirectionFormatter)
+                TextField("Red Variance", value: $settingsEditorConfig.redTolerance, formatter: windDirectionFormatter)
                     .keyboardType(.numberPad)
+            } header: {
+                Text("Time on Target Drift Tolerance")
+            } footer: {
+                Text("Yellow: +/-\(settingsEditorConfig.yellowTolerance) seconds \nRed:     +/-\(settingsEditorConfig.redTolerance) seconds")
             }
             Section("Speed Values") {
                 TextField("Minimum Speed", value: $settingsEditorConfig.minSpeed, formatter: windDirectionFormatter)
@@ -48,5 +56,5 @@ struct SettingsEditorForm: View {
 }
 
 #Preview {
-    SettingsEditorForm(settingsEditorConfig: .constant(SettingsEditorConfig.init(speedUnit: .kph, yellowTolerance: 0, redTolerance: 0, minSpeed: 0, maxSpeed: 0)))
+    SettingsEditorForm(settingsEditorConfig: .constant(SettingsEditorConfig.init(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 10, redTolerance: 20, minSpeed: 0, maxSpeed: 0)))
 }

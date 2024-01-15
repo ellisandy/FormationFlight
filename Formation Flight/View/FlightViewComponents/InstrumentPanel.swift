@@ -65,6 +65,6 @@ struct InstrumentPanel: View {
         distanceToFinal: Measurement(value: 10, unit: UnitLength.meters))
     
     return InstrumentPanel(
-        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kph, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
+        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
         panelData: panelData)
 }
