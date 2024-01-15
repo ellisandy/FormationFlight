@@ -18,13 +18,25 @@ struct FlightEditorForm: View {
                 TextField("Mission Title", text: $config.flight.title)
                 DatePicker("Mission Date", selection: $config.flight.missionDate, displayedComponents: [.date, .hourAndMinute])
             }
-            Section("Conditions") {
-                TextField(text: $config.flight.expectedWinds.windDirectionAsText, prompt: Text("Wind Direction")) {
-                    Text("Wind Direction")
+            Section("Wind Conditions") {
+                HStack {
+                    Text("Direction:").fontWeight(.thin)
+
+                    TextField(value: $config.flight.expectedWinds.directionAsDegrees,
+                              formatter: windInputFormatter,
+                              prompt: Text("Wind Direction")) {
+                        Text("Wind Direction")
+                    }
+                          .keyboardType(.numberPad)
                 }
 
-                TextField(text: $config.flight.expectedWinds.windVelocityAsText, prompt: Text("Wind Velocity")) {
-                    Text("Wind Velocity")
+                HStack {
+                    Text("Velocity:  ").fontWeight(.thin)
+
+                    TextField("Wind Velocity",
+                              value: $config.flight.expectedWinds.velocityAsKnots,
+                              formatter: windInputFormatter)
+                    .keyboardType(.numberPad)
                 }
             }
             Section("Flight Plan") {
@@ -54,27 +66,11 @@ struct FlightEditorForm: View {
             }
         }
     }
-    
-    //TODO: Refactor these away...probably
-    let windDirectionFormatter: NumberFormatter = {
+ 
+    let windInputFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
-        formatter.minimum = .init(integerLiteral: 0)
-        formatter.maximum = .init(integerLiteral: 360)
         formatter.generatesDecimalNumbers = false
         formatter.maximumFractionDigits = 0
-        formatter.zeroSymbol = ""
-        formatter.numberStyle = .none
-        return formatter
-    }()
-    
-    let windVelocityFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.minimum = .init(integerLiteral: 0)
-        formatter.maximum = .init(integerLiteral: Int.max)
-        formatter.generatesDecimalNumbers = false
-        formatter.maximumFractionDigits = 0
-        formatter.zeroSymbol = ""
-        formatter.numberStyle = .none
         return formatter
     }()
 

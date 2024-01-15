@@ -21,8 +21,9 @@ struct FlightEditorCheckPoint: View {
         .alert("Check Point", isPresented: $checkPointInput) {
             TextField("Checkpoint Name", text: $checkPointName)
 
-            TextField("Longitude", text: $longitude)
-            TextField("Latitude", text: $latitude)
+            TextField("Longitude", text: $longitude).keyboardType(.numbersAndPunctuation)
+            TextField("Latitude", text: $latitude).keyboardType(.numbersAndPunctuation)
+            
             Button("Add", action: {
                 let doubleLong = Double(longitude) ?? 0.0
                 let doubleLat = Double(latitude) ?? 0.0

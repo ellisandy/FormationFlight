@@ -103,8 +103,8 @@ struct ContentView: View {
             if flightEditorConfig.flight.title != "" {
                 modelContext.insert(flightEditorConfig.flight)
             } else {
-                // TODO: Update the shouldSaveChanges to be protected if the title is not valid.
-                assertionFailure("Shouldn't get here...")
+                // TODO: Add Error Messages when the flight is invalid
+                flightEditorConfig.presentEditFlight(flightEditorConfig.flight)
             }
         }
     }

@@ -30,11 +30,9 @@ struct InstrumentComponent: View {
         .opacity(0.8)
     }
     // TODO: Extract this from the View file.
-    // TODO: Change Units as needed
     func doubleToText() -> String? {
         // Shortcut to Nil
         guard infoValue != nil else { return nil }
-        // TODO: Add specific Formatting for Unit type and such
         switch infoValue!.unit {
         case is UnitAngle:
             let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitAngle).converted(to: .degrees)

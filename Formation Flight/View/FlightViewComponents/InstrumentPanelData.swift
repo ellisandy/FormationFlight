@@ -49,23 +49,3 @@ class InstrumentPanelData {
     }
 }
 
-extension InstrumentPanelData {
-    // TODO: Dear lord, this is hideous.
-    static func formatSmallSeconds(seconds: Int) -> String {
-        var secondsToConvert = seconds
-        
-        //Make sure it returns a positive value
-        if secondsToConvert < 0 {
-            secondsToConvert = seconds * -1
-        }
-        
-        switch secondsToConvert {
-        case _ where secondsToConvert == 0:
-            return "00"
-        case _ where secondsToConvert < 10:
-            return "0\(secondsToConvert)"
-        default:
-            return String(secondsToConvert)
-        }
-    }
-}

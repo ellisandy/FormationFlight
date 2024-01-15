@@ -12,6 +12,15 @@ struct Winds: Codable, Hashable {
     var velocityAsMetersPerSecond: Double
     var directionAsDegrees: Double
     
+    var velocityAsKnots: Double {
+        get {
+            return velocity.converted(to: .knots).value
+        }
+        set {
+            velocityAsMetersPerSecond = Measurement(value: newValue, unit: UnitSpeed.knots).converted(to: .metersPerSecond).value
+        }
+    }
+    
     init(velocity: Double, direction: Double, velocityUnit: UnitSpeed = UnitSpeed.knots, directionUnit: UnitAngle = UnitAngle.degrees) {
         self.velocityAsMetersPerSecond = Measurement(value: velocity, unit: velocityUnit).converted(to: .metersPerSecond).value
         self.directionAsDegrees = Measurement(value: direction, unit: directionUnit).converted(to: .degrees).value

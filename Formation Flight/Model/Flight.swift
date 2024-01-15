@@ -80,7 +80,7 @@ extension Flight {
         var targetAirspeed: Double? = nil
 
         if let actualTOT = currentLocation.getTime(to: getCLLocation(), with: expectedWinds)?.converted(to: .seconds).value { // Getting Actual ToT
-            etaDelta = actualTOT - tot // FIXME: This should handle Optionals
+            etaDelta = actualTOT - tot
             targetAirspeed = calculateTargetSpeed(actualETA: actualTOT, targetETA: tot, distance: distance)
         }
         
