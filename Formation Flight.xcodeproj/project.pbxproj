@@ -35,6 +35,8 @@
 		C29255792B2D648D0064F41F /* Formation_FlightUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29255782B2D648D0064F41F /* Formation_FlightUITests.swift */; };
 		C292557B2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C292557A2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift */; };
 		C294A83B2B2F706B008A9B0F /* Flight.swift in Sources */ = {isa = PBXBuildFile; fileRef = C294A83A2B2F706B008A9B0F /* Flight.swift */; };
+		C2CEA4442B55A3B6001635E5 /* Winds.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CEA4432B55A3B6001635E5 /* Winds.swift */; };
+		C2CEA4462B55A406001635E5 /* Checkpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CEA4452B55A406001635E5 /* Checkpoints.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,6 +91,8 @@
 		C29255782B2D648D0064F41F /* Formation_FlightUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formation_FlightUITests.swift; sourceTree = "<group>"; };
 		C292557A2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formation_FlightUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		C294A83A2B2F706B008A9B0F /* Flight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Flight.swift; sourceTree = "<group>"; };
+		C2CEA4432B55A3B6001635E5 /* Winds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Winds.swift; sourceTree = "<group>"; };
+		C2CEA4452B55A406001635E5 /* Checkpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Checkpoints.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -296,6 +300,8 @@
 			isa = PBXGroup;
 			children = (
 				C294A83A2B2F706B008A9B0F /* Flight.swift */,
+				C2CEA4432B55A3B6001635E5 /* Winds.swift */,
+				C2CEA4452B55A406001635E5 /* Checkpoints.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -437,6 +443,7 @@
 				C20E379B2B40BAA5002F8DCC /* SettingsEditor.swift in Sources */,
 				C2218E6E2B38A7C300D5D569 /* FlightEditorForm.swift in Sources */,
 				C294A83B2B2F706B008A9B0F /* Flight.swift in Sources */,
+				C2CEA4442B55A3B6001635E5 /* Winds.swift in Sources */,
 				C2218E772B3E5B1200D5D569 /* LocationProvider.swift in Sources */,
 				C2218E732B3E174E00D5D569 /* FlightView.swift in Sources */,
 				C20E379F2B40CD92002F8DCC /* InstrumentPanelData.swift in Sources */,
@@ -450,6 +457,7 @@
 				C20E37972B40AEF0002F8DCC /* SettingsEditorForm.swift in Sources */,
 				C2218E652B38A0AC00D5D569 /* FlightEditorConfig.swift in Sources */,
 				C292555A2B2D648C0064F41F /* Formation_FlightApp.swift in Sources */,
+				C2CEA4462B55A406001635E5 /* Checkpoints.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
