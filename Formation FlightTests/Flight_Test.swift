@@ -52,9 +52,7 @@ final class Flight_Test: XCTestCase {
         let sut = Flight.emptyFlight()
         sut.title = "XCT Test Flight"
         sut.expectedWinds = Winds(velocity: 0, direction: 0)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,
@@ -98,9 +96,7 @@ final class Flight_Test: XCTestCase {
         let sut = Flight.emptyFlight()
         sut.title = "XCT Test Flight"
         sut.expectedWinds = Winds(velocity: 0, direction: 0)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,
@@ -145,9 +141,7 @@ final class Flight_Test: XCTestCase {
         let sut = Flight.emptyFlight()
         sut.title = "XCT Test Flight"
         sut.expectedWinds = Winds(velocity: 0, direction: 0)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,
@@ -197,9 +191,7 @@ final class Flight_Test: XCTestCase {
         
         // Fifty Knot Head Wind (from the bearing)
         sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,
@@ -249,9 +241,7 @@ final class Flight_Test: XCTestCase {
         
         // Fifty Knot Head Wind (from the bearing)
         sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,
@@ -301,9 +291,7 @@ final class Flight_Test: XCTestCase {
         
         // Fifty Knot Head Wind (from the bearing)
         sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,
@@ -353,9 +341,7 @@ final class Flight_Test: XCTestCase {
         let windDirection = 150.0
         
         sut.expectedWinds = Winds(velocity: windVelocity, direction: windDirection, velocityUnit: .metersPerSecond)
-        sut.targetSpeed = speed
         sut.missionDate = missionDate
-        sut.interceptTime = startDate
         sut.checkPoints = [CheckPoint(id: UUID(),
                                       name: "End Location",
                                       longitude: endLocation.coordinate.longitude,

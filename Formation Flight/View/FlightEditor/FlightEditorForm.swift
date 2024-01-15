@@ -16,23 +16,7 @@ struct FlightEditorForm: View {
         Form{
             Section(header: Text("Flight Overview")) {
                 TextField("Mission Title", text: $config.flight.title)
-                DatePicker("Planned Intercept", selection: $config.flight.interceptTime, displayedComponents: [.date, .hourAndMinute])
-                Stepper(value: $config.flight.targetAltitude,
-                        in: 300...2000,
-                        step: 50)  {
-                    HStack {
-                        Text("Target Altitude:")
-                        Text("\(Int(config.flight.targetAltitude))' AGL").dynamicTypeSize(.medium).bold()
-                    }
-                }
-                Stepper(value: $config.flight.targetSpeed,
-                        in: 50...300,
-                        step: 1) {
-                    HStack {
-                        Text("Target Speed:")
-                        Text("\(Int(config.flight.targetSpeed)) Knots").dynamicTypeSize(.medium).bold()
-                    }
-                }
+                DatePicker("Mission Date", selection: $config.flight.missionDate, displayedComponents: [.date, .hourAndMinute])
             }
             Section("Conditions") {
                 TextField(text: $config.flight.expectedWinds.windDirectionAsText, prompt: Text("Wind Direction")) {

@@ -14,11 +14,8 @@ import MapKit
 final class Flight {
     var title: String = ""
     var missionDate: Date = Date.now
-    var targetAltitude: Double = 0
-    var targetSpeed: Double = 0.0
     var expectedWinds: Winds = Winds(velocity: 0, direction: 0)
     var checkPoints: [CheckPoint] = []
-    var interceptTime: Date = Date.now
     
 
     
@@ -26,26 +23,20 @@ final class Flight {
     /// - Parameters:
     ///   - title: Title of the flight
     ///   - missionDate: Date of the mission
-    ///   - targetAltitude: Target Altitude
-    ///   - targetSpeed: Target Ground Speed in Knots
     ///   - expectedWinds: Expected Winds for calciulation
     ///   - checkPoints: A list of checkpoints.
-    ///   - interceptTime: DateTime of the intercept (To be deleted)
-    init(title: String, missionDate: Date, targetAltitude: Double, targetSpeed: Double, expectedWinds: Winds, checkPoints: [CheckPoint], interceptTime: Date) {
+    init(title: String, missionDate: Date, expectedWinds: Winds, checkPoints: [CheckPoint]) {
         self.title = title
         self.missionDate = missionDate
-        self.targetAltitude = targetAltitude // TODO: Remove
-        self.targetSpeed = targetSpeed // TODO: Reconsider if this is needed
         self.expectedWinds = expectedWinds
         self.checkPoints = checkPoints
-        self.interceptTime = interceptTime // TODO: Remove
     }
 
 }
 
 extension Flight {
     static func emptyFlight() -> Flight {
-        return Flight(title: "", missionDate: Date.now, targetAltitude: 500, targetSpeed: 100.0, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [], interceptTime: Date.now)
+        return Flight(title: "", missionDate: Date.now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
     }
     
     func validFlight() -> Bool {

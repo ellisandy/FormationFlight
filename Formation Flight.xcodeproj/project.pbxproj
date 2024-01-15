@@ -123,6 +123,7 @@
 		C20E37922B3FCE39002F8DCC /* FlightViewComponents */ = {
 			isa = PBXGroup;
 			children = (
+				C2218E722B3E174E00D5D569 /* FlightView.swift */,
 				C20E37932B3FCE57002F8DCC /* InstrumentComponent.swift */,
 				C20E379C2B40C9D1002F8DCC /* InstrumentPanel.swift */,
 				C20E379E2B40CD92002F8DCC /* InstrumentPanelData.swift */,
@@ -194,8 +195,8 @@
 			isa = PBXGroup;
 			children = (
 				C2218E802B3F4D7800D5D569 /* CLLocation+Conversions.swift */,
-				C291E6782B41FD25008CFAAD /* Double+Extensions.swift */,
 				C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */,
+				C291E6782B41FD25008CFAAD /* Double+Extensions.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -287,11 +288,10 @@
 		C29255872B2EACC50064F41F /* View */ = {
 			isa = PBXGroup;
 			children = (
-				C20E37952B40AEE0002F8DCC /* SettingsEditor */,
-				C20E37922B3FCE39002F8DCC /* FlightViewComponents */,
 				C292555B2B2D648C0064F41F /* ContentView.swift */,
 				C2218E632B38A09600D5D569 /* FlightEditor */,
-				C2218E722B3E174E00D5D569 /* FlightView.swift */,
+				C20E37922B3FCE39002F8DCC /* FlightViewComponents */,
+				C20E37952B40AEE0002F8DCC /* SettingsEditor */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -299,9 +299,9 @@
 		C29255882B2EACE50064F41F /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				C2CEA4452B55A406001635E5 /* Checkpoints.swift */,
 				C294A83A2B2F706B008A9B0F /* Flight.swift */,
 				C2CEA4432B55A3B6001635E5 /* Winds.swift */,
-				C2CEA4452B55A406001635E5 /* Checkpoints.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
