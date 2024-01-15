@@ -42,9 +42,11 @@ struct FlightView: View {
         .onAppear {
             locationProvider.updateDelegate = calculateTheStuff
             locationProvider.startMonitoring()
+            UIApplication.shared.isIdleTimerDisabled = true
         }
         .onDisappear {
             locationProvider.stopMonitoring()
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
     
@@ -67,14 +69,19 @@ struct FlightView: View {
 #Preview {
     let flightPreview = Flight.emptyFlight()
     flightPreview.title = "Test Flight"
+    flightPreview.checkPoints = [HOME_LOCATION]
+    
+    var config = SettingsEditorConfig.emptyConfig()
+    config.speedUnit = .kts
     
     return FlightView(flight: flightPreview, 
-                      settingsConfig: .constant(.emptyConfig()),
-                      panelData: InstrumentPanelData.init(currentETA: Measurement(value: 0.0, unit: UnitDuration.seconds),
-                                                          ETADelta: Measurement(value: 0.0, unit: UnitDuration.seconds),
-                                                          course: Measurement(value: 0.0, unit: UnitAngle.degrees),
-                                                          currentTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
-                                                          targetTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
-                                                          distanceToNext: Measurement(value: 0.0, unit: UnitLength.meters),
-                                                          distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters)))
+                      settingsConfig: .constant(config),
+                      panelData: InstrumentPanelData.init(
+                        currentETA: Measurement(value: 10.0, unit: UnitDuration.seconds),
+                        ETADelta: Measurement(value: 10.0, unit: UnitDuration.seconds),
+                        course: Measurement(value: 10.0, unit: UnitAngle.degrees),
+                        currentTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
+                        targetTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
+                        distanceToNext: Measurement(value: 10.0, unit: UnitLength.meters),
+                        distanceToFinal: Measurement(value: 10.0, unit: UnitLength.meters)))
 }
