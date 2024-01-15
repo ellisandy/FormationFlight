@@ -54,7 +54,6 @@ struct FlightView: View {
     // The general idea... I think will be to pull the new data, then have some type of copy functino to move the core logic out
     // of the view file. 
     func calculateTheStuff() -> Void {
-        print("Update fo shizzle")
         let temp = flight.provideInstrumentPanelData(from: locationProvider.locationManager.location!)
         
         panelData.currentETA = temp.currentETA

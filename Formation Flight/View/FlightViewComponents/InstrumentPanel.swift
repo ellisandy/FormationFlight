@@ -23,6 +23,7 @@ struct InstrumentPanel: View {
                         .padding(.horizontal)
                 }
                 .buttonStyle(.borderedProminent)
+                .padding()
                 
                 Spacer()
                 
@@ -34,6 +35,7 @@ struct InstrumentPanel: View {
                     
                 }
                 .buttonStyle(.borderedProminent)
+                .padding()
                 
             }
             

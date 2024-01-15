@@ -237,8 +237,8 @@
 		C29255582B2D648C0064F41F /* Formation Flight */ = {
 			isa = PBXGroup;
 			children = (
-				C2218E7F2B3F4D5F00D5D569 /* Extensions */,
 				C29255592B2D648C0064F41F /* Formation_FlightApp.swift */,
+				C2218E7F2B3F4D5F00D5D569 /* Extensions */,
 				C29255882B2EACE50064F41F /* Model */,
 				C2218E782B3F31C800D5D569 /* DataProviders */,
 				C29255872B2EACC50064F41F /* View */,

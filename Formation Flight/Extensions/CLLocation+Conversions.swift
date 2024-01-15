@@ -103,7 +103,7 @@ extension CLLocation {
             if i == 0 {
                 distance = self.distance(from: locations[i])
             } else {
-                distance = locations[i - 1].distance(from: locations[i])
+                distance = distance + locations[i - 1].distance(from: locations[i])
             }
         }
         return distance
