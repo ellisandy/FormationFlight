@@ -63,7 +63,7 @@ class LocationProvider: NSObject, CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         print("LocationProvider: location Updated")
-
+        
         if let unwrappedSpeed = locations.last?.speed {
             speed = Measurement(value: unwrappedSpeed, unit: UnitSpeed.metersPerSecond)
         }
@@ -77,6 +77,6 @@ class LocationProvider: NSObject, CLLocationManagerDelegate {
         }
         
         
-            (updateDelegate ?? {})()
+        (updateDelegate ?? {print("No Update Delegate")})()
     }
 }

@@ -15,13 +15,13 @@ typealias Meters = Double
 /// Data Struct to contain the required information for the Instrument panel
 @Observable
 class InstrumentPanelData {
-    var currentETA: Measurement<Dimension>
-    var ETADelta: Measurement<Dimension>
-    var course: Measurement<Dimension>
-    var currentTrueAirspeed: Measurement<Dimension>
-    var targetTrueAirspeed: Measurement<Dimension>
-    var distanceToNext: Measurement<Dimension>
-    var distanceToFinal: Measurement<Dimension>
+    var currentETA: Measurement<Dimension>?
+    var ETADelta: Measurement<Dimension>?
+    var course: Measurement<Dimension>?
+    var currentTrueAirspeed: Measurement<Dimension>?
+    var targetTrueAirspeed: Measurement<Dimension>?
+    var distanceToNext: Measurement<Dimension>?
+    var distanceToFinal: Measurement<Dimension>?
 
     
     /// Initializer for Data Structure which cosntains the telemetry for the Instrument Panel
@@ -32,13 +32,13 @@ class InstrumentPanelData {
     ///   - groundSpeed: Current Ground Speed measured in meters per second
     ///   - targetGroundSpeed: Adjusted Recommended adjusted ground speed to close the gap for ToT
     ///   - distanceToNext: Meters to the Next Check Point
-    init(currentETA: Measurement<Dimension>,
-         ETADelta: Measurement<Dimension>,
-         course: Measurement<Dimension>,
-         currentTrueAirSpeed: Measurement<Dimension>,
-         targetTrueAirSpeed: Measurement<Dimension>,
-         distanceToNext: Measurement<Dimension>,
-         distanceToFinal: Measurement<Dimension>) {
+    init(currentETA: Measurement<Dimension>?,
+         ETADelta: Measurement<Dimension>?,
+         course: Measurement<Dimension>?,
+         currentTrueAirSpeed: Measurement<Dimension>?,
+         targetTrueAirSpeed: Measurement<Dimension>?,
+         distanceToNext: Measurement<Dimension>?,
+         distanceToFinal: Measurement<Dimension>?) {
         self.currentETA = currentETA
         self.ETADelta = ETADelta
         self.course = course
@@ -67,23 +67,5 @@ extension InstrumentPanelData {
         default:
             return String(secondsToConvert)
         }
-    }
-}
-
-extension Double {
-    func toTimeString() -> String {
-        let totInt = Int(self)
-        
-        let minutes = (totInt % 3600) / 60
-        let seconds = (totInt % 3600) % 60
-        
-        return "\(minutes):\(InstrumentPanelData.formatSmallSeconds(seconds: seconds))"
-    }
-    func toBearingString() -> String {
-        return String(format: "%.0f°", self)
-    }
-    
-    func toAirSpeedString() -> String {
-        return String(format: "%.0f", self)
     }
 }

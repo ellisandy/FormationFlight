@@ -82,23 +82,53 @@ extension Flight {
     
     // FIXME: Add functionality to compute all CheckPoints
     func provideInstrumentPanelData(from currentLocation: CLLocation) -> InstrumentPanelData {
-        let actualTOT = currentLocation.getTime(to: getCLLocation(), with: expectedWinds)?.converted(to: .seconds).value // Getting Actual ToT
         let tot = Date.now.secondsUntil(time: missionDate)
-        let etaDelta = actualTOT! - tot // FIXME: This should handle Optionals
-        
         let distance = currentLocation.distance(from: getCLLocation())
+
+        var etaDelta: Double? = nil
+        var targetAirspeed: Double? = nil
+
+        if let actualTOT = currentLocation.getTime(to: getCLLocation(), with: expectedWinds)?.converted(to: .seconds).value { // Getting Actual ToT
+            etaDelta = actualTOT - tot // FIXME: This should handle Optionals
+            targetAirspeed = calculateTargetSpeed(actualETA: actualTOT, targetETA: tot, distance: distance)
+        }
+        
                 
         let currentTrueAirSpeed = currentLocation.getTrueAirSpeed(with: expectedWinds)
         let course = currentLocation.getCourse(to: getCLLocation().first!)
-        let heading = currentLocation.getHeading(airspeed: currentTrueAirSpeed!, winds: expectedWinds, course: course)
         
-        let targetAirspeed = calculateTargetSpeed(actualETA: actualTOT!, targetETA: tot, distance: distance)
+        let heading = currentLocation.getHeading(airspeed: currentTrueAirSpeed, winds: expectedWinds, course: course)
         
+        let eatDeltaMeasurement: Measurement<Dimension>? = {
+            if etaDelta != nil {
+                return Measurement(value: etaDelta!, unit: UnitDuration.seconds)
+            }
+            return nil
+        }()
+        let targetTASMeasurement: Measurement<Dimension>? = {
+            if targetAirspeed != nil {
+                return Measurement(value: targetAirspeed!, unit: UnitSpeed.metersPerSecond)
+            }
+            return nil
+        }()
+        
+        let currentTASMeasurement: Measurement<Dimension>? = {
+            if currentTrueAirSpeed != nil {
+                return Measurement(value: currentTrueAirSpeed!.value, unit: currentTrueAirSpeed!.unit)
+            }
+            return nil
+        }()
+        let courseMeasurement: Measurement<Dimension>? = {
+            if heading != nil {
+                return Measurement(value: heading!.value, unit: heading!.unit)
+            }
+            return nil
+        }()
         return InstrumentPanelData(currentETA: Measurement(value: tot, unit: UnitDuration.seconds),
-                                   ETADelta: Measurement(value: etaDelta, unit: UnitDuration.seconds),
-                                   course: Measurement(value: heading.value, unit: heading.unit),
-                                   currentTrueAirSpeed: Measurement(value: currentTrueAirSpeed!.value, unit: currentTrueAirSpeed!.unit),
-                                   targetTrueAirSpeed: Measurement(value: (targetAirspeed), unit: UnitSpeed.metersPerSecond),
+                                   ETADelta: eatDeltaMeasurement,
+                                   course: courseMeasurement,
+                                   currentTrueAirSpeed: currentTASMeasurement,
+                                   targetTrueAirSpeed: targetTASMeasurement,
                                    distanceToNext: Measurement(value: distance, unit: UnitLength.meters),
                                    // FIXME: This should be the total distance.
                                    distanceToFinal: Measurement(value: distance, unit: UnitLength.meters))

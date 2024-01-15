@@ -9,7 +9,7 @@ import SwiftUI
 
 struct InstrumentComponent: View {
     @State var infoType: InFlightInfo
-    @Binding var infoValue: Measurement<Dimension>
+    @Binding var infoValue: Measurement<Dimension>?
     @State var infoStaus: InfoStatus
     @Binding var settingsConfig: SettingsEditorConfig
     
@@ -33,34 +33,58 @@ struct InstrumentComponent: View {
     // TODO: Change Units as needed
     func doubleToText() -> String? {
         // Shortcut to Nil
-        if infoValue.value == 0.0 { return nil }
-        
+        guard infoValue != nil else { return nil }
         // TODO: Add specific Formatting for Unit type and such
-        switch self.infoValue.unit {
+        switch infoValue!.unit {
         case is UnitAngle:
-            return String(infoValue.value)
+            let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitAngle).converted(to: .degrees)
+            
+            if formattedString.value.isNaN || formattedString.value.isInfinite {
+                return nil
+            }
+            return formattedString.formatted(.measurement(width: .narrow, numberFormatStyle: .number.precision(.fractionLength(0))))
         case is UnitLength:
-            return String(infoValue.value)
+            let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitLength).converted(to: .nauticalMiles)
+            return formattedString.formatted(.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0...1))))
         case is UnitSpeed:
-            return String(infoValue.value)
+            let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitSpeed).converted(to: settingsConfig.getUnitSpeed())
+            return formattedString.formatted(.measurement(width: .narrow, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))))
+        case is UnitDuration:
+            let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitDuration)
+
+            return formattedString.formatted(TimeFormatter())
         default:
-            return String(infoValue.value)
+            return nil
         }
-//        
-//        if self.infoType == .course {
-//            
-//            return infoValue.toBearingString()
-//        }
-//        
-//        if self.infoType == .tot || self.infoType == .totDrift {
-//            return infoValue.toTimeString()
-//        }
-//        
-//        if self.infoType == .currentTAS || self.infoType == .targetTAS {
-//            return infoValue.toAirSpeedString()
-//        }
-//        
-//        return String(self.infoValue)
+    }
+}
+
+struct TimeFormatter: FormatStyle {
+    func format(_ value: Measurement<UnitDuration>) -> String {
+        let time = value.value
+        
+        let minutes = (time.truncatingRemainder(dividingBy: 3600) / 60).rounded()
+        var seconds = (time.truncatingRemainder(dividingBy: 3600).truncatingRemainder(dividingBy: 60)).rounded()
+
+        //Make sure it returns a positive value
+        if seconds < 0 {
+            seconds = seconds * -1
+        }
+        var secondString = ""
+        
+        switch seconds {
+
+        case _ where seconds < 10:
+            secondString = String(format: "0%.0f", seconds)
+        default:
+            secondString = String(format: "%.0f", seconds)
+        }
+        
+        if minutes.isNaN || seconds.isNaN {
+            return "---"
+        }
+        return "\(Int(minutes)):\(secondString)"
+        
     }
 }
 
@@ -82,23 +106,6 @@ enum InfoStatus {
 }
 
 extension InstrumentComponent {
-    func getInFlightInfoType() -> String {
-        switch infoType {
-        case .tot:
-            return "ToT"
-        case .totDrift:
-            return "Drift"
-        case .targetTAS:
-            return "Target GS"
-        case .course:
-            return "Course"
-        case .currentTAS:
-            return "GS"
-        case .targetDistance:
-            return "Distance"
-        }
-    }
-    
     func getStatusColor() -> Color {        
         switch infoStaus {
         case .reallyBad:
@@ -110,10 +117,15 @@ extension InstrumentComponent {
         case .nutrual:
             return Color.white
         }
-        
     }
 }
 
 #Preview {
-    InstrumentComponent(infoType: .tot, infoValue: .constant(Measurement(value: 30.0, unit: UnitDuration.seconds)), infoStaus: .good, settingsConfig: .constant(.emptyConfig()))
+    var config = SettingsEditorConfig.emptyConfig()
+    config.speedUnit = .kts
+    
+    return InstrumentComponent(infoType: .tot, 
+                               infoValue: .constant(Measurement(value: 625, unit: UnitDuration.seconds)),
+                               infoStaus: .reallyBad,
+                               settingsConfig: .constant(config))
 }

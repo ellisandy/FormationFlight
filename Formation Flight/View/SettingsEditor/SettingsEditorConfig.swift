@@ -24,8 +24,21 @@ struct SettingsEditorConfig {
 
 
     enum SpeedUnit: String, CaseIterable, Identifiable {
-        case kts, kph, mph
+        case kts
+        case kph
+        case mph
         var id: Self { self }
+    }
+    
+    func getUnitSpeed() -> UnitSpeed{
+        switch speedUnit {
+        case .kts:
+            return UnitSpeed.knots
+        case .kph:
+            return UnitSpeed.kilometersPerHour
+        case .mph:
+            return UnitSpeed.milesPerHour
+        }
     }
 }
 
