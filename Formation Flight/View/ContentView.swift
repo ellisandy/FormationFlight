@@ -15,21 +15,21 @@ struct ContentView: View {
     @State private var selectedFlight: Flight?
     @State private var flightEditorConfig = FlightEditorConfig()
     @State private var settingsConfig = SettingsEditorConfig.from(userDefaults: UserDefaults.standard)
+    @State private var isFlightViewPresented: Bool = false
     
     var body: some View {
         NavigationSplitView {
             List(flights, id: \.self, selection: $selectedFlight) { flight in
                 withAnimation {
                     HStack {
-                        NavigationLink(value: flight) {
-                            if flight.validFlight() {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .foregroundStyle(.green)
-                            } else {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.red)
-                            }
-                            Text(flight.title).font(.headline)
+                        Button(flight.title) {
+                            isFlightViewPresented.toggle()
+                        }
+                        .fullScreenCover(isPresented: $isFlightViewPresented) {
+                            FlightView(flight: flight,
+                                       settingsConfig: $settingsConfig,
+                                       panelData: InstrumentPanelData.emptyPanel(),
+                                       isFlightViewPresented: $isFlightViewPresented)
                         }
                     }
                 }
@@ -52,7 +52,7 @@ struct ContentView: View {
             .sheet(isPresented: $flightEditorConfig.isPresented, onDismiss: didDismissEditor, content: {
                 FlightEditor(config: $flightEditorConfig)
             })
-            .sheet(isPresented: $settingsConfig.isPresented, onDismiss: didDismissSettingsEditor, content: {
+            .sheet(isPresented: $settingsConfig.isPresented, content: {
                 SettingsEditor(settingsEditorConfig: $settingsConfig)
             })
             .toolbar {
@@ -88,16 +88,14 @@ struct ContentView: View {
                                                                currentTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
                                                                targetTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
                                                                distanceToNext: Measurement(value: 0.0, unit: UnitLength.meters),
-                                                               distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters)))
+                                                               distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters)),
+                isFlightViewPresented: $isFlightViewPresented)
             } else {
                 Text("No Flight Selected").fontWeight(.bold)
             }
         }
     }
 
-    private func didDismissSettingsEditor() {
-        
-    }
     private func didDismissEditor() {
         if flightEditorConfig.shouldSaveChanges {
             if flightEditorConfig.flight.title != "" {

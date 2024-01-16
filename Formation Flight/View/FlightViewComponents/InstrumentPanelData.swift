@@ -47,5 +47,15 @@ class InstrumentPanelData {
         self.distanceToNext = distanceToNext
         self.distanceToFinal = distanceToFinal
     }
+    
+    static func emptyPanel() -> InstrumentPanelData {
+        return InstrumentPanelData(currentETA: nil,
+                                   ETADelta: nil,
+                                   course: nil,
+                                   currentTrueAirSpeed: nil,
+                                   targetTrueAirSpeed: nil,
+                                   distanceToNext: nil,
+                                   distanceToFinal: nil)
+    }
 }
 

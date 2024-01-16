@@ -10,46 +10,58 @@ import SwiftUI
 struct InstrumentPanel: View {
     @Binding var settingsConfig: SettingsEditorConfig
     @Bindable var panelData: InstrumentPanelData
+    @Binding var isFlightViewPresented: Bool
     
     var body: some View {
+        Spacer()
         VStack {
             Spacer() // Pushes to the Bottom
-            HStack {
-                Button(role: .cancel) {
+
+            VStack {
+                HStack {
+                    Button() {
+                    } label: {
+                        Text("Next")
+                            .font(.title)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding([.top, .leading])
                     
-                } label: {
-                    Text("Next")
-                        .font(.title)
-                        .padding(.horizontal)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding()
-                
-                Spacer()
-                
-                Button(role: .destructive) {
-                } label: {
-                    Text("End")
-                        .font(.title)
-                        .padding(.horizontal)
+                    Spacer()
+                    Button(role: .cancel) {
+                    } label: {
+                        Text("Winds")
+                            .font(.title)
+                    }
+                    .colorInvert()
+                    .buttonStyle(.bordered)
+                    .padding([.top])
                     
+                    Spacer()
+                    
+                    Button(role: .destructive) {
+                        isFlightViewPresented.toggle()
+                    } label: {
+                        Text("End")
+                            .font(.title)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding([.top, .trailing])
                 }
-                .buttonStyle(.borderedProminent)
-                .padding()
-                
-            }
-            
-            HStack {
-                InstrumentComponent(infoType: .tot, infoValue: $panelData.currentETA, infoStaus: .good, settingsConfig: $settingsConfig)
-                InstrumentComponent(infoType: .totDrift, infoValue: $panelData.ETADelta, infoStaus: .good, settingsConfig: $settingsConfig)
-                InstrumentComponent(infoType: .course, infoValue: $panelData.course, infoStaus: .nutrual, settingsConfig: $settingsConfig)
-                InstrumentComponent(infoType: .currentTAS, infoValue: $panelData.currentTrueAirspeed, infoStaus: .reallyBad, settingsConfig: $settingsConfig)
-                InstrumentComponent(infoType: .targetTAS, infoValue: $panelData.targetTrueAirspeed, infoStaus: .nutrual , settingsConfig: $settingsConfig)
-                InstrumentComponent(infoType: .targetDistance, infoValue: $panelData.distanceToNext, infoStaus: .nutrual , settingsConfig: $settingsConfig)
+                .padding(.bottom, 0)
+
+                HStack {
+                    InstrumentComponent(infoType: .tot, infoValue: $panelData.currentETA, infoStaus: .good, settingsConfig: $settingsConfig)
+                    InstrumentComponent(infoType: .totDrift, infoValue: $panelData.ETADelta, infoStaus: .good, settingsConfig: $settingsConfig)
+                    InstrumentComponent(infoType: .course, infoValue: $panelData.course, infoStaus: .nutrual, settingsConfig: $settingsConfig)
+                    InstrumentComponent(infoType: .currentTAS, infoValue: $panelData.currentTrueAirspeed, infoStaus: .reallyBad, settingsConfig: $settingsConfig)
+                    InstrumentComponent(infoType: .targetTAS, infoValue: $panelData.targetTrueAirspeed, infoStaus: .nutrual , settingsConfig: $settingsConfig)
+                    InstrumentComponent(infoType: .targetDistance, infoValue: $panelData.distanceToNext, infoStaus: .nutrual , settingsConfig: $settingsConfig)
+                }
             }
             .frame(maxWidth: .infinity)
             .background(.black)
-            .opacity(0.85)
+            .opacity(0.90)
         }
     }
 }
@@ -66,5 +78,6 @@ struct InstrumentPanel: View {
     
     return InstrumentPanel(
         settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
-        panelData: panelData)
+        panelData: panelData,
+        isFlightViewPresented: .constant(true))
 }

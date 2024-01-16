@@ -13,6 +13,7 @@ struct FlightView: View {
     @Bindable var locationProvider = LocationProvider()
     @Binding var settingsConfig: SettingsEditorConfig
     @Bindable var panelData: InstrumentPanelData
+    @Binding var isFlightViewPresented: Bool
     
     lazy var updateData: () -> Void = {}
 
@@ -37,7 +38,8 @@ struct FlightView: View {
             }
             
             InstrumentPanel(settingsConfig: $settingsConfig,
-                            panelData: panelData)
+                            panelData: panelData,
+                            isFlightViewPresented: $isFlightViewPresented)
         }
         .onAppear {
             locationProvider.updateDelegate = calculateTheStuff
@@ -82,5 +84,6 @@ struct FlightView: View {
                         currentTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
                         targetTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
                         distanceToNext: Measurement(value: 10.0, unit: UnitLength.meters),
-                        distanceToFinal: Measurement(value: 10.0, unit: UnitLength.meters)))
+                        distanceToFinal: Measurement(value: 10.0, unit: UnitLength.meters)),
+                      isFlightViewPresented: .constant(true))
 }
