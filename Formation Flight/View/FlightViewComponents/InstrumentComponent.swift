@@ -33,13 +33,12 @@ struct InstrumentComponent: View {
     func doubleToText() -> String? {
         // Shortcut to Nil
         guard infoValue != nil else { return nil }
+        guard infoValue!.value.isFinite else { return nil }
+        
         switch infoValue!.unit {
         case is UnitAngle:
             let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitAngle).converted(to: .degrees)
-            
-            if formattedString.value.isNaN || formattedString.value.isInfinite {
-                return nil
-            }
+
             return formattedString.formatted(.measurement(width: .narrow, numberFormatStyle: .number.precision(.fractionLength(0))))
         case is UnitLength:
             let formattedString = Measurement(value: infoValue!.value, unit: infoValue!.unit as! UnitLength).converted(to: .nauticalMiles)
@@ -61,19 +60,28 @@ struct TimeFormatter: FormatStyle {
     func format(_ value: Measurement<UnitDuration>) -> String {
         let time = value.value
         
-        let minutes = (time.truncatingRemainder(dividingBy: 3600) / 60).rounded()
-        var seconds = (time.truncatingRemainder(dividingBy: 3600).truncatingRemainder(dividingBy: 60)).rounded()
+        if (7200.0).isLessThanOrEqualTo(time) || time.isLessThanOrEqualTo(-7200.0) {
+            return "---"
+        }
+        
+        var minutes = (time.truncatingRemainder(dividingBy: 3600) / 60)
+        var seconds = (time.truncatingRemainder(dividingBy: 3600).truncatingRemainder(dividingBy: 60))
 
-        //Make sure it returns a positive value
-        if seconds < 0 {
-            seconds = seconds * -1
+        if seconds.isLess(than: 0.0) {
+            seconds.negate()
+        }
+        
+        if minutes.isLessThanOrEqualTo(0.0) {
+            minutes.negate()
         }
         var secondString = ""
         
         switch seconds {
-
         case _ where seconds < 10:
+            //Make sure it returns a positive value
+
             secondString = String(format: "0%.0f", seconds)
+            secondString = secondString.filter { $0 != "-" }
         default:
             secondString = String(format: "%.0f", seconds)
         }
@@ -81,7 +89,13 @@ struct TimeFormatter: FormatStyle {
         if minutes.isNaN || seconds.isNaN {
             return "---"
         }
-        return "\(Int(minutes)):\(secondString)"
+        var sign = {
+            if time.isLess(than: 0.0) {
+                return "-"
+            }
+            return ""
+        }()
+        return "\(sign)\(Int(minutes)):\(secondString)"
         
     }
 }
