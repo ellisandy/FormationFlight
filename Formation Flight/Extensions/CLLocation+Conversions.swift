@@ -145,3 +145,9 @@ extension CLLocation {
     }
 
 }
+
+extension Measurement {
+    var erasedType: Measurement<Dimension> {
+        return Measurement<Dimension>(value: self.value, unit: self.unit as! Dimension)
+    }
+}

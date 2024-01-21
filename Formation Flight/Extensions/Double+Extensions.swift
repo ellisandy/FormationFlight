@@ -20,4 +20,20 @@ extension Double {
         }
         return degrees
     }
+    
+    var secondsMeasurement: Measurement<UnitDuration> {
+        return Measurement(value: self, unit: .seconds)
+    }   
+    
+    var metersPerSecondsMeasurement: Measurement<UnitSpeed> {
+        return Measurement(value: self, unit: .metersPerSecond)
+    }
+    
+    var degreesMeasurement: Measurement<UnitAngle> {
+        return Measurement(value: self, unit: .degrees)
+    }
+    
+    var metersMeasurement: Measurement<UnitLength> {
+        return Measurement(value: self, unit: .meters)
+    }
 }
