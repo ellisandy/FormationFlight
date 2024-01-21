@@ -14,6 +14,7 @@ struct FlightView: View {
     @Binding var settingsConfig: SettingsEditorConfig
     @Bindable var panelData: InstrumentPanelData
     @Binding var isFlightViewPresented: Bool
+    @State private var currentLocation: CLLocationCoordinate2D?
     
     lazy var updateData: () -> Void = {}
 
@@ -56,7 +57,9 @@ struct FlightView: View {
     // The general idea... I think will be to pull the new data, then have some type of copy functino to move the core logic out
     // of the view file. 
     func calculateTheStuff() -> Void {
-        let temp = flight.provideInstrumentPanelData(from: locationProvider.locationManager.location!)
+        guard let location = locationProvider.locationManager.location else { return }
+        
+        let temp = flight.provideInstrumentPanelData(from: location)
         
         panelData.currentETA = temp.currentETA
         panelData.ETADelta = temp.ETADelta
@@ -64,6 +67,9 @@ struct FlightView: View {
         panelData.currentTrueAirspeed = temp.currentTrueAirspeed
         panelData.targetTrueAirspeed = temp.targetTrueAirspeed
         panelData.distanceToNext = temp.distanceToNext
+        panelData.distanceToFinal = temp.distanceToFinal
+        
+        currentLocation = location.coordinate
     }
 }
 

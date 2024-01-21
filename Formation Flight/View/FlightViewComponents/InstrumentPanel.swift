@@ -56,7 +56,7 @@ struct InstrumentPanel: View {
                     InstrumentComponent(infoType: .course, infoValue: $panelData.course, infoStaus: .nutrual, settingsConfig: $settingsConfig)
                     InstrumentComponent(infoType: .currentTAS, infoValue: $panelData.currentTrueAirspeed, infoStaus: .reallyBad, settingsConfig: $settingsConfig)
                     InstrumentComponent(infoType: .targetTAS, infoValue: $panelData.targetTrueAirspeed, infoStaus: .nutrual , settingsConfig: $settingsConfig)
-                    InstrumentComponent(infoType: .targetDistance, infoValue: $panelData.distanceToNext, infoStaus: .nutrual , settingsConfig: $settingsConfig)
+                    InstrumentComponent(infoType: .targetDistance, infoValue: $panelData.distanceToFinal, infoStaus: .nutrual , settingsConfig: $settingsConfig)
                 }
             }
             .frame(maxWidth: .infinity)

@@ -95,7 +95,7 @@ struct ContentView: View {
             }
         }
     }
-
+    
     private func didDismissEditor() {
         if flightEditorConfig.shouldSaveChanges {
             if flightEditorConfig.flight.title != "" {
