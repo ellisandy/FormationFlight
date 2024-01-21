@@ -27,6 +27,7 @@ struct InstrumentComponent: View {
                 .foregroundStyle(.white)
                 .padding(.bottom, 5)
         }
+        .background(.black)
         .opacity(0.8)
     }
     // TODO: Extract this from the View file.
@@ -89,7 +90,7 @@ struct TimeFormatter: FormatStyle {
         if minutes.isNaN || seconds.isNaN {
             return "---"
         }
-        var sign = {
+        let sign = {
             if time.isLess(than: 0.0) {
                 return "-"
             }
@@ -132,12 +133,22 @@ extension InstrumentComponent {
     }
 }
 
-#Preview {
+#Preview("positive", traits: .sizeThatFitsLayout) {
     var config = SettingsEditorConfig.emptyConfig()
     config.speedUnit = .kts
     
     return InstrumentComponent(infoType: .tot, 
                                infoValue: .constant(Measurement(value: 625, unit: UnitDuration.seconds)),
                                infoStaus: .reallyBad,
+                               settingsConfig: .constant(config))
+}
+
+#Preview("Negative", traits: .sizeThatFitsLayout) {
+    var config = SettingsEditorConfig.emptyConfig()
+    config.speedUnit = .kts
+    
+    return InstrumentComponent(infoType: .tot,
+                               infoValue: .constant(Measurement(value: -625, unit: UnitDuration.seconds)),
+                               infoStaus: .good,
                                settingsConfig: .constant(config))
 }
