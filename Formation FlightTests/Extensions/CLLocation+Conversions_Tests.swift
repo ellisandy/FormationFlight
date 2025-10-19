@@ -298,4 +298,227 @@ final class CLLocation_Conversions_Test: XCTestCase {
 
         XCTAssertNil(START_LOCATION.getTime(to: END_LOCATION, with: winds))
     }
+    
+    // MARK: Multiple Point Calculations
+    let STARTING_POINT = CLLocation(latitude: 48.75097, longitude: -121.94117)
+    let FIRST_CHECKPOINT = CLLocation(latitude: 48.75097, longitude: -121.125242) // 60_000 Meters away CONFIRM TO EAST
+    let SECOND_CHECKPOINT = CLLocation(latitude: 48.2114255, longitude: -121.125242) // 60_000 Meters away CONFIRM SOUTH
+    let FINAL_CHECKPOINT = CLLocation(latitude: 48.2114255, longitude: -121.9325625) // 60_000 Meters away CONFIRM WEST
+    let FINAL_CHECKPOINT_DOUBLE = CLLocation(latitude: 48.2114255, longitude: -122.739883) // 120_000 Meters away CONFIRM WEST
+    
+    func testDistanceStartToFirst() {
+        let firstLeg = STARTING_POINT.distance(from: [FIRST_CHECKPOINT])!
+        let secondLeg = FIRST_CHECKPOINT.distance(from: [SECOND_CHECKPOINT])!
+        let thirdLeg = SECOND_CHECKPOINT.distance(from: [FINAL_CHECKPOINT])!
+        let thirdLegLong = SECOND_CHECKPOINT.distance(from: [FINAL_CHECKPOINT_DOUBLE])!
+
+        
+        let firstLegCourse = STARTING_POINT.getCourse(to: FIRST_CHECKPOINT)
+        let secondLegCourse = FIRST_CHECKPOINT.getCourse(to: SECOND_CHECKPOINT)
+        let thirdLegCourse = SECOND_CHECKPOINT.getCourse(to: FINAL_CHECKPOINT)
+        let thirdLegLongCourse = SECOND_CHECKPOINT.getCourse(to: FINAL_CHECKPOINT_DOUBLE)
+
+        XCTAssertEqual(firstLeg, 60_000, accuracy: 0.01)
+        XCTAssertEqual(secondLeg, 60_000, accuracy: 0.01)
+        XCTAssertEqual(thirdLeg, 60_000, accuracy: 0.01)
+        XCTAssertEqual(thirdLegLong, 120_000, accuracy: 0.01)
+
+        
+        XCTAssertEqual(firstLegCourse.value, 90.0, accuracy: 0.5)
+        XCTAssertEqual(secondLegCourse.value, 180.0, accuracy: 0.5)
+        XCTAssertEqual(thirdLegCourse.value, 270.0, accuracy: 0.5)
+        XCTAssertEqual(thirdLegLongCourse.value, 270.0, accuracy: 1)
+    }
+    
+    func testGetTimeTripTenKnotNorth() {
+        // WINDS from the north at 10 knots
+        let expectedWinds = Winds(velocity: 10.0, direction: 0.0, velocityUnit: .metersPerSecond)
+        let currentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
+                                         altitude: 0,
+                                         horizontalAccuracy: 0,
+                                         verticalAccuracy: 0,
+                                         course: 0,
+                                         speed: 100.0 - 10.0, // starting with a ten knot headwind
+                                         timestamp: Date.now)
+        
+        let secondLocation = CLLocation(coordinate: FIRST_CHECKPOINT.coordinate,
+                                         altitude: 0,
+                                         horizontalAccuracy: 0,
+                                         verticalAccuracy: 0,
+                                         course: 90,
+                                         speed: 99.5, // starting with a ten knot crosswind
+                                         timestamp: Date.now)
+        
+        
+        var totalTime = 0.0
+        
+        // TAS is 100 knots // Starting GS 90kts
+        XCTAssertEqual(currentLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        
+        // first leg time == 603.01 (approximate GS 99.5 kts)
+        XCTAssertEqual(currentLocation.getTime(to: [FIRST_CHECKPOINT], with: expectedWinds)!.value, 603.35, accuracy: 0.1)
+        
+        // second leg time == 545.4545454545 (approximate GS 110 kts)
+        XCTAssertEqual(secondLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        XCTAssertEqual(secondLocation.getTime(to: [SECOND_CHECKPOINT], with: expectedWinds)!.value, 545.45, accuracy: 0.1)
+        
+        // final let time == 603.01 (approximate GS 99.5 kts)
+        
+        // total time =~ 1,751 seconds
+        let expectedTime = 1752.1488727994
+        
+        totalTime = currentLocation.getTime(to: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT], with: expectedWinds)!.value
+     
+        XCTAssertEqual(totalTime, expectedTime, accuracy: 0.1)
+    }
+    
+    func testGetTargetAirspeedTripTenKnotNorth() {
+        // WINDS from the north at 10 knots
+        let expectedWinds = Winds(velocity: 10.0, direction: 0.0, velocityUnit: .metersPerSecond)
+        let currentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
+                                         altitude: 0,
+                                         horizontalAccuracy: 0,
+                                         verticalAccuracy: 0,
+                                         course: 0,
+                                         speed: 100.0 - 10.0, // starting with a ten knot headwind
+                                         timestamp: Date.now)
+        
+        let secondLocation = CLLocation(coordinate: FIRST_CHECKPOINT.coordinate,
+                                         altitude: 0,
+                                         horizontalAccuracy: 0,
+                                         verticalAccuracy: 0,
+                                         course: 90,
+                                         speed: 99.5, // starting with a ten knot crosswind
+                                         timestamp: Date.now)
+        
+        let thirdLocation = CLLocation(coordinate: SECOND_CHECKPOINT.coordinate,
+                                       altitude: 0,
+                                       horizontalAccuracy: 0,
+                                       verticalAccuracy: 0,
+                                       course: 180,
+                                       speed: 110.0, // starting with a ten knot crosswind
+                                       timestamp: Date.now)
+        
+        
+        var targetAirspeed = Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond)
+        
+        // TAS is 100 knots // Starting GS 90kts
+        XCTAssertEqual(currentLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        
+        // first leg time == 603.01 (approximate GS 99.5 kts)
+        XCTAssertEqual(currentLocation.getTime(to: [FIRST_CHECKPOINT], with: expectedWinds)!.value, 603.35, accuracy: 0.1)
+        
+        // second leg time == 545.4545454545 (approximate GS 110 kts)
+        XCTAssertEqual(secondLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        XCTAssertEqual(secondLocation.getTime(to: [SECOND_CHECKPOINT], with: expectedWinds)!.value, 545.45, accuracy: 0.1)
+        
+        // final let time == 603.01 (approximate GS 99.5 kts)
+        XCTAssertEqual(thirdLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        XCTAssertEqual(thirdLocation.getTime(to: [FINAL_CHECKPOINT], with: expectedWinds)!.value, 603.35, accuracy: 0.1)
+
+        // total time =~ 1,751 seconds
+//        let expectedTime = 1752.1488727994
+//        let timeDifference = 1800.0 - expectedTime
+//        
+        //TAS + (100*(1-((first, second, third)/1800)))
+        //100+(100*(1-((603+545+603)/1800)))
+        
+        targetAirspeed = currentLocation.getTargetAirspeed(tot: Measurement(value: 1800.0, unit: .seconds),
+                                                           destinations: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT],
+                                                           winds: expectedWinds)!
+        
+        //Alright Lets do it again, but adjusting to 102.658 meters/sec
+     
+//        XCTAssertEqual(targetAirspeed.value, 100.0, accuracy: 0.1)
+        
+        let adjustedCurrentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
+                                                 altitude: 0,
+                                                 horizontalAccuracy: 0,
+                                                 verticalAccuracy: 0,
+                                                 course: 0,
+                                                 speed: targetAirspeed.value - 10.0, // Subtracting the 10 knot headwind when starting
+                                                 timestamp: Date.now)
+
+        XCTAssertEqual(adjustedCurrentLocation.getTrueAirSpeed(with: expectedWinds)!.value, targetAirspeed.value, accuracy: 0.01)
+        
+        XCTAssertEqual(adjustedCurrentLocation.getTime(to: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT],
+                                                       with: expectedWinds)!.value,
+                       1800.0,
+                       accuracy: 1.1)
+    }
+    
+    func testGetTargetAirspeedTripTenKnotNorthLong() {
+        // WINDS from the north at 10 knots
+        let expectedWinds = Winds(velocity: 10.0, direction: 0.0, velocityUnit: .metersPerSecond)
+        let currentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
+                                         altitude: 0,
+                                         horizontalAccuracy: 0,
+                                         verticalAccuracy: 0,
+                                         course: 0,
+                                         speed: 100.0 - 10.0, // starting with a ten knot headwind
+                                         timestamp: Date.now)
+        
+        let secondLocation = CLLocation(coordinate: FIRST_CHECKPOINT.coordinate,
+                                         altitude: 0,
+                                         horizontalAccuracy: 0,
+                                         verticalAccuracy: 0,
+                                         course: 90,
+                                         speed: 99.5, // starting with a ten knot crosswind
+                                         timestamp: Date.now)
+        
+        let thirdLocation = CLLocation(coordinate: SECOND_CHECKPOINT.coordinate,
+                                       altitude: 0,
+                                       horizontalAccuracy: 0,
+                                       verticalAccuracy: 0,
+                                       course: 180,
+                                       speed: 110.0, // starting with a ten knot crosswind
+                                       timestamp: Date.now)
+        
+        
+        var targetAirspeed = Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond)
+        
+        // TAS is 100 knots // Starting GS 90kts
+        XCTAssertEqual(currentLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        
+        // first leg time == 603.01 (approximate GS 99.5 kts)
+        XCTAssertEqual(currentLocation.getTime(to: [FIRST_CHECKPOINT], with: expectedWinds)!.value, 603.35, accuracy: 0.1)
+        
+        // second leg time == 545.4545454545 (approximate GS 110 kts)
+        XCTAssertEqual(secondLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        XCTAssertEqual(secondLocation.getTime(to: [SECOND_CHECKPOINT], with: expectedWinds)!.value, 545.45, accuracy: 0.1)
+        
+        // final let time == 603.01 (approximate GS 99.5 kts)
+        XCTAssertEqual(thirdLocation.getTrueAirSpeed(with: expectedWinds)!.value, 100.0, accuracy: 0.1)
+        XCTAssertEqual(thirdLocation.getTime(to: [FINAL_CHECKPOINT_DOUBLE], with: expectedWinds)!.value, 1207.32, accuracy: 0.1)
+
+        // total time =~ 1,751 seconds
+//        let expectedTime = 1752.1488727994
+//        let timeDifference = 1800.0 - expectedTime
+//
+        //TAS + (100*(1-((first, second, third)/1800)))
+        //100+(100*(1-((603+545+603)/1800)))
+        
+        targetAirspeed = currentLocation.getTargetAirspeed(tot: Measurement(value: 2400.0, unit: .seconds),
+                                                           destinations: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT_DOUBLE],
+                                                           winds: expectedWinds)!
+        
+        //Alright Lets do it again, but adjusting to 102.658 meters/sec
+     
+//        XCTAssertEqual(targetAirspeed.value, 100.0, accuracy: 0.1)
+        
+        let adjustedCurrentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
+                                                 altitude: 0,
+                                                 horizontalAccuracy: 0,
+                                                 verticalAccuracy: 0,
+                                                 course: 0,
+                                                 speed: targetAirspeed.value - 10.0, // Subtracting the 10 knot headwind when starting
+                                                 timestamp: Date.now)
+
+        XCTAssertEqual(adjustedCurrentLocation.getTrueAirSpeed(with: expectedWinds)!.value, targetAirspeed.value, accuracy: 1.0)
+        
+        XCTAssertEqual(adjustedCurrentLocation.getTime(to: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT_DOUBLE],
+                                                       with: expectedWinds)!.value,
+                       2400.0,
+                       accuracy: 1.0)
+    }
 }

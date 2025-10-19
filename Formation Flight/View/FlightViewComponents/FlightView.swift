@@ -16,18 +16,18 @@ struct FlightView: View {
     @Binding var isFlightViewPresented: Bool
     @State private var currentLocation: CLLocationCoordinate2D?
     
+    private let uiUpdateTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+    
     lazy var updateData: () -> Void = {}
 
     var body: some View {
         ZStack {
             Map {
                 UserAnnotation()
-                if let location = locationProvider.locationManager.location {
-                    MapPolyline(coordinates: flight.getCLCoordinate2D(userLocation: location.coordinate))
+                // TODO: Currently flashing as the location moves... Consider just refreshing once you moe to the next point. 
+                MapPolyline(points: flight.mapPoints(currentLocation: currentLocation), contourStyle: .geodesic)
                     .stroke(.blue, lineWidth: 5.0)
-                } else {
-                    MapPolyline(coordinates: flight.getCLCoordinate2D()).stroke(.blue, lineWidth: 5.0)
-                }
+
                 ForEach(flight.checkPoints) { cp in
                     Marker(cp.name, coordinate: cp.getCLCoordinate())
                 }
@@ -41,6 +41,9 @@ struct FlightView: View {
             InstrumentPanel(settingsConfig: $settingsConfig,
                             panelData: panelData,
                             isFlightViewPresented: $isFlightViewPresented)
+        }
+        .onReceive(uiUpdateTimer) { _ in
+            calculateTheStuff()
         }
         .onAppear {
             locationProvider.updateDelegate = calculateTheStuff
@@ -88,7 +91,7 @@ struct FlightView: View {
                         ETADelta: Measurement(value: 10.0, unit: UnitDuration.seconds),
                         course: Measurement(value: 10.0, unit: UnitAngle.degrees),
                         currentTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
-                        targetTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
+                        targetTrueAirSpeed: Measurement(value: 100.0, unit: UnitSpeed.metersPerSecond),
                         distanceToNext: Measurement(value: 10.0, unit: UnitLength.meters),
                         distanceToFinal: Measurement(value: 10.0, unit: UnitLength.meters)),
                       isFlightViewPresented: .constant(true))

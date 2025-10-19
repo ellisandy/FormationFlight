@@ -40,13 +40,13 @@ struct FlightEditorForm: View {
                 }
             }
             Section("Flight Plan") {
-                ForEach($config.flight.checkPoints) { checkPoint in
+                ForEach(config.flight.checkPoints) { checkPoint in
                     HStack {
-                        Text(checkPoint.name.wrappedValue)
+                        Text(checkPoint.name)
                         Spacer()
                         VStack {
-                            Text("\(checkPoint.longitude.wrappedValue)")
-                            Text("\(checkPoint.latitude.wrappedValue)")
+                            Text("\(checkPoint.longitude)")
+                            Text("\(checkPoint.latitude)")
                         }
                     }
                 }
@@ -79,3 +79,4 @@ struct FlightEditorForm: View {
 #Preview {
     FlightEditorForm(config: .constant(FlightEditorConfig()))
 }
+

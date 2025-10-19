@@ -62,15 +62,19 @@ extension CLLocation {
             return nil
         }
         
-        let distanceToDestination = distance(from: destinations)
-
-        // FIXME: Calculate Multiple Destinations
-        let course = getCourse(to: destinations.first!)
-
-        let groundSpeed = calculateGroundSpeed(tas: tas, winds: winds, course: course)
-
-        return Measurement(value: (distanceToDestination / groundSpeed), unit: .seconds)
-    }
+        var previousLocation = self
+        return destinations.map { location in
+            let distanceToNext = previousLocation.distance(from: location)
+            let course = previousLocation.getCourse(to: location)
+            
+            let groundSpeed = calculateGroundSpeed(tas: tas, winds: winds, course: course)
+            previousLocation = location
+            
+            return distanceToNext / groundSpeed
+        }.reduce(0.0) { partialResult, time in
+            return partialResult + time
+        }.secondsMeasurement
+}
     
     func getTime(to destination: CLLocation, with winds: Winds) -> Measurement<UnitDuration>? {
         return getTime(to: [destination], with: winds)
@@ -97,7 +101,22 @@ extension CLLocation {
         return Measurement(value: heading, unit: UnitAngle.degrees)
     }
     
-    func distance(from locations: [CLLocation]) -> CLLocationDistance {
+    func getTargetAirspeed(tot: Measurement<UnitDuration>, destinations: [CLLocation], winds: Winds) -> Measurement<UnitSpeed>? {
+        guard let currentArrivalTime = getTime(to: destinations, with: winds) else { return nil }
+        guard let currentTAS = getTrueAirSpeed(with: winds) else { return nil }
+        guard let totalDistance = distance(from: destinations) else { return nil }
+
+        let roughCurrentGS = totalDistance / currentArrivalTime.value
+        let roughWantedGS = totalDistance / tot.value
+        
+        let adjustedTAS = currentTAS.value + (roughWantedGS - roughCurrentGS)
+        
+        return adjustedTAS.metersPerSecondsMeasurement
+    }
+    
+    func distance(from locations: [CLLocation]) -> CLLocationDistance? {
+        guard !locations.isEmpty else { return nil }
+        
         var distance = 0.0
         for i in locations.indices {
             if i == 0 {
@@ -109,8 +128,10 @@ extension CLLocation {
         return distance
     }
     
-    func distance(from location: CLLocation) -> Measurement<UnitLength> {
-        return Measurement(value: distance(from: location), unit: .meters)
+    func distance(from location: CLLocation?) -> Measurement<UnitLength>? {
+        guard location != nil else { return nil }
+        
+        return Measurement(value: distance(from: location!), unit: .meters)
     }
     
     fileprivate func calculateWindCorrectionAngle(tas: Measurement<UnitSpeed>,

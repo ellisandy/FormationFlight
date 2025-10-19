@@ -14,21 +14,21 @@ struct InstrumentComponent: View {
     @Binding var settingsConfig: SettingsEditorConfig
     
     var body: some View {
-        VStack {
+        VStack(alignment: .leading) {
             withAnimation {
                 Text(doubleToText() ?? "---")
-                    .font(.headline)
+                    .font(.largeTitle)
                     .foregroundStyle(getStatusColor())
                     .padding(.top, 5)
-                    .padding(.horizontal, 5)
             }
             Text(infoType.rawValue)
-                .font(.footnote)
+                .font(.subheadline)
                 .foregroundStyle(.white)
                 .padding(.bottom, 5)
         }
-        .background(.black)
-        .opacity(0.8)
+        .padding(.horizontal, 5)
+
+//        .opacity(0.8)
     }
     // TODO: Extract this from the View file.
     func doubleToText() -> String? {

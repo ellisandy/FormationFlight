@@ -19,34 +19,36 @@ struct ContentView: View {
     
     var body: some View {
         NavigationSplitView {
-            List(flights, id: \.self, selection: $selectedFlight) { flight in
-                withAnimation {
-                    HStack {
-                        Button(flight.title) {
-                            isFlightViewPresented.toggle()
-                        }
-                        .fullScreenCover(isPresented: $isFlightViewPresented) {
-                            FlightView(flight: flight,
-                                       settingsConfig: $settingsConfig,
-                                       panelData: InstrumentPanelData.emptyPanel(),
-                                       isFlightViewPresented: $isFlightViewPresented)
+            List(selection: $selectedFlight) {
+                ForEach(flights, id: \.id) { flight in
+                    withAnimation {
+                        HStack {
+                            Button(flight.title) {
+                                isFlightViewPresented.toggle()
+                            }
+                            .fullScreenCover(isPresented: $isFlightViewPresented) {
+                                FlightView(flight: flight,
+                                           settingsConfig: $settingsConfig,
+                                           panelData: InstrumentPanelData.emptyPanel(),
+                                           isFlightViewPresented: $isFlightViewPresented)
+                            }
                         }
                     }
-                }
-                .swipeActions() {
-                    Button(role: .destructive) {
-                        withAnimation {
-                            modelContext.delete(flight)
+                    .swipeActions() {
+                        Button(role: .destructive) {
+                            withAnimation {
+                                modelContext.delete(flight)
+                            }
+                        } label: {
+                            Image(systemName: "trash")
                         }
-                    } label: {
-                        Image(systemName: "trash")
+                        Button {
+                            flightEditorConfig.presentEditFlight(flight)
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .tint(.orange)
                     }
-                    Button {
-                        flightEditorConfig.presentEditFlight(flight)
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                    }
-                    .tint(.orange)
                 }
             }
             .sheet(isPresented: $flightEditorConfig.isPresented, onDismiss: didDismissEditor, content: {

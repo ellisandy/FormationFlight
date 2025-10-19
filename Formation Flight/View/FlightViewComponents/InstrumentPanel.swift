@@ -13,13 +13,39 @@ struct InstrumentPanel: View {
     @Binding var isFlightViewPresented: Bool
     
     var body: some View {
-        Spacer()
+        VStack {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("5:10")
+                        .font(.largeTitle)
+                        .foregroundStyle(.white)
+                    Text("-0:30")
+                        .foregroundStyle(.red)
+                }.padding(.leading)
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text("180kn")
+                        .font(.largeTitle)
+                        .foregroundStyle(.white)
+                    Text("+10kn")
+                        .foregroundStyle(.yellow)
+                }.padding(.trailing)
+            }
+            .padding(.bottom)
+            .frame(maxWidth: .infinity)
+            .background(.black)
+            .opacity(0.9)
+            Spacer()
+        }
+
+//        Spacer()
         VStack {
             Spacer() // Pushes to the Bottom
 
             VStack {
                 HStack {
                     Button() {
+                        // TODO: Add Next waypoint logic here
                     } label: {
                         Text("Next")
                             .font(.title)
@@ -29,6 +55,7 @@ struct InstrumentPanel: View {
                     
                     Spacer()
                     Button(role: .cancel) {
+                        // TODO: Add Winds Update View here
                     } label: {
                         Text("Winds")
                             .font(.title)
@@ -77,7 +104,7 @@ struct InstrumentPanel: View {
         distanceToFinal: Measurement(value: 10, unit: UnitLength.meters))
     
     return InstrumentPanel(
-        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
+        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
         panelData: panelData,
         isFlightViewPresented: .constant(true))
 }
