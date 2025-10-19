@@ -22,7 +22,6 @@
 		C2218E772B3E5B1200D5D569 /* LocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2218E762B3E5B1200D5D569 /* LocationProvider.swift */; };
 		C2218E7E2B3F3EBE00D5D569 /* TestFlight1.gpx in Resources */ = {isa = PBXBuildFile; fileRef = C2218E7D2B3F3EBE00D5D569 /* TestFlight1.gpx */; };
 		C2218E812B3F4D7800D5D569 /* CLLocation+Conversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2218E802B3F4D7800D5D569 /* CLLocation+Conversions.swift */; };
-		C234CF562EA4356A008171F4 /* AppIconDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = C234CF552EA4356A008171F4 /* AppIconDesign.swift */; };
 		C25D622B2EA48E3A004D33E0 /* TOT-Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = C25D622A2EA48E3A004D33E0 /* TOT-Icon.png */; };
 		C25D622E2EA48F37004D33E0 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C25D622D2EA48F37004D33E0 /* Launch Screen.storyboard */; };
 		C291E6762B41DAAC008CFAAD /* Flight_Test.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E6752B41DAAC008CFAAD /* Flight_Test.swift */; };
@@ -76,7 +75,6 @@
 		C2218E7B2B3F3D7000D5D569 /* Formation Flight.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Formation Flight.xctestplan"; sourceTree = "<group>"; };
 		C2218E7D2B3F3EBE00D5D569 /* TestFlight1.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = TestFlight1.gpx; sourceTree = "<group>"; };
 		C2218E802B3F4D7800D5D569 /* CLLocation+Conversions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocation+Conversions.swift"; sourceTree = "<group>"; };
-		C234CF552EA4356A008171F4 /* AppIconDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconDesign.swift; sourceTree = "<group>"; };
 		C25D622A2EA48E3A004D33E0 /* TOT-Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "TOT-Icon.png"; sourceTree = "<group>"; };
 		C25D622C2EA48F37004D33E0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = "Base.lproj/Launch Screen.storyboard"; sourceTree = "<group>"; };
 		C25D622F2EA48F37004D33E0 /* mul */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = mul; path = "mul.lproj/Launch Screen.xcstrings"; sourceTree = "<group>"; };
@@ -250,7 +248,6 @@
 		C29255582B2D648C0064F41F /* Formation Flight */ = {
 			isa = PBXGroup;
 			children = (
-				C234CF552EA4356A008171F4 /* AppIconDesign.swift */,
 				C29255592B2D648C0064F41F /* Formation_FlightApp.swift */,
 				C2218E7F2B3F4D5F00D5D569 /* Extensions */,
 				C29255882B2EACE50064F41F /* Model */,
@@ -459,7 +456,6 @@
 				C2218E732B3E174E00D5D569 /* FlightView.swift in Sources */,
 				C20E379F2B40CD92002F8DCC /* InstrumentPanelData.swift in Sources */,
 				C20E37992B40BA0B002F8DCC /* SettingsEditorConfig.swift in Sources */,
-				C234CF562EA4356A008171F4 /* AppIconDesign.swift in Sources */,
 				C20E379D2B40C9D1002F8DCC /* InstrumentPanel.swift in Sources */,
 				C2218E812B3F4D7800D5D569 /* CLLocation+Conversions.swift in Sources */,
 				C291E67B2B420D6D008CFAAD /* Date+Extensions.swift in Sources */,
