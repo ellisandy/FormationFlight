@@ -7,10 +7,12 @@
 
 import SwiftUI
 import Combine
+import MapKit
 
 struct FlightEditorForm: View {
     @Binding var config: FlightEditorConfig
     @State var checkPointPopover = false
+    @State private var editingCheckpointIndex: Int? = nil
     
     var body: some View {
         NavigationStack {
@@ -41,13 +43,18 @@ struct FlightEditorForm: View {
                     }
                 }
                 Section("Flight Plan") {
-                    ForEach(config.flight.checkPoints) { checkPoint in
-                        HStack {
-                            Text(checkPoint.name)
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text("\(checkPoint.longitude)")
-                                Text("\(checkPoint.latitude)")
+                    ForEach(Array(config.flight.checkPoints.enumerated()), id: \.element.id) { index, checkPoint in
+                        Button {
+                            editingCheckpointIndex = index
+                            checkPointPopover = true
+                        } label: {
+                            HStack {
+                                Text(checkPoint.name)
+                                Spacer()
+                                VStack(alignment: .trailing) {
+                                    Text("\(checkPoint.longitude)")
+                                    Text("\(checkPoint.latitude)")
+                                }
                             }
                         }
                     }
@@ -57,7 +64,40 @@ struct FlightEditorForm: View {
                     .onMove(perform: { indices, newOffset in
                         config.flight.checkPoints.move(fromOffsets: indices, toOffset: newOffset)
                     })
-                    FlightEditorCheckPoint(flight: config.flight)
+                    Button("New Check Point") {
+                        editingCheckpointIndex = nil
+                        checkPointPopover = true
+                    }
+                    .sheet(isPresented: $checkPointPopover) {
+                        if let cpIndex = editingCheckpointIndex {
+                            let currentName: String = config.flight.checkPoints[cpIndex].name
+                            let currentCoordinate: CLLocationCoordinate2D = config.flight.checkPoints[cpIndex].getCLCoordinate()
+                            CheckpointMapPickerView(name: currentName,
+                                                    pinCoordinate: currentCoordinate,
+                                                    onSave: { name, coordinate in
+                                config.flight.checkPoints[cpIndex].name = name
+                                config.flight.checkPoints[cpIndex].longitude = coordinate.longitude
+                                config.flight.checkPoints[cpIndex].latitude = coordinate.latitude
+                                checkPointPopover = false
+                                return
+                            },
+                                                    onCancel: {
+                                checkPointPopover = false
+                                editingCheckpointIndex = nil
+                                return
+                            })
+                        } else {
+                            CheckpointMapPickerView { name, coordinate in
+                                config.flight.checkPoints.append(CheckPoint(id: UUID(),name: name,longitude: coordinate.longitude,latitude: coordinate.latitude))
+                                checkPointPopover = false
+                                editingCheckpointIndex = nil
+                            } onCancel: {
+                                checkPointPopover = false
+                                editingCheckpointIndex = nil
+                            }
+                        }
+                    }
+
                 }
             }
             .navigationTitle("Edit Flight")

@@ -9,11 +9,11 @@ import Foundation
 import SwiftData
 import MapKit
 
-final class CheckPoint: Codable, Hashable, Identifiable, Sendable {
+struct CheckPoint: Codable, Hashable, Identifiable, Sendable {
     let id: UUID
-    let name: String
-    let longitude: Double
-    let latitude: Double
+    var name: String
+    var longitude: Double
+    var latitude: Double
 
     init(id: UUID = UUID(), name: String, longitude: Double, latitude: Double) {
         self.id = id
@@ -28,16 +28,5 @@ final class CheckPoint: Codable, Hashable, Identifiable, Sendable {
     
     func getCLLocation() -> CLLocation {
         CLLocation(latitude: latitude, longitude: longitude)
-    }
-    
-    static func == (lhs: CheckPoint, rhs: CheckPoint) -> Bool {
-        lhs.id == rhs.id && lhs.name == rhs.name && lhs.longitude == rhs.longitude && lhs.latitude == rhs.latitude
-    }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(name)
-        hasher.combine(longitude)
-        hasher.combine(latitude)
     }
 }
