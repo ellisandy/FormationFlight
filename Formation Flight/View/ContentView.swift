@@ -50,6 +50,14 @@ struct ContentView: View {
                         .tint(.orange)
                     }
                 }
+                .onDelete(perform: { indexSet in
+                    withAnimation {
+                        for index in indexSet {
+                            let flight = flights[index]
+                            modelContext.delete(flight)
+                        }
+                    }
+                })
             }
             .sheet(isPresented: $flightEditorConfig.isPresented, onDismiss: didDismissEditor, content: {
                 FlightEditor(config: $flightEditorConfig)
