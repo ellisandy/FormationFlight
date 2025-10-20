@@ -41,8 +41,3 @@ final class CheckPoint: Codable, Hashable, Identifiable, Sendable {
         hasher.combine(latitude)
     }
 }
-
-// TODO: Remove
-let HOME_LOCATION = CheckPoint(id: UUID(), name: "Home", longitude: -122.379581, latitude: 48.425643)
-let TREE_FARM_LOCATION = CheckPoint(id: UUID(), name: "Tree Farm", longitude: -122.36519, latitude: 48.42076)
-let BVS_LOCATION = CheckPoint(id: UUID(), name: "BVS Airport", longitude: -122.41299, latitude: 48.46915)

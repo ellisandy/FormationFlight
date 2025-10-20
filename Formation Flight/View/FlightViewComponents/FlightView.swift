@@ -78,11 +78,16 @@ struct FlightView: View {
 
 #Preview {
     let flightPreview = Flight.emptyFlight()
+    let HOME_LOCATION = CheckPoint(id: UUID(), name: "Home", longitude: -122.379581, latitude: 48.425643)
+    let TREE_FARM_LOCATION = CheckPoint(id: UUID(), name: "Tree Farm", longitude: -122.36519, latitude: 48.42076)
+    let BVS_LOCATION = CheckPoint(id: UUID(), name: "BVS Airport", longitude: -122.41299, latitude: 48.46915)
+    
     flightPreview.title = "Test Flight"
-    flightPreview.checkPoints = [HOME_LOCATION]
+    flightPreview.checkPoints = [HOME_LOCATION, TREE_FARM_LOCATION, BVS_LOCATION]
     
     var config = SettingsEditorConfig.emptyConfig()
     config.speedUnit = .kts
+    config.distanceUnit = .nm
     
     return FlightView(flight: flightPreview, 
                       settingsConfig: .constant(config),

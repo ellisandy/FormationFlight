@@ -57,12 +57,6 @@ struct FlightEditorForm: View {
                     config.flight.checkPoints.move(fromOffsets: indices, toOffset: newOffset)
                 })
                 FlightEditorCheckPoint(flight: config.flight)
-                Button(role: .destructive) {
-                    config.flight.checkPoints = [BVS_LOCATION, HOME_LOCATION, TREE_FARM_LOCATION]
-                } label: {
-                    Text("DEFAULT SET")
-                }
-
             }
         }
     }
