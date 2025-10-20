@@ -9,16 +9,16 @@ import SwiftUI
 import CoreLocation
 
 @Observable
-class LocationProvider: NSObject, CLLocationManagerDelegate {
+class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject {
     var locationManager: CLLocationManager = CLLocationManager()
     var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
     var speed: Measurement<Dimension> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
     var altitude: Measurement<Dimension> = Measurement(value: -1.0, unit: UnitLength.meters)
     var course: Measurement<Dimension> = Measurement(value: -1.0, unit: UnitAngle.degrees)
-    var location: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090)
     
     init(clManager: CLLocationManager = CLLocationManager()) {
+
         super.init()
         self.locationManager.delegate = self
     }
@@ -76,11 +76,9 @@ class LocationProvider: NSObject, CLLocationManagerDelegate {
         if let unwrappedCourse = locations.last?.course {
             course = Measurement(value: unwrappedCourse, unit: UnitAngle.degrees)
         }
+
         
-        if let unwrappedLocation = locations.last?.coordinate {
-            location = unwrappedLocation
-        }
-        
+
         (updateDelegate ?? {print("No Update Delegate")})()
     }
 }

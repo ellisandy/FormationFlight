@@ -5,6 +5,7 @@ import CoreLocation
 struct CheckpointMapPickerView: View {
     var onSave: (_ name: String, _ coordinate: CLLocationCoordinate2D) -> Void
     var onCancel: () -> Void
+    var locationProvider = CLLocationManager()
 
     @State private var name: String = ""
     @State private var pinCoordinate: CLLocationCoordinate2D
@@ -15,8 +16,8 @@ struct CheckpointMapPickerView: View {
     ) {
         self.onSave = onSave
         self.onCancel = onCancel
-        let currentLocation = LocationProvider().location
-        _pinCoordinate = State(initialValue: currentLocation)
+        //TODO: SCARY
+        _pinCoordinate = State(initialValue: locationProvider.location!.coordinate)
     }
     
     init(

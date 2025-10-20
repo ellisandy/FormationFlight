@@ -22,6 +22,13 @@ struct CheckPoint: Codable, Hashable, Identifiable, Sendable {
         self.latitude = latitude
     }
     
+    init(name: String, location: CLLocation) {
+        self.id = UUID()
+        self.name = name
+        self.longitude = location.coordinate.longitude
+        self.latitude = location.coordinate.latitude
+    }
+    
     func getCLCoordinate() -> CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }

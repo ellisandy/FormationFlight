@@ -37,6 +37,12 @@ struct FlightEditor: View {
                     }
                 }
         }
+        .onAppear() {
+            LocationProvider().startMonitoring()
+        }
+        .onDisappear() {
+            LocationProvider().stopMonitoring()
+        }
     }
     private var editorTitle: String {
         config.flight.title == "" ? "Add Flight" : "Edit Flight"

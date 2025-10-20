@@ -88,7 +88,15 @@ struct FlightEditorForm: View {
                             })
                         } else {
                             CheckpointMapPickerView { name, coordinate in
-                                config.flight.checkPoints.append(CheckPoint(id: UUID(),name: name,longitude: coordinate.longitude,latitude: coordinate.latitude))
+                                let clManager = CLLocationManager()
+                                
+                                clManager.startUpdatingLocation()
+                                
+                                let location = clManager.location ?? CLLocation(latitude: 0, longitude: 0)
+                                
+                                let cp = CheckPoint(name: name,
+                                                    location: location)
+                                config.flight.checkPoints.append(cp)
                                 checkPointPopover = false
                                 editingCheckpointIndex = nil
                             } onCancel: {
