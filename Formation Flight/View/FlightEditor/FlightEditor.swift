@@ -28,12 +28,12 @@ struct FlightEditor: View {
                     
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
-                            //TODO: Validate the inform data
-                            
                             config.done()
                         } label: {
                             Text("Save")
                         }
+                        .disabled(config.flight.title.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty)
+                        .disabled(config.flight.checkPoints.isEmpty)
                     }
                 }
         }
