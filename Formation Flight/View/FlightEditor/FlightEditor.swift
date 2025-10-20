@@ -28,6 +28,8 @@ struct FlightEditor: View {
                     
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
+                            //TODO: Validate the inform data
+                            
                             config.done()
                         } label: {
                             Text("Save")
