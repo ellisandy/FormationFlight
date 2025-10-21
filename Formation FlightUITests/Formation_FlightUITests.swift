@@ -38,4 +38,38 @@ final class Formation_FlightUITests: XCTestCase {
             }
         }
     }
+
+    func test_appShowsContentViewQuickly() throws {
+        let app = XCUIApplication()
+        // If you use flags to make startup deterministic in CI, uncomment and adjust:
+        // app.launchArguments += ["-UITests", "1", "-SkipOnboarding", "1", "-DisableAnimations", "1"]
+        // app.launchEnvironment["IS_UI_TESTING"] = "1"
+
+        let start = Date()
+        app.launch()
+
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 60), "App did not reach foreground in time.")
+
+        let contentRoot = app.otherElements["ContentViewRoot"]
+        let threshold: TimeInterval = 30
+        let appeared = contentRoot.waitForExistence(timeout: threshold)
+
+        let elapsed = Date().timeIntervalSince(start)
+        XCTAssertTrue(appeared, "ContentView did not appear within \(threshold)s (elapsed: \(elapsed)s).")
+    }
+
+    func test_measureStartupToContentView() throws {
+        if #available(iOS 13.0, *) {
+            measure(metrics: [XCTClockMetric()]) {
+                let app = XCUIApplication()
+                app.terminate()
+                let start = Date()
+                app.launch()
+                XCTAssertTrue(app.wait(for: .runningForeground, timeout: 60))
+                XCTAssertTrue(app.otherElements["ContentViewRoot"].waitForExistence(timeout: 30))
+                let elapsed = Date().timeIntervalSince(start)
+                XCTAssertLessThan(elapsed, 30, "Startup exceeded threshold: \(elapsed)s")
+            }
+        }
+    }
 }

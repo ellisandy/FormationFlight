@@ -85,6 +85,7 @@ struct ContentView: View {
                     } label: {
                         Label("Add Item", systemImage: "plus")
                     }
+                    .accessibilityIdentifier("addFlightButton")
                 }
             }
             .navigationTitle("Flights")
@@ -104,6 +105,7 @@ struct ContentView: View {
                 Text("No Flight Selected").fontWeight(.bold)
             }
         }
+        .accessibilityIdentifier("ContentViewRoot")
     }
     
     private func didDismissEditor() {
@@ -122,3 +124,4 @@ struct ContentView: View {
     ContentView()
         .modelContainer(for: Flight.self, inMemory: true)
 }
+

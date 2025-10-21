@@ -11,16 +11,6 @@ struct CheckpointMapPickerView: View {
     @State private var pinCoordinate: CLLocationCoordinate2D
 
     init(
-        onSave: @escaping (_ name: String, _ coordinate: CLLocationCoordinate2D) -> Void,
-        onCancel: @escaping () -> Void
-    ) {
-        self.onSave = onSave
-        self.onCancel = onCancel
-        //TODO: SCARY
-        _pinCoordinate = State(initialValue: locationProvider.location!.coordinate)
-    }
-    
-    init(
         name: String,
         pinCoordinate: CLLocationCoordinate2D,
         onSave: @escaping (_ name: String, _ coordinate: CLLocationCoordinate2D) -> Void,
@@ -47,6 +37,7 @@ struct CheckpointMapPickerView: View {
                     }
                     .mapStyle(.hybrid)
                     .ignoresSafeArea(edges: .bottom)
+                    .accessibilityIdentifier("checkpointMap")
                     .onMapCameraChange(frequency: .continuous) { context in
                         pinCoordinate = context.region.center
                     }
@@ -56,6 +47,7 @@ struct CheckpointMapPickerView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("Checkpoint Name", text: $name)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("checkpointNameField")
 
                     HStack {
                         Text("Latitude: \(pinCoordinate.latitude,format: .number.precision(.fractionLength(6)))")
@@ -72,18 +64,16 @@ struct CheckpointMapPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onCancel() }
+                        .accessibilityIdentifier("checkpointCancelButton")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         onSave(name, pinCoordinate)
                     }
+                    .accessibilityIdentifier("checkpointSaveButton")
                     .disabled(name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty)
                 }
             }
         }
     }
-}
-
-#Preview {
-    CheckpointMapPickerView { _, _ in } onCancel: {}
 }

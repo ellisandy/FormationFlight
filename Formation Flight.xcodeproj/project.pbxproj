@@ -24,6 +24,8 @@
 		C25D622B2EA48E3A004D33E0 /* TOT-Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = C25D622A2EA48E3A004D33E0 /* TOT-Icon.png */; };
 		C25D622E2EA48F37004D33E0 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C25D622D2EA48F37004D33E0 /* Launch Screen.storyboard */; };
 		C25D62312EA5C629004D33E0 /* CheckpointMapPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62302EA5C629004D33E0 /* CheckpointMapPickerView.swift */; };
+		C25D62342EA701B5004D33E0 /* FlightEditorFormTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62322EA70155004D33E0 /* FlightEditorFormTests.swift */; };
+		C25D62372EA70344004D33E0 /* FlightEditorFormUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62352EA70319004D33E0 /* FlightEditorFormUITests.swift */; };
 		C291E6762B41DAAC008CFAAD /* Flight_Test.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E6752B41DAAC008CFAAD /* Flight_Test.swift */; };
 		C291E6792B41FD25008CFAAD /* Double+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E6782B41FD25008CFAAD /* Double+Extensions.swift */; };
 		C291E67B2B420D6D008CFAAD /* Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */; };
@@ -78,6 +80,8 @@
 		C25D622C2EA48F37004D33E0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = "Base.lproj/Launch Screen.storyboard"; sourceTree = "<group>"; };
 		C25D622F2EA48F37004D33E0 /* mul */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = mul; path = "mul.lproj/Launch Screen.xcstrings"; sourceTree = "<group>"; };
 		C25D62302EA5C629004D33E0 /* CheckpointMapPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointMapPickerView.swift; sourceTree = "<group>"; };
+		C25D62322EA70155004D33E0 /* FlightEditorFormTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightEditorFormTests.swift; sourceTree = "<group>"; };
+		C25D62352EA70319004D33E0 /* FlightEditorFormUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightEditorFormUITests.swift; sourceTree = "<group>"; };
 		C291E6752B41DAAC008CFAAD /* Flight_Test.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Flight_Test.swift; sourceTree = "<group>"; };
 		C291E6782B41FD25008CFAAD /* Double+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Double+Extensions.swift"; sourceTree = "<group>"; };
 		C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extensions.swift"; sourceTree = "<group>"; };
@@ -177,6 +181,7 @@
 			isa = PBXGroup;
 			children = (
 				C2218E692B38A3BE00D5D569 /* FlightEditorConfig_Test.swift */,
+				C25D62322EA70155004D33E0 /* FlightEditorFormTests.swift */,
 			);
 			path = FlightEditor;
 			sourceTree = "<group>";
@@ -288,6 +293,7 @@
 			children = (
 				C29255782B2D648D0064F41F /* Formation_FlightUITests.swift */,
 				C292557A2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift */,
+				C25D62352EA70319004D33E0 /* FlightEditorFormUITests.swift */,
 			);
 			path = "Formation FlightUITests";
 			sourceTree = "<group>";
@@ -477,6 +483,7 @@
 				C2218E6A2B38A3BE00D5D569 /* FlightEditorConfig_Test.swift in Sources */,
 				C291E6762B41DAAC008CFAAD /* Flight_Test.swift in Sources */,
 				C292556F2B2D648D0064F41F /* Formation_FlightTests.swift in Sources */,
+				C25D62342EA701B5004D33E0 /* FlightEditorFormTests.swift in Sources */,
 				C291E67E2B4263E4008CFAAD /* CLLocation+Conversions_Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -486,6 +493,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C292557B2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift in Sources */,
+				C25D62372EA70344004D33E0 /* FlightEditorFormUITests.swift in Sources */,
 				C29255792B2D648D0064F41F /* Formation_FlightUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
