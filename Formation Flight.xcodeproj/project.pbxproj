@@ -747,7 +747,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-FlightTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Formation Flight.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Formation Flight";
 			};
@@ -765,7 +765,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-FlightTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Formation Flight.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Formation Flight";
 			};
@@ -781,7 +781,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-FlightUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "Formation Flight";
 			};
@@ -797,7 +797,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-FlightUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "Formation Flight";
 			};

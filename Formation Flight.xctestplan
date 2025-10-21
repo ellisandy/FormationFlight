@@ -9,6 +9,7 @@
     }
   ],
   "defaultOptions" : {
+    "defaultTestExecutionTimeAllowance" : 1200,
     "locationScenario" : {
       "identifier" : "..\/..\/Formation Flight\/TestAssets\/Location.gpx"
     },
