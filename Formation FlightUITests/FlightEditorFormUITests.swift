@@ -10,9 +10,6 @@ final class FlightEditorFormUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        // If your app requires specific launch arguments/state to show FlightEditorForm,
-        // add them here. For now, assume the initial screen presents the form or there is
-        // a navigation path we can tap (adjust identifiers as needed).
         app.launch()
         navigateToFlightEditor()
     }
@@ -23,6 +20,34 @@ final class FlightEditorFormUITests: XCTestCase {
     private func other(_ identifier: String) -> XCUIElement { app.otherElements[identifier] }
     private func button(_ identifier: String) -> XCUIElement { app.buttons[identifier] }
     private func datePicker(_ identifier: String) -> XCUIElement { app.datePickers[identifier] }
+
+    // Scroll the main view until an element with the given identifier is visible or timeout elapses
+    @discardableResult
+    private func scrollToElement(_ element: XCUIElement, maxScrolls: Int = 8, directionUpFirst: Bool = false) -> Bool {
+        let scrollView = app.scrollViews.firstMatch
+        let container = scrollView.exists ? scrollView : app
+
+        var attempts = 0
+        // Try an initial small swipe in the hinted direction
+        if directionUpFirst {
+            container?.swipeUp()
+        } else {
+            container?.swipeDown()
+        }
+
+        while !element.exists || !element.isHittable {
+            if attempts >= maxScrolls { break }
+            attempts += 1
+            // Alternate swipe direction to discover content in both directions
+            if attempts % 2 == 0 {
+                container?.swipeUp()
+            } else {
+                container?.swipeDown()
+            }
+            if element.waitForExistence(timeout: 0.5), element.isHittable { return true }
+        }
+        return element.exists
+    }
 
     private func navigateToFlightEditor() {
         // Try common identifiers/titles for a plus button in a navigation bar
@@ -61,7 +86,9 @@ final class FlightEditorFormUITests: XCTestCase {
         newButton.tap()
 
         let sheet = other("checkpointSheet")
-        XCTAssertTrue(sheet.waitForExistence(timeout: 3), "Checkpoint sheet should appear")
+        // The sheet may appear offscreen; scroll to reveal if needed
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5), "Checkpoint sheet should appear")
 
         // Dismiss sheet by tapping outside or using a cancel control if available.
         // If the sheet provides a Cancel button with identifier, prefer that.
@@ -74,6 +101,7 @@ final class FlightEditorFormUITests: XCTestCase {
         newButton.tap()
 
         let sheet = other("checkpointSheet")
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
 
         let nameField = field("checkpointNameField")
@@ -121,6 +149,7 @@ final class FlightEditorFormUITests: XCTestCase {
         newButton.tap()
 
         let sheet = other("checkpointSheet")
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
 
         let nameField = field("checkpointNameField")
@@ -154,6 +183,7 @@ final class FlightEditorFormUITests: XCTestCase {
         newButton.tap()
 
         let sheet = other("checkpointSheet")
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
 
         let nameField = field("checkpointNameField")
@@ -168,6 +198,7 @@ final class FlightEditorFormUITests: XCTestCase {
         // Add second checkpoint
         XCTAssertTrue(newButton.waitForExistence(timeout: 3))
         newButton.tap()
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 3))
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))
         nameField.tap()
@@ -215,6 +246,7 @@ final class FlightEditorFormUITests: XCTestCase {
         newButton.tap()
 
         let sheet = other("checkpointSheet")
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
 
         let nameField = field("checkpointNameField")
@@ -255,6 +287,7 @@ final class FlightEditorFormUITests: XCTestCase {
         newButton.tap()
 
         let sheet = other("checkpointSheet")
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
 
         let nameField = field("checkpointNameField")
@@ -270,6 +303,7 @@ final class FlightEditorFormUITests: XCTestCase {
         let firstRow = button("checkpointRow_0")
         XCTAssertTrue(firstRow.waitForExistence(timeout: 5), "Expected first checkpoint row to exist")
         firstRow.tap()
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
 
         // 3) Update the name and save
@@ -293,7 +327,8 @@ final class FlightEditorFormUITests: XCTestCase {
         } else {
             // Fallback: reopen the row and check the field value inside the sheet
             firstRow.tap()
-            XCTAssertTrue(sheet.waitForExistence(timeout: 3))
+            _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
+            XCTAssertTrue(sheet.waitForExistence(timeout: 5))
             XCTAssertEqual(nameField.value as? String, "Updated CP")
 
             // Dismiss the sheet
@@ -306,3 +341,4 @@ final class FlightEditorFormUITests: XCTestCase {
         }
     }
 }
+

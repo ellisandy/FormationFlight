@@ -10,8 +10,9 @@
   ],
   "defaultOptions" : {
     "defaultTestExecutionTimeAllowance" : 1200,
+    "distributor" : "com.apple.TestFlight",
     "locationScenario" : {
-      "identifier" : "..\/..\/Formation Flight\/TestAssets\/Location.gpx"
+      "identifier" : "..\/..\/Formation Flight\/TestAssets\/TestFlight1.gpx"
     },
     "targetForVariableExpansion" : {
       "containerPath" : "container:Formation Flight.xcodeproj",
@@ -21,7 +22,7 @@
   },
   "testTargets" : [
     {
-      "parallelizable" : true,
+      "parallelizable" : false,
       "target" : {
         "containerPath" : "container:Formation Flight.xcodeproj",
         "identifier" : "C29255692B2D648D0064F41F",
