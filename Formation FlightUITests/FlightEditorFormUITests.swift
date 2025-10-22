@@ -192,6 +192,7 @@ final class FlightEditorFormUITests: XCTestCase {
         nameField.typeText("CP One")
 
         let saveButton = button("checkpointSaveButton")
+        _ = scrollToElement(sheet, maxScrolls: 6, directionUpFirst: true)
         XCTAssertTrue(saveButton.waitForExistence(timeout: 2))
         saveButton.tap()
 
