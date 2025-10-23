@@ -10,9 +10,9 @@ import CoreLocation
 extension CLLocation {
 
     func getTrueAirSpeed(with winds: Winds) -> Measurement<UnitSpeed>? {
-        if speed < 0 { return nil } // TODO: Test
+        if speed < 0 { return nil }
         
-        if course < 0 { return nil } // TODO: Test
+        if course < 0 { return nil }
         
         let airComponent = SIMD2(x: speed * cos(course.degreesToRadians),
                                  y: speed * sin(course.degreesToRadians))
@@ -49,12 +49,6 @@ extension CLLocation {
     }
 
     func getTime(to destinations: [CLLocation], with winds: Winds) -> Measurement<UnitDuration>? {
-        // Bail out if there's not a valid speed
-        if speed < 0 { return nil }
-        
-        // Bail out if there's not a valid course
-        if course < 0 { return nil }
-        
         // Bail out if destinations is empty
         if destinations.isEmpty { return nil }
         

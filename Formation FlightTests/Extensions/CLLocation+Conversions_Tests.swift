@@ -99,6 +99,36 @@ final class CLLocation_Conversions_Test: XCTestCase {
         
         XCTAssertEqual(location.getTrueAirSpeed(with: winds)!.value, 100.0, accuracy: 0.1)
     }
+
+    func testGetTrueAirSpeedWithNegativeCourse() {
+        let winds = Winds(velocity: 0, direction: 0, velocityUnit: .metersPerSecond)
+
+        let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
+                                  altitude: 0,
+                                  horizontalAccuracy: 0,
+                                  verticalAccuracy: 0,
+                                  course: -1,
+                                  courseAccuracy: 0,
+                                  speed: 1,
+                                  speedAccuracy: 0,
+                                  timestamp: Date.now)
+        XCTAssertNil(location.getTrueAirSpeed(with: winds))
+    }
+    
+    func testGetTrueAirSpeedWithNegativeSpeed() {
+        let winds = Winds(velocity: 0, direction: 0, velocityUnit: .metersPerSecond)
+
+        let location = CLLocation(coordinate: HOME_LOCATION.getCLCoordinate(),
+                                  altitude: 0,
+                                  horizontalAccuracy: 0,
+                                  verticalAccuracy: 0,
+                                  course: 0,
+                                  courseAccuracy: 0,
+                                  speed: -1,
+                                  speedAccuracy: 0,
+                                  timestamp: Date.now)
+        XCTAssertNil(location.getTrueAirSpeed(with: winds))
+    }
     
     // MARK: - testPerformanceExample()
     func testPerformanceExample() throws {
@@ -304,6 +334,34 @@ final class CLLocation_Conversions_Test: XCTestCase {
         XCTAssertNil(START_LOCATION.getTime(to: END_LOCATION, with: winds))
     }
     
+    // Negative Course (invalid case)
+    func testGetTime_InvalidCourse() {
+        let winds = Winds(velocity: 10, direction: 60, velocityUnit: .metersPerSecond)
+        let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate,
+                                               altitude: 0,
+                                               horizontalAccuracy: 0,
+                                               verticalAccuracy: 0,
+                                               course: -1,
+                                               speed: DEFAULT_SPEED,
+                                               timestamp: Date.now)
+
+        XCTAssertNil(adjustedStartLocation.getTime(to: END_LOCATION, with: winds))
+    }
+
+    // Negative Course (invalid case)
+    func testGetTime_NoDestinations() {
+        let winds = Winds(velocity: 10, direction: 60, velocityUnit: .metersPerSecond)
+        let adjustedStartLocation = CLLocation(coordinate: START_LOCATION.coordinate,
+                                               altitude: 0,
+                                               horizontalAccuracy: 0,
+                                               verticalAccuracy: 0,
+                                               course: -1,
+                                               speed: DEFAULT_SPEED,
+                                               timestamp: Date.now)
+
+        XCTAssertNil(adjustedStartLocation.getTime(to: [], with: winds))
+    }
+    
     // MARK: Multiple Point Calculations
     let STARTING_POINT = CLLocation(latitude: 48.75097, longitude: -121.94117)
     let FIRST_CHECKPOINT = CLLocation(latitude: 48.75097, longitude: -121.125242) // 60_000 Meters away CONFIRM TO EAST
@@ -335,6 +393,10 @@ final class CLLocation_Conversions_Test: XCTestCase {
         XCTAssertEqual(thirdLegLongCourse.value, 270.0, accuracy: 1)
     }
     
+    func testDistanceEmptyCheckpoints() {
+        XCTAssertNil(STARTING_POINT.distance(from: []))
+    }
+
     func testGetTimeTripTenKnotNorth() {
         // WINDS from the north at 10 knots
         let expectedWinds = Winds(velocity: 10.0, direction: 0.0, velocityUnit: .metersPerSecond)
@@ -422,19 +484,15 @@ final class CLLocation_Conversions_Test: XCTestCase {
         XCTAssertEqual(thirdLocation.getTime(to: [FINAL_CHECKPOINT], with: expectedWinds)!.value, 603.35, accuracy: 0.1)
 
         // total time =~ 1,751 seconds
-//        let expectedTime = 1752.1488727994
-//        let timeDifference = 1800.0 - expectedTime
-//        
-        //TAS + (100*(1-((first, second, third)/1800)))
-        //100+(100*(1-((603+545+603)/1800)))
+        // let expectedTime = 1752.1488727994
+        // let timeDifference = 1800.0 - expectedTime
+        
+        // TAS + (100*(1-((first, second, third)/1800)))
+        // 100+(100*(1-((603+545+603)/1800)))
         
         targetAirspeed = currentLocation.getTargetAirspeed(tot: Measurement(value: 1800.0, unit: .seconds),
                                                            destinations: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT],
                                                            winds: expectedWinds)!
-        
-        //Alright Lets do it again, but adjusting to 102.658 meters/sec
-     
-//        XCTAssertEqual(targetAirspeed.value, 100.0, accuracy: 0.1)
         
         let adjustedCurrentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
                                                  altitude: 0,
@@ -497,19 +555,15 @@ final class CLLocation_Conversions_Test: XCTestCase {
         XCTAssertEqual(thirdLocation.getTime(to: [FINAL_CHECKPOINT_DOUBLE], with: expectedWinds)!.value, 1207.32, accuracy: 0.1)
 
         // total time =~ 1,751 seconds
-//        let expectedTime = 1752.1488727994
-//        let timeDifference = 1800.0 - expectedTime
-//
+        // let expectedTime = 1752.1488727994
+        // let timeDifference = 1800.0 - expectedTime
+
         //TAS + (100*(1-((first, second, third)/1800)))
         //100+(100*(1-((603+545+603)/1800)))
         
         targetAirspeed = currentLocation.getTargetAirspeed(tot: Measurement(value: 2400.0, unit: .seconds),
                                                            destinations: [FIRST_CHECKPOINT, SECOND_CHECKPOINT, FINAL_CHECKPOINT_DOUBLE],
                                                            winds: expectedWinds)!
-        
-        //Alright Lets do it again, but adjusting to 102.658 meters/sec
-     
-//        XCTAssertEqual(targetAirspeed.value, 100.0, accuracy: 0.1)
         
         let adjustedCurrentLocation = CLLocation(coordinate: STARTING_POINT.coordinate,
                                                  altitude: 0,
@@ -525,5 +579,99 @@ final class CLLocation_Conversions_Test: XCTestCase {
                                                        with: expectedWinds)!.value,
                        2400.0,
                        accuracy: 1.0)
+    }
+    
+    // MARK: - getHeading()
+    func testGetHeading_NoWind_StraightEast() throws {
+        let winds = Winds(velocity: 0, direction: 0, velocityUnit: .metersPerSecond)
+        let location = CLLocation(coordinate: START_LOCATION.coordinate,
+                                  altitude: 0,
+                                  horizontalAccuracy: 0,
+                                  verticalAccuracy: 0,
+                                  course: 90,
+                                  speed: DEFAULT_SPEED,
+                                  timestamp: Date.now)
+        let tas = try XCTUnwrap(location.getTrueAirSpeed(with: winds))
+        let course = 90.0.degreesMeasurement
+        let heading = try XCTUnwrap(location.getHeading(airspeed: tas, winds: winds, course: course))
+        XCTAssertEqual(heading.converted(to: .degrees).value, 90.0, accuracy: 0.1)
+    }
+
+    func testGetHeading_HeadWind_NoCrab() throws {
+        // Headwind for due-east course comes from 090 (wind direction indicates where it's coming from)
+        let winds = Winds(velocity: 20, direction: 90, velocityUnit: .metersPerSecond)
+        let location = CLLocation(coordinate: START_LOCATION.coordinate,
+                                  altitude: 0,
+                                  horizontalAccuracy: 0,
+                                  verticalAccuracy: 0,
+                                  course: 90,
+                                  speed: DEFAULT_SPEED - 20, // rough GS reading with headwind
+                                  timestamp: Date.now)
+        let tas = try XCTUnwrap(location.getTrueAirSpeed(with: winds))
+        let course = 90.0.degreesMeasurement
+        let heading = try XCTUnwrap(location.getHeading(airspeed: tas, winds: winds, course: course))
+        // Pure headwind should not require crab; heading ~= course
+        XCTAssertEqual(heading.converted(to: .degrees).value, 90.0, accuracy: 0.5)
+    }
+
+    func testGetHeading_CrossWind_RightCrab() throws {
+        // Wind from the south (180) for an eastbound course (90) should push the aircraft north; crab right (heading > course)
+        let winds = Winds(velocity: 20, direction: 180, velocityUnit: .metersPerSecond)
+        let location = CLLocation(coordinate: START_LOCATION.coordinate,
+                                  altitude: 0,
+                                  horizontalAccuracy: 0,
+                                  verticalAccuracy: 0,
+                                  course: 90,
+                                  speed: DEFAULT_SPEED + 0, // speed value not critical for heading test as TAS is derived
+                                  timestamp: Date.now)
+        let tas = try XCTUnwrap(location.getTrueAirSpeed(with: winds))
+        let course = 90.0.degreesMeasurement
+        let heading = try XCTUnwrap(location.getHeading(airspeed: tas, winds: winds, course: course))
+        XCTAssertTrue(heading.converted(to: .degrees).value > 90.0, "Expected right crab into southerly crosswind")
+    }
+
+    func testGetHeading_CrossWind_LeftCrab() throws {
+        // Wind from the north (0) for an eastbound course (90) should push the aircraft south; crab left (heading < course)
+        let winds = Winds(velocity: 20, direction: 0, velocityUnit: .metersPerSecond)
+        let location = CLLocation(coordinate: START_LOCATION.coordinate,
+                                  altitude: 0,
+                                  horizontalAccuracy: 0,
+                                  verticalAccuracy: 0,
+                                  course: 90,
+                                  speed: DEFAULT_SPEED + 0,
+                                  timestamp: Date.now)
+        let tas = try XCTUnwrap(location.getTrueAirSpeed(with: winds))
+        let course = 90.0.degreesMeasurement
+        let heading = try XCTUnwrap(location.getHeading(airspeed: tas, winds: winds, course: course))
+        XCTAssertTrue(heading.converted(to: .degrees).value < 90.0, "Expected left crab into northerly crosswind")
+    }
+
+    func testGetHeading_InvalidAirspeedNil() {
+        let winds = Winds(velocity: 0, direction: 0, velocityUnit: .metersPerSecond)
+        let course = 90.0.degreesMeasurement
+        let heading = START_LOCATION.getHeading(airspeed: nil, winds: winds, course: course)
+        XCTAssertNil(heading)
+    }
+
+    // MARK: - distance(from location: CLLocation?)
+    func testDistanceFrom_NilReturnsNil() {
+        let here = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        let result = here.distance(from: (nil as CLLocation?))
+        XCTAssertNil(result)
+    }
+
+    func testDistanceFrom_SameCoordinateIsZero() throws {
+        let here = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        let result = here.distance(from: here)
+        XCTAssertEqual(result, 0.0, accuracy: 0.001)
+    }
+
+    func testDistanceFrom_KnownDistanceRoughlyMatches() throws {
+        // Apple Park Visitor Center to Apple Park main building are close; expect a small non-zero distance.
+        let p1 = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        let p2 = CLLocation(latitude: 37.3346, longitude: -122.0090)
+        let result: Measurement<UnitLength>? = p1.distance(from: p2)
+        // Rough expected distance between these latitudes (~33 meters). Allow generous tolerance for geodesic differences.
+        XCTAssertEqual(result!.value, 33.0, accuracy: 10.0)
     }
 }
