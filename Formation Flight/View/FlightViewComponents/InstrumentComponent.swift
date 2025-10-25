@@ -14,22 +14,21 @@ struct InstrumentComponent: View {
     @Binding var settingsConfig: SettingsEditorConfig
     
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .center) {
             withAnimation {
                 Text(doubleToText() ?? "---")
-                    .font(.largeTitle)
+                    .font(.title)
                     .foregroundStyle(getStatusColor())
                     .padding(.top, 5)
             }
             Text(infoType.rawValue)
-                .font(.subheadline)
-                .foregroundStyle(.white)
+                .font(.headline)
+                .foregroundStyle(.primary)
                 .padding(.bottom, 5)
         }
         .padding(.horizontal, 5)
-
-//        .opacity(0.8)
     }
+    
     // TODO: Extract this from the View file.
     func doubleToText() -> String? {
         // Shortcut to Nil
@@ -67,7 +66,7 @@ struct TimeFormatter: FormatStyle {
         
         var minutes = (time.truncatingRemainder(dividingBy: 3600) / 60)
         var seconds = (time.truncatingRemainder(dividingBy: 3600).truncatingRemainder(dividingBy: 60))
-
+        
         if seconds.isLess(than: 0.0) {
             seconds.negate()
         }
@@ -75,12 +74,12 @@ struct TimeFormatter: FormatStyle {
         if minutes.isLessThanOrEqualTo(0.0) {
             minutes.negate()
         }
+        
         var secondString = ""
         
         switch seconds {
         case _ where seconds < 10:
             //Make sure it returns a positive value
-
             secondString = String(format: "0%.0f", seconds)
             secondString = secondString.filter { $0 != "-" }
         default:
@@ -96,9 +95,10 @@ struct TimeFormatter: FormatStyle {
             }
             return ""
         }()
-        return "\(sign)\(Int(minutes)):\(secondString)"
         
+        return "\(sign)\(Int(minutes)):\(secondString)"
     }
+
 }
 
 enum InFlightInfo: String, CaseIterable {
@@ -128,7 +128,7 @@ extension InstrumentComponent {
         case .good:
             return Color.green
         case .nutrual:
-            return Color.white
+            return .primary
         }
     }
 }
@@ -151,4 +151,20 @@ extension InstrumentComponent {
                                infoValue: .constant(Measurement(value: -625, unit: UnitDuration.seconds)),
                                infoStaus: .good,
                                settingsConfig: .constant(config))
+}
+
+#Preview {
+    let panelData = InstrumentPanelData(
+        currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
+        ETADelta: Measurement(value: 600.0, unit: UnitDuration.seconds),
+        course: Measurement(value: 180, unit: UnitAngle.degrees),
+        currentTrueAirSpeed: Measurement(value: 100, unit: UnitSpeed.metersPerSecond),
+        targetTrueAirSpeed: Measurement(value: 100, unit: UnitSpeed.metersPerSecond),
+        distanceToNext: Measurement(value: 10, unit: UnitLength.meters),
+        distanceToFinal: Measurement(value: 10, unit: UnitLength.meters))
+    
+    InstrumentPanel(
+        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
+        panelData: panelData,
+        isFlightViewPresented: .constant(true), flight: .constant(Flight.emptyFlight()))
 }

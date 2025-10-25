@@ -26,7 +26,7 @@
 		C25D62312EA5C629004D33E0 /* CheckpointMapPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62302EA5C629004D33E0 /* CheckpointMapPickerView.swift */; };
 		C25D62342EA701B5004D33E0 /* FlightEditorFormTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62322EA70155004D33E0 /* FlightEditorFormTests.swift */; };
 		C25D62372EA70344004D33E0 /* FlightEditorFormUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62352EA70319004D33E0 /* FlightEditorFormUITests.swift */; };
-		C25D62392EA99BF2004D33E0 /* CLLocationProvider_Test.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62382EA99BF2004D33E0 /* CLLocationProvider_Test.swift */; };
+		C25D623A2EA9F720004D33E0 /* CLLocationProvider_Test.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25D62382EA99BF2004D33E0 /* CLLocationProvider_Test.swift */; };
 		C291E6762B41DAAC008CFAAD /* Flight_Test.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E6752B41DAAC008CFAAD /* Flight_Test.swift */; };
 		C291E6792B41FD25008CFAAD /* Double+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E6782B41FD25008CFAAD /* Double+Extensions.swift */; };
 		C291E67B2B420D6D008CFAAD /* Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C291E67A2B420D6D008CFAAD /* Date+Extensions.swift */; };
@@ -39,7 +39,7 @@
 		C29255792B2D648D0064F41F /* Formation_FlightUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C29255782B2D648D0064F41F /* Formation_FlightUITests.swift */; };
 		C292557B2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C292557A2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift */; };
 		C294A83B2B2F706B008A9B0F /* Flight.swift in Sources */ = {isa = PBXBuildFile; fileRef = C294A83A2B2F706B008A9B0F /* Flight.swift */; };
-		C2BCE7A72B5DA96C003F6297 /* FlightViewVersion2.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2BCE7A62B5DA96C003F6297 /* FlightViewVersion2.swift */; };
+		C2BCE7A72B5DA96C003F6297 /* SlidingSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2BCE7A62B5DA96C003F6297 /* SlidingSheetView.swift */; };
 		C2CEA4442B55A3B6001635E5 /* Winds.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CEA4432B55A3B6001635E5 /* Winds.swift */; };
 		C2CEA4462B55A406001635E5 /* Checkpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CEA4452B55A406001635E5 /* Checkpoints.swift */; };
 /* End PBXBuildFile section */
@@ -101,7 +101,7 @@
 		C29255782B2D648D0064F41F /* Formation_FlightUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formation_FlightUITests.swift; sourceTree = "<group>"; };
 		C292557A2B2D648D0064F41F /* Formation_FlightUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formation_FlightUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		C294A83A2B2F706B008A9B0F /* Flight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Flight.swift; sourceTree = "<group>"; };
-		C2BCE7A62B5DA96C003F6297 /* FlightViewVersion2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightViewVersion2.swift; sourceTree = "<group>"; };
+		C2BCE7A62B5DA96C003F6297 /* SlidingSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlidingSheetView.swift; sourceTree = "<group>"; };
 		C2CEA4432B55A3B6001635E5 /* Winds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Winds.swift; sourceTree = "<group>"; };
 		C2CEA4452B55A406001635E5 /* Checkpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Checkpoints.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -135,7 +135,7 @@
 			isa = PBXGroup;
 			children = (
 				C2218E722B3E174E00D5D569 /* FlightView.swift */,
-				C2BCE7A62B5DA96C003F6297 /* FlightViewVersion2.swift */,
+				C2BCE7A62B5DA96C003F6297 /* SlidingSheetView.swift */,
 				C20E37932B3FCE57002F8DCC /* InstrumentComponent.swift */,
 				C20E379C2B40C9D1002F8DCC /* InstrumentPanel.swift */,
 				C20E379E2B40CD92002F8DCC /* InstrumentPanelData.swift */,
@@ -156,6 +156,7 @@
 		C20E37A22B411844002F8DCC /* DataProviders */ = {
 			isa = PBXGroup;
 			children = (
+				C25D62382EA99BF2004D33E0 /* CLLocationProvider_Test.swift */,
 			);
 			path = DataProviders;
 			sourceTree = "<group>";
@@ -192,7 +193,6 @@
 			isa = PBXGroup;
 			children = (
 				C2218E762B3E5B1200D5D569 /* LocationProvider.swift */,
-				C25D62382EA99BF2004D33E0 /* CLLocationProvider_Test.swift */,
 			);
 			path = DataProviders;
 			sourceTree = "<group>";
@@ -455,7 +455,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C25D62392EA99BF2004D33E0 /* CLLocationProvider_Test.swift in Sources */,
 				C20E37942B3FCE57002F8DCC /* InstrumentComponent.swift in Sources */,
 				C292555C2B2D648C0064F41F /* ContentView.swift in Sources */,
 				C20E379B2B40BAA5002F8DCC /* SettingsEditor.swift in Sources */,
@@ -469,7 +468,7 @@
 				C20E379D2B40C9D1002F8DCC /* InstrumentPanel.swift in Sources */,
 				C2218E812B3F4D7800D5D569 /* CLLocation+Conversions.swift in Sources */,
 				C291E67B2B420D6D008CFAAD /* Date+Extensions.swift in Sources */,
-				C2BCE7A72B5DA96C003F6297 /* FlightViewVersion2.swift in Sources */,
+				C2BCE7A72B5DA96C003F6297 /* SlidingSheetView.swift in Sources */,
 				C291E6792B41FD25008CFAAD /* Double+Extensions.swift in Sources */,
 				C2218E6C2B38A61900D5D569 /* FlightEditor.swift in Sources */,
 				C20E37972B40AEF0002F8DCC /* SettingsEditorForm.swift in Sources */,
@@ -484,6 +483,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C25D623A2EA9F720004D33E0 /* CLLocationProvider_Test.swift in Sources */,
 				C2218E6A2B38A3BE00D5D569 /* FlightEditorConfig_Test.swift in Sources */,
 				C291E6762B41DAAC008CFAAD /* Flight_Test.swift in Sources */,
 				C292556F2B2D648D0064F41F /* Formation_FlightTests.swift in Sources */,

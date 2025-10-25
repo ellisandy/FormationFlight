@@ -7,8 +7,12 @@
 
 import SwiftUI
 import SwiftData
+import MapKit
+import os
 
 struct ContentView: View {
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "FormationFlight", category: "ContentView")
+    
     @Environment(\.modelContext) private var modelContext
     @Query var flights: [Flight]
     
@@ -16,21 +20,21 @@ struct ContentView: View {
     @State private var flightEditorConfig = FlightEditorConfig()
     @State private var settingsConfig = SettingsEditorConfig.from(userDefaults: UserDefaults.standard)
     @State private var isFlightViewPresented: Bool = false
+    @State private var currentLocation: CLLocationCoordinate2D?
     
     var body: some View {
-        NavigationSplitView {
+        NavigationStack {
             List(selection: $selectedFlight) {
                 ForEach(flights, id: \.id) { flight in
                     withAnimation {
                         HStack {
-                            Button(flight.title) {
-                                isFlightViewPresented.toggle()
-                            }
-                            .fullScreenCover(isPresented: $isFlightViewPresented) {
-                                FlightView(flight: flight,
-                                           settingsConfig: $settingsConfig,
-                                           panelData: InstrumentPanelData.emptyPanel(),
-                                           isFlightViewPresented: $isFlightViewPresented)
+                            Button {
+                                selectedFlight = flight
+                                isFlightViewPresented = true
+                            } label: {
+                                Text(flight.title)
+                                    .font(.title)
+                                    .foregroundStyle(.primary)
                             }
                         }
                     }
@@ -72,7 +76,6 @@ struct ContentView: View {
                     } label: {
                         Label("Settings", systemImage: "gear")
                     }
-
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     EditButton()
@@ -89,20 +92,21 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Flights")
-        } detail: {
-            if selectedFlight != nil {
-                FlightView(flight: selectedFlight!,
-                           settingsConfig: $settingsConfig,
-                           panelData: InstrumentPanelData.init(currentETA: Measurement(value: 0.0, unit: UnitDuration.seconds),
-                                                               ETADelta: Measurement(value: 0.0, unit: UnitDuration.seconds),
-                                                               course: Measurement(value: 0.0, unit: UnitAngle.degrees),
-                                                               currentTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
-                                                               targetTrueAirSpeed: Measurement(value: 0.0, unit: UnitSpeed.metersPerSecond),
-                                                               distanceToNext: Measurement(value: 0.0, unit: UnitLength.meters),
-                                                               distanceToFinal: Measurement(value: 0.0, unit: UnitLength.meters)),
-                isFlightViewPresented: $isFlightViewPresented)
-            } else {
-                Text("No Flight Selected").fontWeight(.bold)
+            .fullScreenCover(isPresented: $isFlightViewPresented) {
+                if let flight = selectedFlight {
+                    ZStack {
+                        flightContentView(for: flight)
+                        SlidingSheetView() {
+                                instrumentPanelView()
+                        }.ignoresSafeArea(edges: .all)
+                    }
+                } else {
+                    // Safety: dismiss if no selection
+                    Color.clear.onAppear { isFlightViewPresented = false }
+                }
+            }
+            .onDisappear() {
+                selectedFlight = nil
             }
         }
         .accessibilityIdentifier("ContentViewRoot")
@@ -118,10 +122,22 @@ struct ContentView: View {
             }
         }
     }
-}
+    
+    @ViewBuilder
+    private func flightContentView(for flight: Flight) -> some View {
+        FlightView(
+            flight: flight,
+            settingsConfig: $settingsConfig,
+            isFlightViewPresented: $isFlightViewPresented
+        )
+    }
 
-#Preview {
-    ContentView()
-        .modelContainer(for: Flight.self, inMemory: true)
+    @ViewBuilder
+    private func instrumentPanelView() -> some View {
+        InstrumentPanel(
+            settingsConfig: $settingsConfig,
+            isFlightViewPresented: $isFlightViewPresented,
+            flight: $selectedFlight
+        )
+    }
 }
-

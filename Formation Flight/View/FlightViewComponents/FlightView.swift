@@ -10,21 +10,17 @@ import MapKit
 
 struct FlightView: View {
     @Bindable var flight: Flight
-    @Bindable var locationProvider = LocationProvider()
+    var locationProvider = LocationProvider()
     @Binding var settingsConfig: SettingsEditorConfig
-    @Bindable var panelData: InstrumentPanelData
     @Binding var isFlightViewPresented: Bool
     @State private var currentLocation: CLLocationCoordinate2D?
     
     private let uiUpdateTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
     
-    lazy var updateData: () -> Void = {}
-
     var body: some View {
         ZStack {
             Map {
                 UserAnnotation()
-                // TODO: Currently flashing as the location moves... Consider just refreshing once you moe to the next point. 
                 MapPolyline(points: flight.mapPoints(currentLocation: currentLocation), contourStyle: .geodesic)
                     .stroke(.blue, lineWidth: 5.0)
 
@@ -34,19 +30,14 @@ struct FlightView: View {
             }
             .mapStyle(.imagery(elevation: .realistic))
             .mapControls {
-                MapScaleView()
-                MapUserLocationButton()
+                VStack {
+                    MapScaleView()
+                    MapCompass()
+                    MapUserLocationButton()
+                }
             }
-            
-            InstrumentPanel(settingsConfig: $settingsConfig,
-                            panelData: panelData,
-                            isFlightViewPresented: $isFlightViewPresented)
-        }
-        .onReceive(uiUpdateTimer) { _ in
-            calculateTheStuff()
         }
         .onAppear {
-            locationProvider.updateDelegate = calculateTheStuff
             locationProvider.startMonitoring()
             UIApplication.shared.isIdleTimerDisabled = true
         }
@@ -55,25 +46,7 @@ struct FlightView: View {
             UIApplication.shared.isIdleTimerDisabled = false
         }
     }
-    
-    // TODO: Clean this up?
-    // The general idea... I think will be to pull the new data, then have some type of copy functino to move the core logic out
-    // of the view file. 
-    func calculateTheStuff() -> Void {
-        guard let location = locationProvider.locationManager.location else { return }
-        
-        let temp = flight.provideInstrumentPanelData(from: location)
-        
-        panelData.currentETA = temp.currentETA
-        panelData.ETADelta = temp.ETADelta
-        panelData.course = temp.course
-        panelData.currentTrueAirspeed = temp.currentTrueAirspeed
-        panelData.targetTrueAirspeed = temp.targetTrueAirspeed
-        panelData.distanceToNext = temp.distanceToNext
-        panelData.distanceToFinal = temp.distanceToFinal
-        
-        currentLocation = location.coordinate
-    }
+
 }
 
 #Preview {
@@ -91,13 +64,5 @@ struct FlightView: View {
     
     return FlightView(flight: flightPreview, 
                       settingsConfig: .constant(config),
-                      panelData: InstrumentPanelData.init(
-                        currentETA: Measurement(value: 10.0, unit: UnitDuration.seconds),
-                        ETADelta: Measurement(value: 10.0, unit: UnitDuration.seconds),
-                        course: Measurement(value: 10.0, unit: UnitAngle.degrees),
-                        currentTrueAirSpeed: Measurement(value: 10.0, unit: UnitSpeed.metersPerSecond),
-                        targetTrueAirSpeed: Measurement(value: 100.0, unit: UnitSpeed.metersPerSecond),
-                        distanceToNext: Measurement(value: 10.0, unit: UnitLength.meters),
-                        distanceToFinal: Measurement(value: 10.0, unit: UnitLength.meters)),
                       isFlightViewPresented: .constant(true))
 }
