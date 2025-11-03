@@ -35,6 +35,20 @@ class MockCLLocationManager: CLLocationManager {
         testDelegate?.locationManagerDidChangeAuthorization?(self)
     }
     
+    override func requestLocation() {
+        // Simulate delivering a single location update to the delegate
+        let location = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            altitude: 0,
+            horizontalAccuracy: 5,
+            verticalAccuracy: 5,
+            course: -1,
+            speed: -1,
+            timestamp: Date()
+        )
+        testDelegate?.locationManager?(self, didUpdateLocations: [location])
+    }
+    
     override func startUpdatingLocation() {
         didStartUpdatingLocation = true
     }
@@ -63,15 +77,15 @@ class MockCLLocationManager: CLLocationManager {
 final class LocationProvider_Test: XCTestCase {
     func testInitialState() {
         let provider = LocationProvider()
-        XCTAssertEqual(provider.speed, -1)
-        XCTAssertEqual(provider.altitude, -1)
-        XCTAssertEqual(provider.course, -1)
+        XCTAssertEqual(provider.speed.value, -1)
+        XCTAssertEqual(provider.altitude.value, -1)
+        XCTAssertEqual(provider.course.value, -1)
         XCTAssertNil(provider.authroizationStatus)
     }
     
     func testAuthorizationFlow_NotDeterminedToAuthorizedWhenInUse() {
         let mockManager = MockCLLocationManager()
-        let provider = LocationProvider(locationManager: mockManager)
+        let provider = LocationProvider(clManager: mockManager)
         mockManager.testDelegate = provider
         
         mockManager.simulateAuthorization(.notDetermined)
@@ -83,7 +97,7 @@ final class LocationProvider_Test: XCTestCase {
     
     func testStartAndStopMonitoring() {
         let mockManager = MockCLLocationManager()
-        let provider = LocationProvider(locationManager: mockManager)
+        let provider = LocationProvider(clManager: mockManager)
         mockManager.testDelegate = provider
         
         provider.startMonitoring()
@@ -97,7 +111,7 @@ final class LocationProvider_Test: XCTestCase {
     
     func testDidUpdateLocationsUpdatesMeasurementsAndCallsDelegate() {
         let mockManager = MockCLLocationManager()
-        let provider = LocationProvider(locationManager: mockManager)
+        let provider = LocationProvider(clManager: mockManager)
         mockManager.testDelegate = provider
         
         var updateCount = 0
@@ -114,15 +128,15 @@ final class LocationProvider_Test: XCTestCase {
         )
         mockManager.simulateLocations([location])
         
-        XCTAssertEqual(provider.speed, 67)
-        XCTAssertEqual(provider.altitude, 123)
-        XCTAssertEqual(provider.course, 45)
+        XCTAssertEqual(provider.speed.value, 67)
+        XCTAssertEqual(provider.altitude.value, 123)
+        XCTAssertEqual(provider.course.value, 45)
         XCTAssertEqual(updateCount, 1)
     }
     
     func testDidFailWithErrorDoesNotCrash() {
         let mockManager = MockCLLocationManager()
-        let provider = LocationProvider(locationManager: mockManager)
+        let provider = LocationProvider(clManager: mockManager)
         mockManager.testDelegate = provider
         
         let error = NSError(domain: "test", code: 1, userInfo: nil)

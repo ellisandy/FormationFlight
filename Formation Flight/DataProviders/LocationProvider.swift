@@ -20,6 +20,7 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject {
     init(clManager: CLLocationManager = CLLocationManager()) {
 
         super.init()
+        self.locationManager = clManager
         self.locationManager.delegate = self
     }
     
