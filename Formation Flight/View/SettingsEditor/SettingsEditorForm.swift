@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsEditorForm: View {
     @Binding var settingsEditorConfig: SettingsEditorConfig
+    @State private var editMode: EditMode = .active
     
     var body: some View {
         
@@ -43,7 +44,23 @@ struct SettingsEditorForm: View {
                     .keyboardType(.numberPad)
             }
             
+            Section("Instruments") {
+                if settingsEditorConfig.instrumentSettings.isEmpty {
+                    Text("No instruments available")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach($settingsEditorConfig.instrumentSettings) { $setting in
+                        Toggle(isOn: $setting.isEnabled) {
+                            Text(setting.type.rawValue)
+                        }
+                    }
+                    .onMove { indices, newOffset in
+                        settingsEditorConfig.instrumentSettings.move(fromOffsets: indices, toOffset: newOffset)
+                    }
+                }
+            }
         }
+        .environment(\.editMode, $editMode)
         
     }
     let windDirectionFormatter: NumberFormatter = {
@@ -58,3 +75,4 @@ struct SettingsEditorForm: View {
 #Preview {
     SettingsEditorForm(settingsEditorConfig: .constant(SettingsEditorConfig.init(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 10, redTolerance: 20, minSpeed: 0, maxSpeed: 0)))
 }
+

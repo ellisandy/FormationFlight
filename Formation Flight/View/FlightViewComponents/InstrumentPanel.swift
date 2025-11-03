@@ -7,6 +7,37 @@
 
 import SwiftUI
 
+// MARK: - Data-driven instruments support
+struct InstrumentSpec: Identifiable {
+    var id: String { String(describing: type) }
+    let type: InFlightInfo
+    let status: InfoStatus
+    let value: Binding<Measurement<Dimension>?>
+}
+
+struct CenteredInstrumentRow: View {
+    let specs: [InstrumentSpec]
+    @Binding var settingsConfig: SettingsEditorConfig
+
+    var body: some View {
+        HStack {
+            Spacer()
+            ForEach(Array(specs.enumerated()), id: \.element.id) { index, spec in
+                InstrumentComponent(
+                    infoType: spec.type,
+                    infoValue: spec.value,
+                    infoStaus: spec.status,
+                    settingsConfig: $settingsConfig
+                )
+                if index < specs.count - 1 {
+                    Spacer()
+                }
+            }
+            Spacer()
+        }
+    }
+}
+
 struct InstrumentPanel: View {
     @Binding var settingsConfig: SettingsEditorConfig
     @State var panelData: InstrumentPanelData = InstrumentPanelData.emptyPanel()
@@ -16,45 +47,33 @@ struct InstrumentPanel: View {
     private let locationProvider = LocationProvider()
     private let uiUpdateTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
+    // Order can later be driven from user settings
+    var orderedInstruments: [InstrumentSpec] {
+        settingsConfig.instrumentSettings
+            .filter { $0.isEnabled }
+            .map { setting in
+                switch setting.type {
+                case .tot:
+                    return InstrumentSpec(type: .tot, status: .good, value: $panelData.currentETA)
+                case .totDrift:
+                    return InstrumentSpec(type: .totDrift, status: .good, value: $panelData.ETADelta)
+                case .course:
+                    return InstrumentSpec(type: .course, status: .nutrual, value: $panelData.course)
+                case .currentTAS:
+                    return InstrumentSpec(type: .currentTAS, status: .reallyBad, value: $panelData.currentTrueAirspeed)
+                case .targetTAS:
+                    return InstrumentSpec(type: .targetTAS, status: .nutrual, value: $panelData.targetTrueAirspeed)
+                case .targetDistance:
+                    return InstrumentSpec(type: .targetDistance, status: .nutrual, value: $panelData.distanceToFinal)
+                }
+            }
+    }
     
     var body: some View {
         VStack {
             VStack {
-                HStack {
-                    Spacer()
-                    InstrumentComponent(infoType: .tot,
-                                        infoValue: $panelData.currentETA,
-                                        infoStaus: .good,
-                                        settingsConfig: $settingsConfig)
-                    Spacer()
-                    InstrumentComponent(infoType: .totDrift,
-                                        infoValue: $panelData.ETADelta,
-                                        infoStaus: .good,
-                                        settingsConfig: $settingsConfig)
-                    Spacer()
-                    InstrumentComponent(infoType: .course,
-                                        infoValue: $panelData.course,
-                                        infoStaus: .nutrual,
-                                        settingsConfig: $settingsConfig)
-                    Spacer()
-                }
-                HStack {
-                    Spacer()
-                    InstrumentComponent(infoType: .currentTAS,
-                                        infoValue: $panelData.currentTrueAirspeed,
-                                        infoStaus: .reallyBad,
-                                        settingsConfig: $settingsConfig)
-                    Spacer()
-                    InstrumentComponent(infoType: .targetTAS,
-                                        infoValue: $panelData.targetTrueAirspeed,
-                                        infoStaus: .nutrual,
-                                        settingsConfig: $settingsConfig)
-                    Spacer()
-                    InstrumentComponent(infoType: .targetDistance,
-                                        infoValue: $panelData.distanceToFinal,
-                                        infoStaus: .nutrual,
-                                        settingsConfig: $settingsConfig)
-                    Spacer()
+                ForEach(orderedInstruments.chunked(into: 3), id: \.first!.id) { row in
+                    CenteredInstrumentRow(specs: row, settingsConfig: $settingsConfig)
                 }
                 Button(role: .confirm) {
                     $isFlightViewPresented.wrappedValue = false
@@ -98,25 +117,38 @@ struct InstrumentPanel: View {
         
         guard let temp = flight?.provideInstrumentPanelData(from: location) else { return }
         
-        panelData.currentETA = temp.currentETA
-        panelData.ETADelta = temp.ETADelta
-        panelData.course = temp.course
-        panelData.currentTrueAirspeed = temp.currentTrueAirspeed
-        panelData.targetTrueAirspeed = temp.targetTrueAirspeed
-        panelData.distanceToNext = temp.distanceToNext
-        panelData.distanceToFinal = temp.distanceToFinal        
+        if panelData.currentETA != temp.currentETA { panelData.currentETA = temp.currentETA }
+        if panelData.ETADelta != temp.ETADelta { panelData.ETADelta = temp.ETADelta }
+        if panelData.course != temp.course { panelData.course = temp.course }
+        if panelData.currentTrueAirspeed != temp.currentTrueAirspeed { panelData.currentTrueAirspeed = temp.currentTrueAirspeed }
+        if panelData.targetTrueAirspeed != temp.targetTrueAirspeed { panelData.targetTrueAirspeed = temp.targetTrueAirspeed }
+        if panelData.distanceToNext != temp.distanceToNext { panelData.distanceToNext = temp.distanceToNext }
+        if panelData.distanceToFinal != temp.distanceToFinal { panelData.distanceToFinal = temp.distanceToFinal }
+    }
+}
+
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [] }
+        var chunks: [[Element]] = []
+        var start = 0
+        while start < count {
+            let end = Swift.min(start + size, count)
+            chunks.append(Array(self[start..<end]))
+            start = end
+        }
+        return chunks
     }
 }
 
 #Preview {
-
- InstrumentPanel(settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts,
-                                                                          distanceUnit: .nm,
-                                                                          yellowTolerance: 5,
-                                                                          redTolerance: 10,
-                                                                          minSpeed: 100,
-                                                                          maxSpeed: 160)),
-                           isFlightViewPresented: Binding.constant(true),
-                           flight: .constant(Flight.emptyFlight()))
+    InstrumentPanel(settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts,
+                                                                  distanceUnit: .nm,
+                                                                  yellowTolerance: 5,
+                                                                  redTolerance: 10,
+                                                                  minSpeed: 100,
+                                                                  maxSpeed: 160)),
+                    isFlightViewPresented: Binding.constant(true),
+                    flight: .constant(Flight.emptyFlight()))
 }
 
