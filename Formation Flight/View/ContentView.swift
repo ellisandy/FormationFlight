@@ -16,21 +16,18 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query var flights: [Flight]
     
-    @State private var selectedFlight: Flight?
     @State private var flightEditorConfig = FlightEditorConfig()
     @State private var settingsConfig = SettingsEditorConfig.from(userDefaults: UserDefaults.standard)
     @State private var isFlightViewPresented: Bool = false
-    @State private var currentLocation: CLLocationCoordinate2D?
     
     var body: some View {
         NavigationStack {
-            List(selection: $selectedFlight) {
+            List {
                 ForEach(flights, id: \.id) { flight in
                     withAnimation {
                         HStack {
                             Button {
-                                selectedFlight = flight
-                                isFlightViewPresented = true
+                                flightEditorConfig.presentEditFlight(flight)
                             } label: {
                                 Text(flight.title)
                                     .font(.title)
@@ -46,12 +43,6 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "trash")
                         }
-                        Button {
-                            flightEditorConfig.presentEditFlight(flight)
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                        }
-                        .tint(.orange)
                     }
                 }
                 .onDelete(perform: { indexSet in
@@ -77,9 +68,6 @@ struct ContentView: View {
                         Label("Settings", systemImage: "gear")
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
                 ToolbarItem {
                     Button {
                         withAnimation {
@@ -92,22 +80,6 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Flights")
-            .fullScreenCover(isPresented: $isFlightViewPresented) {
-                if let flight = selectedFlight {
-                    ZStack {
-                        flightContentView(for: flight)
-                        SlidingSheetView() {
-                                instrumentPanelView()
-                        }.ignoresSafeArea(edges: .all)
-                    }
-                } else {
-                    // Safety: dismiss if no selection
-                    Color.clear.onAppear { isFlightViewPresented = false }
-                }
-            }
-            .onDisappear() {
-                selectedFlight = nil
-            }
         }
         .accessibilityIdentifier("ContentViewRoot")
     }
@@ -121,23 +93,5 @@ struct ContentView: View {
                 flightEditorConfig.presentEditFlight(flightEditorConfig.flight)
             }
         }
-    }
-    
-    @ViewBuilder
-    private func flightContentView(for flight: Flight) -> some View {
-        FlightView(
-            flight: flight,
-            settingsConfig: $settingsConfig,
-            isFlightViewPresented: $isFlightViewPresented
-        )
-    }
-
-    @ViewBuilder
-    private func instrumentPanelView() -> some View {
-        InstrumentPanel(
-            settingsConfig: $settingsConfig,
-            isFlightViewPresented: $isFlightViewPresented,
-            flight: $selectedFlight
-        )
     }
 }

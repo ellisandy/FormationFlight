@@ -45,6 +45,10 @@ struct FlightView: View {
             locationProvider.stopMonitoring()
             UIApplication.shared.isIdleTimerDisabled = false
         }
+        .onReceive(uiUpdateTimer) { _ in
+            guard let location = locationProvider.locationManager.location else { return }
+            currentLocation = location.coordinate
+        }
     }
 
 }

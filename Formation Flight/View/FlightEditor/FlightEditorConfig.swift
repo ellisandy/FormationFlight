@@ -14,7 +14,6 @@ struct FlightEditorConfig {
     
     mutating func presentAddFlight() {
         flight = Flight.emptyFlight()
-        
         shouldSaveChanges = false
         isPresented = true
     }

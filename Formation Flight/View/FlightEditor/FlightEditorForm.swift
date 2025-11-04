@@ -12,7 +12,10 @@ import MapKit
 struct FlightEditorForm: View {
     @Binding var config: FlightEditorConfig
     @State var checkPointPopover = false
+    @State var isFlightViewPresented = false
     @State var editingCheckpointIndex: Int? = nil
+    @State private var settingsConfig = SettingsEditorConfig.from(userDefaults: UserDefaults.standard)
+
     
     var body: some View {
         NavigationStack {
@@ -108,11 +111,24 @@ struct FlightEditorForm: View {
                             .accessibilityIdentifier("checkpointSheet")
                         }
                     }
-
                 }
             }
-            .navigationTitle("Edit Flight")
-            .toolbar { EditButton() }
+            Button {
+                // Start Flight
+                isFlightViewPresented.toggle()
+            } label: {
+                Text("Start Flight")
+                    .font(.title)
+                    .buttonStyle(.glassProminent)
+            }
+            .fullScreenCover(isPresented: $isFlightViewPresented) {
+                ZStack {
+                    flightContentView(for: config.flight)
+                    SlidingSheetView() {
+                        instrumentPanelView()
+                    }.ignoresSafeArea(edges: .all)
+                }
+            }
         }
     }
  
@@ -128,6 +144,24 @@ struct FlightEditorForm: View {
         editingCheckpointIndex = nil
     }
 
+    
+    @ViewBuilder
+    private func flightContentView(for flight: Flight) -> some View {
+        FlightView(
+            flight: flight,
+            settingsConfig: $settingsConfig,
+            isFlightViewPresented: $isFlightViewPresented
+        )
+    }
+
+    @ViewBuilder
+    private func instrumentPanelView() -> some View {
+        InstrumentPanel(
+            settingsConfig: $settingsConfig,
+            isFlightViewPresented: $isFlightViewPresented,
+            flight: $config.flight
+        )
+    }
 }
 
 #Preview {

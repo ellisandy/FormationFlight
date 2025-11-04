@@ -42,7 +42,7 @@ struct InstrumentPanel: View {
     @Binding var settingsConfig: SettingsEditorConfig
     @State var panelData: InstrumentPanelData = InstrumentPanelData.emptyPanel()
     @Binding var isFlightViewPresented: Bool
-    @Binding var flight: Flight?
+    @Binding var flight: Flight
     
     private let locationProvider = LocationProvider()
     private let uiUpdateTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -75,19 +75,12 @@ struct InstrumentPanel: View {
     
     // Determines status for ETA drift based on settings thresholds
     private func statusForETADrift(_ delta: Measurement<Dimension>?) -> InfoStatus {
+        // Validate delta and is UnitDuration or return .nutrual
         guard let delta else { return .nutrual }
-        // Interpret ETA delta in minutes; convert if possible
-        // If the unit isn't time, fall back to the raw value magnitude
-        let absValue: Double
-
-        // If the measurement is a duration, convert to minutes; otherwise use magnitude
-        if delta.unit is UnitDuration {
-            // Convert via seconds to normalize, then to minutes
-            let secondsValue = delta.converted(to: UnitDuration.seconds).value
-            absValue = abs(secondsValue) / 60.0
-        } else {
-            absValue = abs(delta.value)
-        }
+        if !(delta.unit is UnitDuration) { return .nutrual }
+        
+        let secondsValue = delta.converted(to: UnitDuration.seconds).value
+        let absValue: Double = abs(secondsValue) / 60.0
 
         let yellow = Double(settingsConfig.yellowTolerance)
         let red = Double(settingsConfig.redTolerance)
@@ -104,7 +97,7 @@ struct InstrumentPanel: View {
                     CenteredInstrumentRow(specs: row, settingsConfig: $settingsConfig)
                 }
                 Button(role: .confirm) {
-                    $isFlightViewPresented.wrappedValue = false
+//                    $isFlightViewPresented.wrappedValue = false
                 } label: {
                     Text("Next Checkpoint")
                         .font(.title)
@@ -112,7 +105,7 @@ struct InstrumentPanel: View {
                 }
                 .buttonStyle(.glassProminent)
                 Button(role: .confirm) {
-                    $isFlightViewPresented.wrappedValue = false
+//                    $isFlightViewPresented.wrappedValue = false
                 } label: {
                     Text("Winds")
                         .font(.title)
@@ -143,7 +136,7 @@ struct InstrumentPanel: View {
         // TODO: Check current location and potentially remove the checkpoint when within a certain area
         guard let location = locationProvider.locationManager.location else { return }
         
-        guard let temp = flight?.provideInstrumentPanelData(from: location) else { return }
+        let temp = flight.provideInstrumentPanelData(from: location)
         
         if panelData.currentETA != temp.currentETA { panelData.currentETA = temp.currentETA }
         if panelData.ETADelta != temp.ETADelta { panelData.ETADelta = temp.ETADelta }
