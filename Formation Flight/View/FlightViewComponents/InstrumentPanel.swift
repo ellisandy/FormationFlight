@@ -61,14 +61,20 @@ struct InstrumentPanel: View {
                         status: statusForETADrift(panelData.ETADelta),
                         value: $panelData.ETADelta
                     )
-                case .course:
-                    return InstrumentSpec(type: .course, status: .nutrual, value: $panelData.course)
+                case .nextBearing:
+                    return InstrumentSpec(type: .nextBearing, status: .nutrual, value: $panelData.bearingNext)
                 case .currentTAS:
                     return InstrumentSpec(type: .currentTAS, status: .reallyBad, value: $panelData.currentTrueAirspeed)
                 case .targetTAS:
                     return InstrumentSpec(type: .targetTAS, status: .nutrual, value: $panelData.targetTrueAirspeed)
-                case .targetDistance:
-                    return InstrumentSpec(type: .targetDistance, status: .nutrual, value: $panelData.distanceToFinal)
+                case .distanceToFinal:
+                    return InstrumentSpec(type: .distanceToFinal, status: .nutrual, value: $panelData.distanceToFinal)
+                case .distanceToNext:
+                    return InstrumentSpec(type: .distanceToNext, status: .nutrual, value: $panelData.distanceToNext)
+                case .finalBearing:
+                    return InstrumentSpec(type: .finalBearing, status: .nutrual, value: $panelData.bearingFinal)
+                case .groundSpeed:
+                    return InstrumentSpec(type: .groundSpeed, status: .nutrual, value: $panelData.groundSpeed)
                 }
             }
     }
@@ -140,7 +146,9 @@ struct InstrumentPanel: View {
         
         if panelData.currentETA != temp.currentETA { panelData.currentETA = temp.currentETA }
         if panelData.ETADelta != temp.ETADelta { panelData.ETADelta = temp.ETADelta }
-        if panelData.course != temp.course { panelData.course = temp.course }
+        if panelData.bearingNext != temp.bearingNext { panelData.bearingNext = temp.bearingNext }
+        if panelData.bearingFinal != temp.bearingFinal { panelData.bearingFinal = temp.bearingFinal }
+        if panelData.groundSpeed != temp.groundSpeed { panelData.groundSpeed = temp.groundSpeed }
         if panelData.currentTrueAirspeed != temp.currentTrueAirspeed { panelData.currentTrueAirspeed = temp.currentTrueAirspeed }
         if panelData.targetTrueAirspeed != temp.targetTrueAirspeed { panelData.targetTrueAirspeed = temp.targetTrueAirspeed }
         if panelData.distanceToNext != temp.distanceToNext { panelData.distanceToNext = temp.distanceToNext }

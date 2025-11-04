@@ -26,25 +26,27 @@ extension CLLocation {
         return Measurement(value: airspeed, unit: UnitSpeed.metersPerSecond)
     }
     
-    func getCourse(to destination: CLLocation) -> Measurement<UnitAngle> {
+    func getBearing(to destination: CLLocation) -> Measurement<UnitAngle>? {
+        // Return nil if coordinates are identical to avoid undefined bearing
+        guard self.coordinate.latitude != destination.coordinate.latitude ||
+              self.coordinate.longitude != destination.coordinate.longitude else { return nil }
+
         let lat1 = self.coordinate.latitude.degreesToRadians
         let lon1 = self.coordinate.longitude.degreesToRadians
-        
+
         let lat2 = destination.coordinate.latitude.degreesToRadians
         let lon2 = destination.coordinate.longitude.degreesToRadians
-        
+
         let dLon = lon2 - lon1
-        
+
         let y = sin(dLon) * cos(lat2)
         let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
         let radiansBearing = atan2(y, x)
-        
+
         var courseDegrees = Measurement(value: radiansBearing, unit: UnitAngle.radians).converted(to: .degrees).value
-        
         if courseDegrees < 0 {
             courseDegrees = 360.0 + courseDegrees
         }
-        
         return Measurement(value: courseDegrees, unit: UnitAngle.degrees)
     }
 
@@ -59,9 +61,9 @@ extension CLLocation {
         var previousLocation = self
         return destinations.map { location in
             let distanceToNext = previousLocation.distance(from: location)
-            let course = previousLocation.getCourse(to: location)
+            let bearing = previousLocation.getBearing(to: location)
             
-            let groundSpeed = calculateGroundSpeed(tas: tas, winds: winds, course: course)
+            let groundSpeed = calculateGroundSpeed(tas: tas, winds: winds, bearing: bearing!)
             previousLocation = location
             
             return distanceToNext / groundSpeed
@@ -143,13 +145,13 @@ extension CLLocation {
     
     fileprivate func calculateGroundSpeed(tas: Measurement<UnitSpeed>,
                                           winds: Winds,
-                                          course: Measurement<UnitAngle>) -> Double {
+                                          bearing: Measurement<UnitAngle>) -> Double {
         let tasMetersPerSecond: Double = tas.converted(to: .metersPerSecond).value
         let windVelocityMetersPerSecond: Double = winds.velocity.converted(to: .metersPerSecond).value
-        let bearingNextRadians: Double = course.converted(to: .radians).value
+        let bearingNextRadians: Double = bearing.converted(to: .radians).value
         let windDirectionRadian: Double = winds.direction.converted(to: .radians).value
         
-        let wca = calculateWindCorrectionAngle(tas: tas, winds: winds, course: course)
+        let wca = calculateWindCorrectionAngle(tas: tas, winds: winds, course: bearing)
         
         return sqrt(pow(tasMetersPerSecond, 2) +
                     pow(windVelocityMetersPerSecond, 2) -

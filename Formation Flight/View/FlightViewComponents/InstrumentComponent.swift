@@ -31,6 +31,7 @@ struct InstrumentComponent: View {
     
     // TODO: Extract this from the View file.
     func doubleToText() -> String? {
+        
         // Shortcut to Nil
         guard infoValue != nil else { return nil }
         guard infoValue!.value.isFinite else { return nil }
@@ -102,13 +103,16 @@ struct TimeFormatter: FormatStyle {
 }
 
 enum InFlightInfo: String, CaseIterable {
-    case tot = "ToT"
-    case totDrift = "Drift"
-    case targetTAS = "Target TAS"
-    case targetDistance =  "Distance"
-    case course = "Heading"
-    case currentTAS = "Current TAS"
-    
+    case tot = "ToT" // Connect to Tot Tolerance
+    case totDrift = "Drift" // Connect to Tot Tolerance
+    case targetTAS = "Target TAS" // Connect to Speed
+    case distanceToFinal =  "Direct Final"
+    case distanceToNext = "Distance Next"
+    case nextBearing = "Next Bearing"
+    case finalBearing = "Final Bearing"
+    case currentTAS = "Current TAS" // Connect to Speed
+//    case flightTrack = "Track" // TODO: Implement Historical Track
+    case groundSpeed = "Ground Speed"
 }
 
 enum InfoStatus {
@@ -157,11 +161,14 @@ extension InstrumentComponent {
     let panelData = InstrumentPanelData(
         currentETA: Measurement(value: 600.0, unit: UnitDuration.seconds),
         ETADelta: Measurement(value: 600.0, unit: UnitDuration.seconds),
-        course: Measurement(value: 180, unit: UnitAngle.degrees),
+        bearingNext: Measurement(value: 180, unit: UnitAngle.degrees),
         currentTrueAirSpeed: Measurement(value: 100, unit: UnitSpeed.metersPerSecond),
         targetTrueAirSpeed: Measurement(value: 100, unit: UnitSpeed.metersPerSecond),
         distanceToNext: Measurement(value: 10, unit: UnitLength.meters),
-        distanceToFinal: Measurement(value: 10, unit: UnitLength.meters))
+        distanceToFinal: Measurement(value: 10, unit: UnitLength.meters),
+        groundSpeed: Measurement(value: 100, unit: UnitSpeed.metersPerSecond),
+        bearingFinal: Measurement(value: 180, unit: UnitAngle.degrees)
+    )
     
     InstrumentPanel(
         settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),

@@ -16,12 +16,14 @@ typealias Meters = Double
 @Observable
 class InstrumentPanelData {
     var currentETA: Measurement<Dimension>?
+    var bearingNext: Measurement<Dimension>?
+    var bearingFinal: Measurement<Dimension>?
     var ETADelta: Measurement<Dimension>?
-    var course: Measurement<Dimension>?
     var currentTrueAirspeed: Measurement<Dimension>?
     var targetTrueAirspeed: Measurement<Dimension>?
     var distanceToNext: Measurement<Dimension>?
     var distanceToFinal: Measurement<Dimension>?
+    var groundSpeed: Measurement<Dimension>?
 
     
     /// Initializer for Data Structure which cosntains the telemetry for the Instrument Panel
@@ -34,28 +36,36 @@ class InstrumentPanelData {
     ///   - distanceToNext: Meters to the Next Check Point
     init(currentETA: Measurement<Dimension>?,
          ETADelta: Measurement<Dimension>?,
-         course: Measurement<Dimension>?,
+         bearingNext: Measurement<Dimension>?,
          currentTrueAirSpeed: Measurement<Dimension>?,
          targetTrueAirSpeed: Measurement<Dimension>?,
          distanceToNext: Measurement<Dimension>?,
-         distanceToFinal: Measurement<Dimension>?) {
+         distanceToFinal: Measurement<Dimension>?,
+         groundSpeed: Measurement<Dimension>?,
+         bearingFinal: Measurement<Dimension>?
+    ) {
         self.currentETA = currentETA
         self.ETADelta = ETADelta
-        self.course = course
+        self.bearingNext = bearingNext
         self.currentTrueAirspeed = currentTrueAirSpeed
         self.targetTrueAirspeed = targetTrueAirSpeed
         self.distanceToNext = distanceToNext
         self.distanceToFinal = distanceToFinal
+        self.groundSpeed = groundSpeed
+        self.bearingFinal = bearingFinal
     }
     
     static func emptyPanel() -> InstrumentPanelData {
         return InstrumentPanelData(currentETA: nil,
                                    ETADelta: nil,
-                                   course: nil,
+                                   bearingNext: nil,
                                    currentTrueAirSpeed: nil,
                                    targetTrueAirSpeed: nil,
                                    distanceToNext: nil,
-                                   distanceToFinal: nil)
+                                   distanceToFinal: nil,
+                                   groundSpeed: nil,
+                                   bearingFinal: nil
+        )
     }
 }
 

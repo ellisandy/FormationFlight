@@ -72,18 +72,19 @@ extension Flight {
         }
     }
     
-    func getCLLocation() -> [CLLocation] {
+    func getCLLocations() -> [CLLocation] {
         return self.checkPoints.map { cp in
             CLLocation(latitude: cp.latitude, longitude: cp.longitude)
         }
     }
     
     func getCLCoordinate2D(userLocation startPoint: CLLocationCoordinate2D?) -> [CLLocationCoordinate2D] {
-        if startPoint == nil { return getCLCoordinate2D() }
+        guard let startPointSafe = startPoint else { return getCLCoordinate2D() }
         
         var locations = getCLCoordinate2D()
+        
         //SAFE
-        locations.insert(startPoint!, at: 0)
+        locations.insert(startPointSafe, at: 0)
         
         return locations
     }
@@ -94,28 +95,32 @@ extension Flight {
     // to CLLocation or Checkpoints directly.
     func provideInstrumentPanelData(from currentLocation: CLLocation) -> InstrumentPanelData {
         let tot = Date.now.secondsUntil(time: missionDate).secondsMeasurement
-        let distanceFinal = currentLocation.distance(from: getCLLocation())
-        let distanceNext: Measurement<UnitLength>? = getCLLocation().first?.distance(from: currentLocation)
+        let distanceFinal: Measurement<UnitLength>? = currentLocation.distance(from: getCLLocations())?.metersMeasurement
+        let distanceNext: Measurement<UnitLength>? = getCLLocations().first?.distance(from: currentLocation)
         
         var etaDelta: Double? = nil
-        if let actualTOT = currentLocation.getTime(to: getCLLocation(), with: expectedWinds) {
+        if let actualTOT = currentLocation.getTime(to: getCLLocations(), with: expectedWinds) {
             etaDelta = actualTOT.converted(to: .seconds).value - tot.converted(to: .seconds).value
         }
         
-        let targetAirspeed: Measurement<UnitSpeed>? = currentLocation.getTargetAirspeed(tot: tot, destinations: getCLLocation(), winds: expectedWinds)
+        let targetAirspeed: Measurement<UnitSpeed>? = currentLocation.getTargetAirspeed(tot: tot, destinations: getCLLocations(), winds: expectedWinds)
                 
         let currentTrueAirSpeed = currentLocation.getTrueAirSpeed(with: expectedWinds)
-        let course = currentLocation.getCourse(to: getCLLocation().first!)
-        
-        let heading = currentLocation.getHeading(airspeed: currentTrueAirSpeed, winds: expectedWinds, course: course)
+        let bearingNext = currentLocation.getBearing(to: getCLLocations().first!)
+        let bearingFinal = currentLocation.getBearing(to: getCLLocations().last!)
+        let groundSpeed: Measurement<UnitSpeed>? = Measurement.init(value: currentLocation.speed, unit: .metersPerSecond)
+
+        // TODO: Add Track
         
         return InstrumentPanelData(currentETA: tot.erasedType,
                                    ETADelta: etaDelta?.secondsMeasurement.erasedType,
-                                   course: heading?.erasedType,
+                                   bearingNext: bearingNext?.erasedType,
                                    currentTrueAirSpeed: currentTrueAirSpeed?.erasedType,
                                    targetTrueAirSpeed: targetAirspeed?.erasedType,
                                    distanceToNext: distanceNext?.erasedType,
-                                   distanceToFinal: distanceFinal?.metersMeasurement.erasedType)
+                                   distanceToFinal: distanceFinal?.erasedType,
+                                   groundSpeed: groundSpeed?.erasedType,
+                                   bearingFinal: bearingFinal?.erasedType)
     }
 }
 

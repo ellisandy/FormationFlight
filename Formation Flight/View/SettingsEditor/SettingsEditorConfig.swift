@@ -59,10 +59,13 @@ struct SettingsEditorConfig {
     var instrumentSettings: [InstrumentSetting] = [
         InstrumentSetting(type: .tot, isEnabled: true),
         InstrumentSetting(type: .totDrift, isEnabled: true),
-        InstrumentSetting(type: .course, isEnabled: true),
+        InstrumentSetting(type: .finalBearing, isEnabled: true),
+        InstrumentSetting(type: .nextBearing, isEnabled: true),
+        InstrumentSetting(type: .groundSpeed, isEnabled: true),
         InstrumentSetting(type: .currentTAS, isEnabled: true),
         InstrumentSetting(type: .targetTAS, isEnabled: true),
-        InstrumentSetting(type: .targetDistance, isEnabled: true)
+        InstrumentSetting(type: .distanceToFinal, isEnabled: true),
+        InstrumentSetting(type: .distanceToNext, isEnabled: true)
     ]
         
     private static let speedUnitUDK = "speedUnit"
