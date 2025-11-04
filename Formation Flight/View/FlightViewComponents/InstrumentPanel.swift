@@ -56,7 +56,11 @@ struct InstrumentPanel: View {
                 case .tot:
                     return InstrumentSpec(type: .tot, status: .good, value: $panelData.currentETA)
                 case .totDrift:
-                    return InstrumentSpec(type: .totDrift, status: .good, value: $panelData.ETADelta)
+                    return InstrumentSpec(
+                        type: .totDrift,
+                        status: statusForETADrift(panelData.ETADelta),
+                        value: $panelData.ETADelta
+                    )
                 case .course:
                     return InstrumentSpec(type: .course, status: .nutrual, value: $panelData.course)
                 case .currentTAS:
@@ -67,6 +71,30 @@ struct InstrumentPanel: View {
                     return InstrumentSpec(type: .targetDistance, status: .nutrual, value: $panelData.distanceToFinal)
                 }
             }
+    }
+    
+    // Determines status for ETA drift based on settings thresholds
+    private func statusForETADrift(_ delta: Measurement<Dimension>?) -> InfoStatus {
+        guard let delta else { return .nutrual }
+        // Interpret ETA delta in minutes; convert if possible
+        // If the unit isn't time, fall back to the raw value magnitude
+        let absValue: Double
+
+        // If the measurement is a duration, convert to minutes; otherwise use magnitude
+        if delta.unit is UnitDuration {
+            // Convert via seconds to normalize, then to minutes
+            let secondsValue = delta.converted(to: UnitDuration.seconds).value
+            absValue = abs(secondsValue) / 60.0
+        } else {
+            absValue = abs(delta.value)
+        }
+
+        let yellow = Double(settingsConfig.yellowTolerance)
+        let red = Double(settingsConfig.redTolerance)
+
+        if absValue < yellow { return .good }
+        if absValue < red { return .bad }
+        return .reallyBad
     }
     
     var body: some View {
