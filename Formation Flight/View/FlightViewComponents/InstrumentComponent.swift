@@ -171,7 +171,7 @@ extension InstrumentComponent {
     )
     
     InstrumentPanel(
-        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160)),
+        settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160, proximityToNextPoint: 0.5)),
         panelData: panelData,
         isFlightViewPresented: .constant(true), flight: .constant(Flight.emptyFlight()))
 }

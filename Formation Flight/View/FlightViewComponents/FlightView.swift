@@ -24,7 +24,7 @@ struct FlightView: View {
                 MapPolyline(points: flight.mapPoints(currentLocation: currentLocation), contourStyle: .geodesic)
                     .stroke(.blue, lineWidth: 5.0)
 
-                ForEach(flight.checkPoints) { cp in
+                ForEach(flight.inflightCheckPoints) { cp in
                     Marker(cp.name, coordinate: cp.getCLCoordinate())
                 }
             }

@@ -55,6 +55,7 @@ struct SettingsEditorConfig {
     var redTolerance: Int
     var minSpeed: Int
     var maxSpeed: Int
+    var proximityToNextPoint: Double
     
     var instrumentSettings: [InstrumentSetting] = [
         InstrumentSetting(type: .tot, isEnabled: true),
@@ -75,6 +76,7 @@ struct SettingsEditorConfig {
     private static let minSpeedUDK = "minSpeed"
     private static let maxSpeedUDK = "maxSpeed"
     private static let instrumentSettingsUDK = "instrumentSettings"
+    private static let proximityToNextPointUDK = "proximityToNextPoint"
 
 
     enum SpeedUnit: String, CaseIterable, Identifiable {
@@ -131,6 +133,7 @@ extension SettingsEditorConfig {
         config.redTolerance = userDefaults.integer(forKey: redToleranceUDK)
         config.minSpeed = userDefaults.integer(forKey: minSpeedUDK)
         config.maxSpeed = userDefaults.integer(forKey: maxSpeedUDK)
+        config.proximityToNextPoint = userDefaults.double(forKey: proximityToNextPointUDK)
         
         if let data = userDefaults.data(forKey: instrumentSettingsUDK),
            let decoded = try? JSONDecoder().decode([InstrumentSetting].self, from: data),
@@ -143,7 +146,7 @@ extension SettingsEditorConfig {
     
     // Mostly for testing, but may be useful for initial bootstrapping
     static func emptyConfig() -> SettingsEditorConfig {
-        return SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 0, redTolerance: 0, minSpeed: 0, maxSpeed: 0)
+        return SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 0, redTolerance: 0, minSpeed: 0, maxSpeed: 0, proximityToNextPoint: 0.5)
     }
     
     func save(userDefaults: UserDefaults) {
@@ -153,6 +156,7 @@ extension SettingsEditorConfig {
         userDefaults.set(redTolerance, forKey: SettingsEditorConfig.redToleranceUDK)
         userDefaults.set(minSpeed, forKey: SettingsEditorConfig.minSpeedUDK)
         userDefaults.set(maxSpeed, forKey: SettingsEditorConfig.maxSpeedUDK)
+        userDefaults.set(proximityToNextPoint, forKey: SettingsEditorConfig.proximityToNextPointUDK)
         
         if let data = try? JSONEncoder().encode(instrumentSettings) {
             userDefaults.set(data, forKey: SettingsEditorConfig.instrumentSettingsUDK)
@@ -172,7 +176,6 @@ extension SettingsEditorConfig {
         if let candidateSpeedUnit = SpeedUnit(rawValue: userDefaults.string(forKey: SettingsEditorConfig.speedUnitUDK) ?? SpeedUnit.kts.rawValue) {
             speedUnit = candidateSpeedUnit
         }
-        
         
         if let candidateDistanceUnit = DistanceUnit(rawValue: userDefaults.string(forKey: SettingsEditorConfig.distanceUnitUDK) ?? DistanceUnit.nm.rawValue) {
             distanceUnit = candidateDistanceUnit

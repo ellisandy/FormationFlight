@@ -109,6 +109,8 @@ struct FlightEditorForm: View {
                 }
             }
             Button {
+                config.flight.inflightCheckPoints = config.flight.checkPoints
+                
                 // Start Flight
                 isFlightViewPresented.toggle()
             } label: {

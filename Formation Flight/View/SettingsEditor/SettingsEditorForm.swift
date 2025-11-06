@@ -44,6 +44,18 @@ struct SettingsEditorForm: View {
                     .keyboardType(.numberPad)
             }
             
+            Section {
+                TextField("Distance in \(settingsEditorConfig.distanceUnit.rawValue)",
+                          value: $settingsEditorConfig.proximityToNextPoint,
+                          formatter: doubleFormatter)
+                    .keyboardType(.asciiCapableNumberPad)
+            } header: {
+                Text("Proximity to Next Point")
+            } footer: {
+                Text("The flight will move on to the next waypoint when it is within \(String(format: "%.2f", arguments: [settingsEditorConfig.proximityToNextPoint])) \(settingsEditorConfig.distanceUnit.rawValue)")
+            }
+            
+            
             Section("Instruments") {
                 if settingsEditorConfig.instrumentSettings.isEmpty {
                     Text("No instruments available")
@@ -70,9 +82,17 @@ struct SettingsEditorForm: View {
         formatter.zeroSymbol = ""
         return formatter
     }()
+    
+    let doubleFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = .init(0.1)
+        formatter.maximumFractionDigits = 100
+        formatter.zeroSymbol = ""
+        return formatter
+    }()
 }
 
 #Preview {
-    SettingsEditorForm(settingsEditorConfig: .constant(SettingsEditorConfig.init(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 10, redTolerance: 20, minSpeed: 0, maxSpeed: 0)))
+    SettingsEditorForm(settingsEditorConfig: .constant(SettingsEditorConfig.init(speedUnit: .kph, distanceUnit: .nm, yellowTolerance: 10, redTolerance: 20, minSpeed: 0, maxSpeed: 0, proximityToNextPoint: 0.5)))
 }
 

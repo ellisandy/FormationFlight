@@ -107,7 +107,9 @@ struct InstrumentPanel: View {
                     CenteredInstrumentRow(specs: row, settingsConfig: $settingsConfig)
                 }
                 Button(role: .confirm) {
-//                    $isFlightViewPresented.wrappedValue = false
+                    if flight.inflightCheckPoints.count > 1 {
+                        flight.inflightCheckPoints.removeFirst()
+                    }
                 } label: {
                     Text("Next Checkpoint")
                         .font(.title)
@@ -175,6 +177,15 @@ struct InstrumentPanel: View {
         // TODO: Check current location and potentially remove the checkpoint when within a certain area
         guard let location = locationProvider.locationManager.location else { return }
         
+        // Calculate how close to the next point
+        let distanceToNextInMeters = location.distance(from: flight.inflightCheckPoints.first!.getCLLocation())
+        let proximityToAutoNext: Measurement<UnitLength> = Measurement(value: settingsConfig.proximityToNextPoint, unit: settingsConfig.getDistanceUnits())
+        
+        
+        if distanceToNextInMeters < proximityToAutoNext.converted(to: .meters).value, flight.inflightCheckPoints.count > 1 {
+            flight.inflightCheckPoints.removeFirst()
+        }
+            
         let temp = flight.provideInstrumentPanelData(from: location)
         
         if panelData.currentETA != temp.currentETA { panelData.currentETA = temp.currentETA }
@@ -205,11 +216,12 @@ extension Array {
 
 #Preview {
     InstrumentPanel(settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts,
-                                                                  distanceUnit: .nm,
-                                                                  yellowTolerance: 5,
-                                                                  redTolerance: 10,
-                                                                  minSpeed: 100,
-                                                                  maxSpeed: 160)),
+                                                                   distanceUnit: .nm,
+                                                                   yellowTolerance: 5,
+                                                                   redTolerance: 10,
+                                                                   minSpeed: 100,
+                                                                   maxSpeed: 160,
+                                                                   proximityToNextPoint: 0.5)),
                     isFlightViewPresented: Binding.constant(true),
                     flight: .constant(Flight.emptyFlight()))
 }

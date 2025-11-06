@@ -17,6 +17,7 @@ final class Flight: Identifiable, Hashable {
     var missionDate: Date = Date.now
     var expectedWinds: Winds = Winds(velocity: 0, direction: 0)
     var checkPoints: [CheckPoint] = []
+    var inflightCheckPoints: [CheckPoint] = []
     
 
     
@@ -42,7 +43,7 @@ extension Flight {
 
 extension Flight {
     func mapPoints(currentLocation: CLLocationCoordinate2D?) -> [MKMapPoint] {
-        var locations = checkPoints.map {
+        var locations = inflightCheckPoints.map {
             MKMapPoint($0.getCLCoordinate())
         }
         if currentLocation != nil {
@@ -67,13 +68,13 @@ extension Flight {
     }
     
     func getCLCoordinate2D() -> [CLLocationCoordinate2D] {
-        return self.checkPoints.map { checkpoint in
+        return self.inflightCheckPoints.map { checkpoint in
             CLLocationCoordinate2D(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
         }
     }
     
     func getCLLocations() -> [CLLocation] {
-        return self.checkPoints.map { cp in
+        return self.inflightCheckPoints.map { cp in
             CLLocation(latitude: cp.latitude, longitude: cp.longitude)
         }
     }
