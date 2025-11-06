@@ -27,12 +27,12 @@ struct Winds: Codable, Hashable {
     }
 
     var windVelocityAsText: String {
-        get { velocity.value == 0 ? "" : "\(velocity.value)" }
+        get { velocity.value == 0 ? "" : String(format: "%.0f", velocity.value) }
         set { velocity.value = Double(newValue) ?? 0 }
     }
     
     var windDirectionAsText: String {
-        get { direction.value == 0 ? "" : "\(direction.value)"}
+        get { direction.value == 0 ? "" : String(format: "%.0f", direction.value)}
         set { direction.value = Double(newValue) ?? 0 }
     }
     
@@ -59,3 +59,4 @@ struct Winds: Codable, Hashable {
         return (0, windEffectiveVelocity)
     }
 }
+

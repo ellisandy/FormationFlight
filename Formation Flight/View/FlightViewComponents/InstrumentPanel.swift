@@ -43,6 +43,10 @@ struct InstrumentPanel: View {
     @State var panelData: InstrumentPanelData = InstrumentPanelData.emptyPanel()
     @Binding var isFlightViewPresented: Bool
     @Binding var flight: Flight
+    @State var showWindAlert = false
+    @State var tempWindSpeed: String = ""
+    @State var tempWindDirection: String = ""
+
     
     private let locationProvider = LocationProvider()
     private let uiUpdateTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -111,13 +115,42 @@ struct InstrumentPanel: View {
                 }
                 .buttonStyle(.glassProminent)
                 Button(role: .confirm) {
-//                    $isFlightViewPresented.wrappedValue = false
+                    showWindAlert.toggle()
                 } label: {
                     Text("Winds")
                         .font(.title)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
+                .alert("Winds", isPresented: $showWindAlert) {
+                    TextField("Wind Direction", text: $tempWindDirection)
+                        .keyboardType(.numberPad)
+                    TextField("Wind Velocity", text: $tempWindSpeed)
+                        .keyboardType(.numberPad)
+                    Button("Update") {
+                        if $tempWindSpeed.wrappedValue.isEmpty == false {
+                            if let windSpeed = Double($tempWindSpeed.wrappedValue) {
+                                flight.expectedWinds.velocity = Measurement(value: windSpeed, unit: settingsConfig.getUnitSpeed())
+                            }
+                        }
+                        
+                        if $tempWindDirection.wrappedValue.isEmpty == false {
+                            if let windDirection = Double($tempWindDirection.wrappedValue) {
+                                flight.expectedWinds.direction = Measurement(value: windDirection, unit: .degrees)
+
+                            }
+                        }
+                        
+                        showWindAlert.toggle()
+                    }
+                    Button("Cancel") {
+                        tempWindSpeed = ""
+                        tempWindDirection = ""
+                        showWindAlert.toggle()
+                    }
+                } message: {
+                    Text("Update Winds")
+                }
                 Button(role: .destructive) {
                     $isFlightViewPresented.wrappedValue = false
                 } label: {

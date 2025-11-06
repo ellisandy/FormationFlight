@@ -28,25 +28,20 @@ struct FlightEditorForm: View {
                 }
                 Section("Wind Conditions") {
                     HStack {
-                        Text("Direction:").fontWeight(.thin)
-
-                        TextField(value: $config.flight.expectedWinds.directionAsDegrees,
-                                  formatter: windInputFormatter,
-                                  prompt: Text("Wind Direction")) {
-                            Text("Wind Direction")
-                        }
+                        Text("Direction:")
+                        TextField("Wind Direction", text: $config.flight.expectedWinds.windDirectionAsText)
                         .keyboardType(.numberPad)
                         .accessibilityIdentifier("windDirectionField")
                     }
 
                     HStack {
-                        Text("Velocity:  ").fontWeight(.thin)
-
-                        TextField("Wind Velocity",
-                                  value: $config.flight.expectedWinds.velocityAsKnots,
-                                  formatter: windInputFormatter)
+                        Text("Velocity:  ")
+                        TextField("Wind Velocity", text: $config.flight.expectedWinds.windVelocityAsText)
                         .keyboardType(.numberPad)
                         .accessibilityIdentifier("windVelocityField")
+                        Spacer()
+                        Text(String(describing: $settingsConfig.speedUnit.wrappedValue))
+                            .foregroundStyle(.secondary)
                     }
                 }
                 Section("Flight Plan") {
@@ -167,4 +162,3 @@ struct FlightEditorForm: View {
 #Preview {
     FlightEditorForm(config: .constant(FlightEditorConfig()))
 }
-
