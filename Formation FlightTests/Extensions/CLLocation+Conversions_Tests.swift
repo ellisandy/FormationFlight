@@ -154,56 +154,56 @@ final class CLLocation_Conversions_Test: XCTestCase {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 1.0, longitude: 0.0)
         
-        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 0.0, accuracy: 0)
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 0.0, accuracy: 0)
     }
     
     func testGetCourse_South() {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 1.0, longitude: 0.0)
         
-        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 180.0, accuracy: 0)
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 180.0, accuracy: 0)
     }
     
     func testGetCourse_East() {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 0.0, longitude: 1.0)
         
-        XCTAssertEqual(p1.getCourse(to: p2), Measurement<UnitAngle>(value: 90.0, unit: UnitAngle.degrees))
+        XCTAssertEqual(p1.getBearing(to: p2), Measurement<UnitAngle>(value: 90.0, unit: UnitAngle.degrees))
     }
     
     func testGetCourse_West() {
         let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
         let p2 = CLLocation(latitude: 0.0, longitude: 1.0)
         
-        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 270.0, accuracy: 0)
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 270.0, accuracy: 0)
     }
     
     func testGetCourse_RealWorld_1() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
         
-        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 0.0, accuracy: 1.0)
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 0.0, accuracy: 1.0)
     }
     
     func testGetCourse_RealWorld_2() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.42570, longitude: -122.36455)
         
-        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 90.0, accuracy: 1.0)
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 90.0, accuracy: 1.0)
     }
     
     func testGetCourse_RealWorld_3() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.42570, longitude: -122.36455)
         
-        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 270.0, accuracy: 1.0)
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 270.0, accuracy: 1.0)
     }
     
     func testGetCourse_RealWorld_4() {
         let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
         let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
         
-        XCTAssertEqual(p2.getCourse(to: p1).converted(to: .degrees).value, 180.0, accuracy: 1.0)
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 180.0, accuracy: 1.0)
     }
     
     
@@ -211,7 +211,7 @@ final class CLLocation_Conversions_Test: XCTestCase {
         let p1 = HOME_LOCATION.getCLLocation()
         let p2 = BVS_LOCATION.getCLLocation()
         
-        XCTAssertEqual(p1.getCourse(to: p2).converted(to: .degrees).value, 333.0, accuracy: 1.0)
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 333.0, accuracy: 1.0)
     }
     
     // 100 Meters/Second
@@ -376,10 +376,10 @@ final class CLLocation_Conversions_Test: XCTestCase {
         let thirdLegLong = SECOND_CHECKPOINT.distance(from: [FINAL_CHECKPOINT_DOUBLE])!
 
         
-        let firstLegCourse = STARTING_POINT.getCourse(to: FIRST_CHECKPOINT)
-        let secondLegCourse = FIRST_CHECKPOINT.getCourse(to: SECOND_CHECKPOINT)
-        let thirdLegCourse = SECOND_CHECKPOINT.getCourse(to: FINAL_CHECKPOINT)
-        let thirdLegLongCourse = SECOND_CHECKPOINT.getCourse(to: FINAL_CHECKPOINT_DOUBLE)
+        let firstLegCourse = STARTING_POINT.getBearing(to: FIRST_CHECKPOINT)
+        let secondLegCourse = FIRST_CHECKPOINT.getBearing(to: SECOND_CHECKPOINT)
+        let thirdLegCourse = SECOND_CHECKPOINT.getBearing(to: FINAL_CHECKPOINT)
+        let thirdLegLongCourse = SECOND_CHECKPOINT.getBearing(to: FINAL_CHECKPOINT_DOUBLE)
 
         XCTAssertEqual(firstLeg, 60_000, accuracy: 0.01)
         XCTAssertEqual(secondLeg, 60_000, accuracy: 0.01)
@@ -387,10 +387,10 @@ final class CLLocation_Conversions_Test: XCTestCase {
         XCTAssertEqual(thirdLegLong, 120_000, accuracy: 0.01)
 
         
-        XCTAssertEqual(firstLegCourse.value, 90.0, accuracy: 0.5)
-        XCTAssertEqual(secondLegCourse.value, 180.0, accuracy: 0.5)
-        XCTAssertEqual(thirdLegCourse.value, 270.0, accuracy: 0.5)
-        XCTAssertEqual(thirdLegLongCourse.value, 270.0, accuracy: 1)
+        XCTAssertEqual(firstLegCourse!.value, 90.0, accuracy: 0.5)
+        XCTAssertEqual(secondLegCourse!.value, 180.0, accuracy: 0.5)
+        XCTAssertEqual(thirdLegCourse!.value, 270.0, accuracy: 0.5)
+        XCTAssertEqual(thirdLegLongCourse!.value, 270.0, accuracy: 1)
     }
     
     func testDistanceEmptyCheckpoints() {
