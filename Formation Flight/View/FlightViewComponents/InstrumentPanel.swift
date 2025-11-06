@@ -117,6 +117,16 @@ struct InstrumentPanel: View {
                 }
                 .buttonStyle(.glassProminent)
                 Button(role: .confirm) {
+                    let currentTime = Date()
+                    let markTimeInSeconds = flight.markTimeInSeconds ?? 60.0
+                    flight.missionDate = currentTime.advanced(by: markTimeInSeconds)
+                } label: {
+                    Text("T+ \(String(flight.markTimeInSeconds ?? 60.0)) ToT")
+                        .font(.title)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+                Button(role: .confirm) {
                     showWindAlert.toggle()
                 } label: {
                     Text("Winds")

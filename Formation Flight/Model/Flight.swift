@@ -18,6 +18,7 @@ final class Flight: Identifiable, Hashable {
     var expectedWinds: Winds = Winds(velocity: 0, direction: 0)
     var checkPoints: [CheckPoint] = []
     var inflightCheckPoints: [CheckPoint] = []
+    var markTimeInSeconds: Double? = nil
     
 
     

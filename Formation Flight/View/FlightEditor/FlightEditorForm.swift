@@ -25,17 +25,71 @@ struct FlightEditorForm: View {
                         .accessibilityIdentifier("missionTitleField")
                     DatePicker("Mission Date", selection: $config.flight.missionDate, displayedComponents: [.date, .hourAndMinute])
                         .accessibilityIdentifier("missionDatePicker")
+
+                    // Mark Time Input (used to reset ToT by pressing Mark)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Enroute Time (mm:ss)")
+                            .font(.headline)
+
+                        HStack(alignment: .center) {
+                            // Minutes wheel
+                            Picker("Minutes", selection: Binding<Int>(
+                                get: {
+                                    let total = Int(config.flight.markTimeInSeconds ?? 0)
+                                    return max(0, total / 60)
+                                },
+                                set: { (newMinutes: Int) in
+                                    let total = Int(config.flight.markTimeInSeconds ?? 0)
+                                    let seconds = max(0, total % 60)
+                                    let newTotal = max(0, newMinutes) * 60 + seconds
+                                    config.flight.markTimeInSeconds = Double(newTotal)
+                                }
+                            )) {
+                                ForEach(0..<60, id: \.self) { m in
+                                    Text(String(format: "%02d", m)).tag(m)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .clipped()
+                            .accessibilityIdentifier("markTimeMinutesPicker")
+
+                            Text(":")
+                                .font(.title2)
+                                .monospacedDigit()
+
+                            // Seconds wheel
+                            Picker("Seconds", selection: Binding<Int>(
+                                get: {
+                                    let total = Int(config.flight.markTimeInSeconds ?? 0)
+                                    return max(0, total % 60)
+                                },
+                                set: { (newSeconds: Int) in
+                                    let total = Int(config.flight.markTimeInSeconds ?? 0)
+                                    let minutes = max(0, total / 60)
+                                    let clamped = min(max(0, newSeconds), 59)
+                                    let newTotal = minutes * 60 + clamped
+                                    config.flight.markTimeInSeconds = Double(newTotal)
+                                }
+                            )) {
+                                ForEach(0..<60, id: \.self) { s in
+                                    Text(String(format: "%02d", s)).tag(s)
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                            .accessibilityIdentifier("markTimeSecondsPicker")
+                        }
+                    }
                 }
                 Section("Wind Conditions") {
                     HStack {
-                        Text("Direction:")
+                        Text("Estimated Direction:")
                         TextField("Wind Direction", text: $config.flight.expectedWinds.windDirectionAsText)
                         .keyboardType(.numberPad)
                         .accessibilityIdentifier("windDirectionField")
                     }
 
                     HStack {
-                        Text("Velocity:  ")
+                        Text("Estimated Velocity:  ")
                         TextField("Wind Velocity", text: $config.flight.expectedWinds.windVelocityAsText)
                         .keyboardType(.numberPad)
                         .accessibilityIdentifier("windVelocityField")
@@ -164,3 +218,4 @@ struct FlightEditorForm: View {
 #Preview {
     FlightEditorForm(config: .constant(FlightEditorConfig()))
 }
+
