@@ -64,7 +64,7 @@ struct InstrumentPanel: View {
                 case .nextBearing:
                     return InstrumentSpec(type: .nextBearing, status: .nutrual, value: $panelData.bearingNext)
                 case .currentTAS:
-                    return InstrumentSpec(type: .currentTAS, status: .reallyBad, value: $panelData.currentTrueAirspeed)
+                    return InstrumentSpec(type: .currentTAS, status: .nutrual, value: $panelData.currentTrueAirspeed)
                 case .targetTAS:
                     return InstrumentSpec(type: .targetTAS, status: .nutrual, value: $panelData.targetTrueAirspeed)
                 case .distanceToFinal:

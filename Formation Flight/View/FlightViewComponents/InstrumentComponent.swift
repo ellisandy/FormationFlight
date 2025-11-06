@@ -105,12 +105,12 @@ struct TimeFormatter: FormatStyle {
 enum InFlightInfo: String, CaseIterable {
     case tot = "ToT" // Connect to Tot Tolerance
     case totDrift = "Drift" // Connect to Tot Tolerance
-    case targetTAS = "Target TAS" // Connect to Speed
+    case targetTAS = "Target Speed" // Connect to Speed
     case distanceToFinal =  "Direct Final"
     case distanceToNext = "Distance Next"
     case nextBearing = "Next Bearing"
     case finalBearing = "Final Bearing"
-    case currentTAS = "Current TAS" // Connect to Speed
+    case currentTAS = "Current Speed" // Connect to Speed
 //    case flightTrack = "Track" // TODO: Implement Historical Track
     case groundSpeed = "Ground Speed"
 }

@@ -61,7 +61,7 @@ struct SettingsEditorConfig {
         InstrumentSetting(type: .totDrift, isEnabled: true),
         InstrumentSetting(type: .finalBearing, isEnabled: true),
         InstrumentSetting(type: .nextBearing, isEnabled: true),
-        InstrumentSetting(type: .groundSpeed, isEnabled: true),
+//        InstrumentSetting(type: .groundSpeed, isEnabled: true),
         InstrumentSetting(type: .currentTAS, isEnabled: true),
         InstrumentSetting(type: .targetTAS, isEnabled: true),
         InstrumentSetting(type: .distanceToFinal, isEnabled: true),
