@@ -114,6 +114,11 @@ struct SettingsEditorConfig {
             return UnitLength.nauticalMiles
         }
     }
+    
+    func getProximityToNextPointInMeters() -> Double {
+        let measurement = Measurement<UnitLength>(value: proximityToNextPoint, unit: getDistanceUnits())
+        return measurement.converted(to: .meters).value
+    }
 }
 
 extension SettingsEditorConfig {

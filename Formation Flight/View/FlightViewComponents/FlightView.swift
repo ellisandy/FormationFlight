@@ -22,10 +22,15 @@ struct FlightView: View {
             Map {
                 UserAnnotation()
                 MapPolyline(points: flight.mapPoints(currentLocation: currentLocation), contourStyle: .geodesic)
-                    .stroke(.blue, lineWidth: 5.0)
+                    .stroke(.blue.opacity(0.5), lineWidth: 4.0)
+                    
 
                 ForEach(flight.inflightCheckPoints) { cp in
                     Marker(cp.name, coordinate: cp.getCLCoordinate())
+                    MapCircle(center: cp.getCLCoordinate(),
+                              radius: settingsConfig.getProximityToNextPointInMeters())
+                        .foregroundStyle(.clear)
+                        .stroke(.primary.opacity(0.6), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 6]))
                 }
             }
             .mapStyle(.imagery(elevation: .realistic))
