@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var flightEditorConfig = FlightEditorConfig()
     @State private var settingsConfig = SettingsEditorConfig.from(userDefaults: UserDefaults.standard)
     @State private var isFlightViewPresented: Bool = false
+    var locationProvider = LocationProvider()
     
     var body: some View {
         NavigationStack {
@@ -56,7 +57,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $flightEditorConfig.isPresented, onDismiss: didDismissEditor, content: {
                 FlightEditor(config: $flightEditorConfig)
-            })
+            }).onAppear() {
+                locationProvider.startMonitoring()
+            }
             .sheet(isPresented: $settingsConfig.isPresented, content: {
                 SettingsEditor(settingsEditorConfig: $settingsConfig)
             })
