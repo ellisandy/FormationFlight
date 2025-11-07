@@ -103,7 +103,7 @@ struct InstrumentPanel: View {
     var body: some View {
         VStack {
             VStack {
-                ForEach(orderedInstruments.chunked(into: 3), id: \.first!.id) { row in
+                ForEach(Array(orderedInstruments.chunked(into: 3).enumerated()), id: \.offset) { _, row in
                     CenteredInstrumentRow(specs: row, settingsConfig: $settingsConfig)
                 }
                 Button(role: .confirm) {
@@ -111,9 +111,16 @@ struct InstrumentPanel: View {
                         flight.inflightCheckPoints.removeFirst()
                     }
                 } label: {
-                    Text("Next Checkpoint")
-                        .font(.title)
-                        .frame(maxWidth: .infinity)
+                    HStack {
+                        Text("D\u{2192}")
+                            .font(.title)
+                            .tracking(-3)
+                        Text("\(flight.inflightCheckPoints.first?.name ?? "Next")")
+                                .font(.title)
+
+                    }
+                    .frame(maxWidth: .infinity)
+//                    .padding(.horizontal)
                 }
                 .buttonStyle(.glassProminent)
                 Button(role: .confirm) {
@@ -187,8 +194,8 @@ struct InstrumentPanel: View {
         // TODO: Check current location and potentially remove the checkpoint when within a certain area
         guard let location = locationProvider.locationManager.location else { return }
         
-        // Calculate how close to the next point
-        let distanceToNextInMeters = location.distance(from: flight.inflightCheckPoints.first!.getCLLocation())
+        guard let nextCheckpoint = flight.inflightCheckPoints.first else { return }
+        let distanceToNextInMeters = location.distance(from: nextCheckpoint.getCLLocation())
         let proximityToAutoNext: Measurement<UnitLength> = Measurement(value: settingsConfig.proximityToNextPoint, unit: settingsConfig.getDistanceUnits())
         
         
