@@ -113,6 +113,8 @@ enum InFlightInfo: String, CaseIterable {
     case currentTAS = "Current Speed" // Connect to Speed
 //    case flightTrack = "Track" // TODO: Implement Historical Track
     case groundSpeed = "Ground Speed"
+    case expectedWindsDirection = "Wind Direction"
+    case expectedWindsVelocity = "Wind Speed"
 }
 
 enum InfoStatus {
@@ -167,11 +169,13 @@ extension InstrumentComponent {
         distanceToNext: Measurement(value: 10, unit: UnitLength.meters),
         distanceToFinal: Measurement(value: 10, unit: UnitLength.meters),
         groundSpeed: Measurement(value: 100, unit: UnitSpeed.metersPerSecond),
-        bearingFinal: Measurement(value: 180, unit: UnitAngle.degrees)
+        bearingFinal: Measurement(value: 180, unit: UnitAngle.degrees),
+        expectedWindVelocity: Measurement(value: 10, unit: UnitSpeed.knots),
+        expectedWindDirection: Measurement(value: 180, unit: UnitAngle.degrees)
     )
     
     InstrumentPanel(
+        isFlightViewPresented: .constant(true),
         settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, minSpeed: 100, maxSpeed: 160, proximityToNextPoint: 0.5)),
-        panelData: panelData,
-        isFlightViewPresented: .constant(true), flight: .constant(Flight.emptyFlight()))
+        panelData: panelData, flight: .constant(Flight.emptyFlight()))
 }

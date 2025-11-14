@@ -7,45 +7,6 @@
 
 import Foundation
 
-struct InstrumentSetting: Identifiable, Codable, Equatable {
-    let type: InFlightInfo
-    var isEnabled: Bool
-    var id: InFlightInfo { type }
-
-    private enum CodingKeys: String, CodingKey {
-        case type
-        case isEnabled
-    }
-
-    init(type: InFlightInfo, isEnabled: Bool) {
-        self.type = type
-        self.isEnabled = isEnabled
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        // Decode `type` as a raw string value
-        let raw = try container.decode(String.self, forKey: .type)
-        if let value = InFlightInfo(rawValue: raw) {
-            self.type = value
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .type,
-                in: container,
-                debugDescription: "Invalid InFlightInfo raw string: \(raw)"
-            )
-        }
-        self.isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        // Encode `type` using its raw string value directly
-        try container.encode(type.rawValue, forKey: .type)
-        try container.encode(isEnabled, forKey: .isEnabled)
-    }
-}
-
 struct SettingsEditorConfig {
     var isPresented = false
 
@@ -66,7 +27,9 @@ struct SettingsEditorConfig {
         InstrumentSetting(type: .currentTAS, isEnabled: true),
         InstrumentSetting(type: .targetTAS, isEnabled: true),
         InstrumentSetting(type: .distanceToFinal, isEnabled: true),
-        InstrumentSetting(type: .distanceToNext, isEnabled: true)
+        InstrumentSetting(type: .distanceToNext, isEnabled: true),
+        InstrumentSetting(type: .expectedWindsVelocity, isEnabled: true),
+        InstrumentSetting(type: .expectedWindsDirection, isEnabled: true)
     ]
         
     private static let speedUnitUDK = "speedUnit"
@@ -77,7 +40,6 @@ struct SettingsEditorConfig {
     private static let maxSpeedUDK = "maxSpeed"
     private static let instrumentSettingsUDK = "instrumentSettings"
     private static let proximityToNextPointUDK = "proximityToNextPoint"
-
 
     enum SpeedUnit: String, CaseIterable, Identifiable {
         case kts
@@ -141,9 +103,17 @@ extension SettingsEditorConfig {
         config.proximityToNextPoint = userDefaults.double(forKey: proximityToNextPointUDK)
         
         if let data = userDefaults.data(forKey: instrumentSettingsUDK),
-           let decoded = try? JSONDecoder().decode([InstrumentSetting].self, from: data),
-           !decoded.isEmpty {
-            config.instrumentSettings = decoded
+           let saved = try? JSONDecoder().decode([InstrumentSetting].self, from: data),
+           !saved.isEmpty {
+            let savedByType = Dictionary(uniqueKeysWithValues: saved.map { ($0.type, $0) })
+            // Merge: preserve saved isEnabled when available; default to current code defaults otherwise
+            config.instrumentSettings = config.instrumentSettings.map { def in
+                if let persisted = savedByType[def.type] {
+                    return InstrumentSetting(type: def.type, isEnabled: persisted.isEnabled)
+                } else {
+                    return def
+                }
+            }
         }
         
         return config
@@ -192,9 +162,16 @@ extension SettingsEditorConfig {
         maxSpeed = userDefaults.integer(forKey: SettingsEditorConfig.maxSpeedUDK)
         
         if let data = userDefaults.data(forKey: SettingsEditorConfig.instrumentSettingsUDK),
-           let decoded = try? JSONDecoder().decode([InstrumentSetting].self, from: data),
-           !decoded.isEmpty {
-            instrumentSettings = decoded
+           let saved = try? JSONDecoder().decode([InstrumentSetting].self, from: data),
+           !saved.isEmpty {
+            let savedByType = Dictionary(uniqueKeysWithValues: saved.map { ($0.type, $0) })
+            instrumentSettings = instrumentSettings.map { def in
+                if let persisted = savedByType[def.type] {
+                    return InstrumentSetting(type: def.type, isEnabled: persisted.isEnabled)
+                } else {
+                    return def
+                }
+            }
         }
     }
 }

@@ -39,32 +39,32 @@ struct CenteredInstrumentRow: View {
 }
 
 struct InstrumentPanel: View {
+    // View Controls
+    @Binding var isFlightViewPresented: Bool
+    
+    // View Data Sources
     @Binding var settingsConfig: SettingsEditorConfig
     @State var panelData: InstrumentPanelData = InstrumentPanelData.emptyPanel()
-    @Binding var isFlightViewPresented: Bool
     @Binding var flight: Flight
+    
+    // Wind Update Vars
     @State var showWindAlert = false
     @State var tempWindSpeed: String = ""
     @State var tempWindDirection: String = ""
 
-    
+    // Data Providers
     private let locationProvider = LocationProvider()
     private let uiUpdateTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
-    // Order can later be driven from user settings
     var orderedInstruments: [InstrumentSpec] {
         settingsConfig.instrumentSettings
             .filter { $0.isEnabled }
             .map { setting in
                 switch setting.type {
                 case .tot:
-                    return InstrumentSpec(type: .tot, status: .good, value: $panelData.currentETA)
+                    return InstrumentSpec(type: .tot, status: .nutrual, value: $panelData.currentETA)
                 case .totDrift:
-                    return InstrumentSpec(
-                        type: .totDrift,
-                        status: statusForETADrift(panelData.ETADelta),
-                        value: $panelData.ETADelta
-                    )
+                    return InstrumentSpec(type: .totDrift, status: InstrumentPanelCalculator.etaDriftStatus(delta: panelData.ETADelta, yellowTolerance: Double(settingsConfig.yellowTolerance), redTolerance: Double(settingsConfig.redTolerance)), value: $panelData.ETADelta)
                 case .nextBearing:
                     return InstrumentSpec(type: .nextBearing, status: .nutrual, value: $panelData.bearingNext)
                 case .currentTAS:
@@ -79,25 +79,12 @@ struct InstrumentPanel: View {
                     return InstrumentSpec(type: .finalBearing, status: .nutrual, value: $panelData.bearingFinal)
                 case .groundSpeed:
                     return InstrumentSpec(type: .groundSpeed, status: .nutrual, value: $panelData.groundSpeed)
+                case .expectedWindsDirection:
+                    return InstrumentSpec(type: .expectedWindsDirection, status: .nutrual, value: $panelData.expectedWindDirection)
+                case .expectedWindsVelocity:
+                    return InstrumentSpec(type: .expectedWindsVelocity, status: .nutrual, value: $panelData.expectedWindVelocity)
                 }
             }
-    }
-    
-    // Determines status for ETA drift based on settings thresholds
-    private func statusForETADrift(_ delta: Measurement<Dimension>?) -> InfoStatus {
-        // Validate delta and is UnitDuration or return .nutrual
-        guard let delta else { return .nutrual }
-        if !(delta.unit is UnitDuration) { return .nutrual }
-        
-        let secondsValue = delta.converted(to: UnitDuration.seconds).value
-        let absValue: Double = abs(secondsValue) / 60.0
-
-        let yellow = Double(settingsConfig.yellowTolerance)
-        let red = Double(settingsConfig.redTolerance)
-
-        if absValue < yellow { return .good }
-        if absValue < red { return .bad }
-        return .reallyBad
     }
     
     var body: some View {
@@ -187,59 +174,25 @@ struct InstrumentPanel: View {
         }
     }
     
-    // TODO: Clean this up?
-    // The general idea... I think will be to pull the new data, then have some type of copy functino to move the core logic out
-    // of the view file.
     func calculateTheStuff() -> Void {
-        // TODO: Check current location and potentially remove the checkpoint when within a certain area
+        // If no user location available, just bail out
         guard let location = locationProvider.locationManager.location else { return }
         
-        guard let nextCheckpoint = flight.inflightCheckPoints.first else { return }
-        let distanceToNextInMeters = location.distance(from: nextCheckpoint.getCLLocation())
-        let proximityToAutoNext: Measurement<UnitLength> = Measurement(value: settingsConfig.proximityToNextPoint, unit: settingsConfig.getDistanceUnits())
-        
-        
-        if distanceToNextInMeters < proximityToAutoNext.converted(to: .meters).value, flight.inflightCheckPoints.count > 1 {
-            flight.inflightCheckPoints.removeFirst()
-        }
-            
-        let temp = flight.provideInstrumentPanelData(from: location)
-        
-        if panelData.currentETA != temp.currentETA { panelData.currentETA = temp.currentETA }
-        if panelData.ETADelta != temp.ETADelta { panelData.ETADelta = temp.ETADelta }
-        if panelData.bearingNext != temp.bearingNext { panelData.bearingNext = temp.bearingNext }
-        if panelData.bearingFinal != temp.bearingFinal { panelData.bearingFinal = temp.bearingFinal }
-        if panelData.groundSpeed != temp.groundSpeed { panelData.groundSpeed = temp.groundSpeed }
-        if panelData.currentTrueAirspeed != temp.currentTrueAirspeed { panelData.currentTrueAirspeed = temp.currentTrueAirspeed }
-        if panelData.targetTrueAirspeed != temp.targetTrueAirspeed { panelData.targetTrueAirspeed = temp.targetTrueAirspeed }
-        if panelData.distanceToNext != temp.distanceToNext { panelData.distanceToNext = temp.distanceToNext }
-        if panelData.distanceToFinal != temp.distanceToFinal { panelData.distanceToFinal = temp.distanceToFinal }
+        let updated = InstrumentPanelCalculator.updatePanel(currentLocation: location, flight: flight, config: settingsConfig, existing: panelData)
+        self.panelData = updated
     }
 }
 
-extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        guard size > 0 else { return [] }
-        var chunks: [[Element]] = []
-        var start = 0
-        while start < count {
-            let end = Swift.min(start + size, count)
-            chunks.append(Array(self[start..<end]))
-            start = end
-        }
-        return chunks
-    }
-}
 
 #Preview {
-    InstrumentPanel(settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts,
+    InstrumentPanel(isFlightViewPresented: Binding.constant(true),
+                    settingsConfig: .constant(SettingsEditorConfig(speedUnit: .kts,
                                                                    distanceUnit: .nm,
                                                                    yellowTolerance: 5,
                                                                    redTolerance: 10,
                                                                    minSpeed: 100,
                                                                    maxSpeed: 160,
                                                                    proximityToNextPoint: 0.5)),
-                    isFlightViewPresented: Binding.constant(true),
                     flight: .constant(Flight.emptyFlight()))
 }
 

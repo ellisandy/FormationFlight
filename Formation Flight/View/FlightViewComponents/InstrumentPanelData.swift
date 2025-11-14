@@ -24,6 +24,8 @@ class InstrumentPanelData {
     var distanceToNext: Measurement<Dimension>?
     var distanceToFinal: Measurement<Dimension>?
     var groundSpeed: Measurement<Dimension>?
+    var expectedWindVelocity: Measurement<Dimension>?
+    var expectedWindDirection: Measurement<Dimension>?
 
     
     /// Initializer for Data Structure which cosntains the telemetry for the Instrument Panel
@@ -42,7 +44,9 @@ class InstrumentPanelData {
          distanceToNext: Measurement<Dimension>?,
          distanceToFinal: Measurement<Dimension>?,
          groundSpeed: Measurement<Dimension>?,
-         bearingFinal: Measurement<Dimension>?
+         bearingFinal: Measurement<Dimension>?,
+         expectedWindVelocity: Measurement<Dimension>?,
+         expectedWindDirection: Measurement<Dimension>?
     ) {
         self.currentETA = currentETA
         self.ETADelta = ETADelta
@@ -53,6 +57,8 @@ class InstrumentPanelData {
         self.distanceToFinal = distanceToFinal
         self.groundSpeed = groundSpeed
         self.bearingFinal = bearingFinal
+        self.expectedWindVelocity = expectedWindVelocity
+        self.expectedWindDirection = expectedWindDirection
     }
     
     static func emptyPanel() -> InstrumentPanelData {
@@ -64,7 +70,9 @@ class InstrumentPanelData {
                                    distanceToNext: nil,
                                    distanceToFinal: nil,
                                    groundSpeed: nil,
-                                   bearingFinal: nil
+                                   bearingFinal: nil,
+                                   expectedWindVelocity: nil,
+                                   expectedWindDirection: nil
         )
     }
 }

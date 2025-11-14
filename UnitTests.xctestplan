@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "35C1E501-50F3-4DE8-80A9-71F7F68E4DB6",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Formation Flight.xcodeproj",
+        "identifier" : "C29255692B2D648D0064F41F",
+        "name" : "Formation FlightTests"
+      }
+    }
+  ],
+  "version" : 1
+}

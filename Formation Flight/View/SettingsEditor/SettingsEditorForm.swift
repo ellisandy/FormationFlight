@@ -12,7 +12,6 @@ struct SettingsEditorForm: View {
     @State private var editMode: EditMode = .active
     
     var body: some View {
-        
         Form {
             Section("Units") {
                 Picker("Speed Unit", selection: $settingsEditorConfig.speedUnit) {
@@ -26,6 +25,7 @@ struct SettingsEditorForm: View {
                     }
                 }.pickerStyle(.automatic)
             }
+            
             Section {
                 TextField("Yellow Variance", value: $settingsEditorConfig.yellowTolerance, formatter: windDirectionFormatter)
                     .keyboardType(.numberPad)
@@ -37,6 +37,7 @@ struct SettingsEditorForm: View {
             } footer: {
                 Text("Yellow: +/-\(settingsEditorConfig.yellowTolerance) seconds \nRed:     +/-\(settingsEditorConfig.redTolerance) seconds")
             }
+            
             Section("Speed Values") {
                 TextField("Minimum Speed", value: $settingsEditorConfig.minSpeed, formatter: windDirectionFormatter)
                     .keyboardType(.numberPad)
@@ -55,7 +56,6 @@ struct SettingsEditorForm: View {
                 Text("The flight will move on to the next waypoint when it is within \(String(format: "%.2f", arguments: [settingsEditorConfig.proximityToNextPoint])) \(settingsEditorConfig.distanceUnit.rawValue)")
             }
             
-            
             Section("Instruments") {
                 if settingsEditorConfig.instrumentSettings.isEmpty {
                     Text("No instruments available")
@@ -73,8 +73,8 @@ struct SettingsEditorForm: View {
             }
         }
         .environment(\.editMode, $editMode)
-        
     }
+
     let windDirectionFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.minimum = .init(integerLiteral: 0)

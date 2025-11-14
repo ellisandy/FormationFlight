@@ -90,39 +90,4 @@ extension Flight {
         
         return locations
     }
-    
-    // FIXME: Add functionality to compute all CheckPoints
-    // TODO: Move out of Flight
-    // Given this method only uses the checkpoints (I think), then it's not really needed to be on the flight itself. Consider moving
-    // to CLLocation or Checkpoints directly.
-    func provideInstrumentPanelData(from currentLocation: CLLocation) -> InstrumentPanelData {
-        let tot = Date.now.secondsUntil(time: missionDate).secondsMeasurement
-        let distanceFinal: Measurement<UnitLength>? = currentLocation.distance(from: getCLLocations())?.metersMeasurement
-        let distanceNext: Measurement<UnitLength>? = getCLLocations().first?.distance(from: currentLocation)
-        
-        var etaDelta: Double? = nil
-        if let actualTOT = currentLocation.getTime(to: getCLLocations(), with: expectedWinds) {
-            etaDelta = actualTOT.converted(to: .seconds).value - tot.converted(to: .seconds).value
-        }
-        
-        let targetAirspeed: Measurement<UnitSpeed>? = currentLocation.getTargetAirspeed(tot: tot, destinations: getCLLocations(), winds: expectedWinds)
-                
-        let currentTrueAirSpeed = currentLocation.getTrueAirSpeed(with: expectedWinds)
-        let bearingNext = currentLocation.getBearing(to: getCLLocations().first!)
-        let bearingFinal = currentLocation.getBearing(to: getCLLocations().last!)
-        let groundSpeed: Measurement<UnitSpeed>? = Measurement.init(value: currentLocation.speed, unit: .metersPerSecond)
-
-        // TODO: Add Track
-        
-        return InstrumentPanelData(currentETA: tot.erasedType,
-                                   ETADelta: etaDelta?.secondsMeasurement.erasedType,
-                                   bearingNext: bearingNext?.erasedType,
-                                   currentTrueAirSpeed: currentTrueAirSpeed?.erasedType,
-                                   targetTrueAirSpeed: targetAirspeed?.erasedType,
-                                   distanceToNext: distanceNext?.erasedType,
-                                   distanceToFinal: distanceFinal?.erasedType,
-                                   groundSpeed: groundSpeed?.erasedType,
-                                   bearingFinal: bearingFinal?.erasedType)
-    }
 }
-

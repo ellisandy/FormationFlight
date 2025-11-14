@@ -208,8 +208,8 @@ struct FlightEditorForm: View {
     @ViewBuilder
     private func instrumentPanelView() -> some View {
         InstrumentPanel(
-            settingsConfig: $settingsConfig,
             isFlightViewPresented: $isFlightViewPresented,
+            settingsConfig: $settingsConfig,
             flight: $config.flight
         )
     }
