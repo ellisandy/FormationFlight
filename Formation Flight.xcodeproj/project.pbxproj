@@ -50,6 +50,8 @@
 		C2DC7DEA2EC7028400407CF5 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DC7DE92EC7028400407CF5 /* AppLogger.swift */; };
 		C2DC7DEE2EC706C400407CF5 /* FlightsListViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DC7DEC2EC7060B00407CF5 /* FlightsListViewModelTests.swift */; };
 		C2DC7DF12EC7080900407CF5 /* FlightsListRowViewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DC7DEF2EC707F400407CF5 /* FlightsListRowViewUITests.swift */; };
+		C2DC7DF62EC7141100407CF5 /* FlightEditorViewV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DC7DF52EC7141100407CF5 /* FlightEditorViewV2.swift */; };
+		C2DC7DF82EC71A8F00407CF5 /* FlightEditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DC7DF72EC71A8F00407CF5 /* FlightEditorViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,6 +122,8 @@
 		C2DC7DE92EC7028400407CF5 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
 		C2DC7DEC2EC7060B00407CF5 /* FlightsListViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightsListViewModelTests.swift; sourceTree = "<group>"; };
 		C2DC7DEF2EC707F400407CF5 /* FlightsListRowViewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightsListRowViewUITests.swift; sourceTree = "<group>"; };
+		C2DC7DF52EC7141100407CF5 /* FlightEditorViewV2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightEditorViewV2.swift; sourceTree = "<group>"; };
+		C2DC7DF72EC71A8F00407CF5 /* FlightEditorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightEditorViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -163,7 +167,6 @@
 				C2218E642B38A0AC00D5D569 /* FlightEditorConfig.swift */,
 				C2218E6D2B38A7C300D5D569 /* FlightEditorForm.swift */,
 				C2218E6B2B38A61900D5D569 /* FlightEditor.swift */,
-				C25D62302EA5C629004D33E0 /* CheckpointMapPickerView.swift */,
 			);
 			path = FlightEditor;
 			sourceTree = "<group>";
@@ -284,12 +287,13 @@
 		C2DC7DDC2EC6FBAB00407CF5 /* Features */ = {
 			isa = PBXGroup;
 			children = (
-				C2DC7DE12EC6FCBC00407CF5 /* Home */,
+				C2DC7DF22EC7137D00407CF5 /* FlightEditorV2 */,
+				C2218E632B38A09600D5D569 /* FlightEditor */,
 				C2DC7DE02EC6FC8800407CF5 /* FlightViewV1 */,
+				C29B06E12EC563060083CA2F /* FlightViewV2 */,
+				C2DC7DE12EC6FCBC00407CF5 /* Home */,
 				C2DC7DDF2EC6FC6200407CF5 /* Instrument Panel */,
 				C20E37952B40AEE0002F8DCC /* SettingsEditor */,
-				C2218E632B38A09600D5D569 /* FlightEditor */,
-				C29B06E12EC563060083CA2F /* FlightViewV2 */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -297,6 +301,7 @@
 		C2DC7DDE2EC6FC2900407CF5 /* UI Shared */ = {
 			isa = PBXGroup;
 			children = (
+				C25D62302EA5C629004D33E0 /* CheckpointMapPickerView.swift */,
 				C2BCE7A62B5DA96C003F6297 /* SlidingSheetView.swift */,
 			);
 			path = "UI Shared";
@@ -368,6 +373,15 @@
 				C2DC7DE92EC7028400407CF5 /* AppLogger.swift */,
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		C2DC7DF22EC7137D00407CF5 /* FlightEditorV2 */ = {
+			isa = PBXGroup;
+			children = (
+				C2DC7DF52EC7141100407CF5 /* FlightEditorViewV2.swift */,
+				C2DC7DF72EC71A8F00407CF5 /* FlightEditorViewModel.swift */,
+			);
+			path = FlightEditorV2;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -513,6 +527,7 @@
 				C2218E772B3E5B1200D5D569 /* LocationProvider.swift in Sources */,
 				C2218E732B3E174E00D5D569 /* FlightView.swift in Sources */,
 				C29B06E32EC563280083CA2F /* FlightViewV2.swift in Sources */,
+				C2DC7DF62EC7141100407CF5 /* FlightEditorViewV2.swift in Sources */,
 				C20E379F2B40CD92002F8DCC /* InstrumentPanelData.swift in Sources */,
 				C20E37992B40BA0B002F8DCC /* SettingsEditorConfig.swift in Sources */,
 				C20E379D2B40C9D1002F8DCC /* InstrumentPanel.swift in Sources */,
@@ -525,6 +540,7 @@
 				C2DC7DEA2EC7028400407CF5 /* AppLogger.swift in Sources */,
 				C20E37972B40AEF0002F8DCC /* SettingsEditorForm.swift in Sources */,
 				C238D3E22EBD89CE005DC2E8 /* InstrumentPanelCalculator.swift in Sources */,
+				C2DC7DF82EC71A8F00407CF5 /* FlightEditorViewModel.swift in Sources */,
 				C2218E652B38A0AC00D5D569 /* FlightEditorConfig.swift in Sources */,
 				C238D3E62EBED009005DC2E8 /* Array+Extensions.swift in Sources */,
 				C292555A2B2D648C0064F41F /* Formation_FlightApp.swift in Sources */,
