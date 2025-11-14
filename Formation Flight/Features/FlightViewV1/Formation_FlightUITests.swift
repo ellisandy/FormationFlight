@@ -10,55 +10,41 @@ import XCTest
 final class Formation_FlightUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     func testExample() throws {
-        // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
     func testLaunchPerformance() throws {
         if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
-            // This measures how long it takes to launch your application.
             measure(metrics: [XCTApplicationLaunchMetric()]) {
                 XCUIApplication().launch()
             }
         }
     }
 
-    func test_appShowsContentViewQuickly() throws {
+    func test_appShowsFlightsListViewQuickly() throws {
         let app = XCUIApplication()
-        // If you use flags to make startup deterministic in CI, uncomment and adjust:
-        // app.launchArguments += ["-UITests", "1", "-SkipOnboarding", "1", "-DisableAnimations", "1"]
-        // app.launchEnvironment["IS_UI_TESTING"] = "1"
-
         let start = Date()
         app.launch()
 
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 60), "App did not reach foreground in time.")
 
-        let contentRoot = app.otherElements["ContentViewRoot"]
+        let contentRoot = app.otherElements["FlightsListViewRoot"]
         let threshold: TimeInterval = 30
         let appeared = contentRoot.waitForExistence(timeout: threshold)
 
         let elapsed = Date().timeIntervalSince(start)
-        XCTAssertTrue(appeared, "ContentView did not appear within \(threshold)s (elapsed: \(elapsed)s).")
+        XCTAssertTrue(appeared, "FlightsListView did not appear within \(threshold)s (elapsed: \(elapsed)s).")
     }
 
-    func test_measureStartupToContentView() throws {
+    func test_measureStartupToFlightsListView() throws {
         if #available(iOS 13.0, *) {
             measure(metrics: [XCTClockMetric()]) {
                 let app = XCUIApplication()
@@ -66,10 +52,11 @@ final class Formation_FlightUITests: XCTestCase {
                 let start = Date()
                 app.launch()
                 XCTAssertTrue(app.wait(for: .runningForeground, timeout: 60))
-                XCTAssertTrue(app.otherElements["ContentViewRoot"].waitForExistence(timeout: 30))
+                XCTAssertTrue(app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 30))
                 let elapsed = Date().timeIntervalSince(start)
                 XCTAssertLessThan(elapsed, 30, "Startup exceeded threshold: \(elapsed)s")
             }
         }
     }
 }
+

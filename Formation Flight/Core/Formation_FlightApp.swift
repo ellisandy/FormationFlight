@@ -26,8 +26,9 @@ struct Formation_FlightApp: App {
     
     var body: some Scene {
         return WindowGroup {
-            ContentView()
+            FlightsListView()
         }
         .modelContainer(sharedModelContainer)
     }
 }
+
