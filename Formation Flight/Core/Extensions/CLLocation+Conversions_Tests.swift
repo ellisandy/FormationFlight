@@ -19,9 +19,9 @@ final class CLLocation_Conversions_Test: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
     
-    let HOME_LOCATION = CheckPoint(id: UUID(), name: "Home", longitude: -122.379581, latitude: 48.425643)
-    let TREE_FARM_LOCATION = CheckPoint(id: UUID(), name: "Tree Farm", longitude: -122.36519, latitude: 48.42076)
-    let BVS_LOCATION = CheckPoint(id: UUID(), name: "BVS Airport", longitude: -122.41299, latitude: 48.46915)
+    let HOME_LOCATION = Target(id: UUID(), name: "Home", longitude: -122.379581, latitude: 48.425643)
+    let TREE_FARM_LOCATION = Target(id: UUID(), name: "Tree Farm", longitude: -122.36519, latitude: 48.42076)
+    let BVS_LOCATION = Target(id: UUID(), name: "BVS Airport", longitude: -122.41299, latitude: 48.46915)
 
     
     // MARK: - getTrueAirSpeed()

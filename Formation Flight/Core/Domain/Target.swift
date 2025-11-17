@@ -9,24 +9,15 @@ import Foundation
 import SwiftData
 import MapKit
 
-struct CheckPoint: Codable, Hashable, Identifiable, Sendable {
+struct Target: Codable, Hashable, Identifiable, Sendable {
     let id: UUID
-    var name: String
     var longitude: Double
     var latitude: Double
-
-    init(id: UUID = UUID(), name: String, longitude: Double, latitude: Double) {
+    
+    init(id: UUID = UUID(), longitude: Double, latitude: Double) {
         self.id = id
-        self.name = name
         self.longitude = longitude
         self.latitude = latitude
-    }
-    
-    init(name: String, location: CLLocation) {
-        self.id = UUID()
-        self.name = name
-        self.longitude = location.coordinate.longitude
-        self.latitude = location.coordinate.latitude
     }
     
     func getCLCoordinate() -> CLLocationCoordinate2D {
@@ -37,3 +28,4 @@ struct CheckPoint: Codable, Hashable, Identifiable, Sendable {
         CLLocation(latitude: latitude, longitude: longitude)
     }
 }
+

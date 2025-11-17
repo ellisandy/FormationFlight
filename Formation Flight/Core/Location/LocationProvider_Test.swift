@@ -11,7 +11,7 @@ class MockCLLocationManager: CLLocationManager {
     private(set) var didStopUpdatingHeading = false
     
     weak var testDelegate: CLLocationManagerDelegate?
-
+    
     override var delegate: CLLocationManagerDelegate? {
         get { testDelegate }
         set { testDelegate = newValue }

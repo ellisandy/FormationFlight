@@ -3,25 +3,23 @@ import MapKit
 import CoreLocation
 
 struct CheckpointMapPickerView: View {
-    var onSave: (_ name: String, _ coordinate: CLLocationCoordinate2D) -> Void
+    var onSave: (_ coordinate: CLLocationCoordinate2D) -> Void
     var onCancel: () -> Void
     var locationProvider = CLLocationManager()
-
-    @State private var name: String = ""
+    @Environment(\.dismiss) private var dismiss
+    
     @State private var pinCoordinate: CLLocationCoordinate2D
-
+    
     init(
-        name: String,
         pinCoordinate: CLLocationCoordinate2D,
-        onSave: @escaping (_ name: String, _ coordinate: CLLocationCoordinate2D) -> Void,
+        onSave: @escaping (_ coordinate: CLLocationCoordinate2D) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.onSave = onSave
         self.onCancel = onCancel
-        _name = State(initialValue: name)
         _pinCoordinate = State(initialValue: pinCoordinate)
     }
-
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
@@ -35,20 +33,40 @@ struct CheckpointMapPickerView: View {
                                 .shadow(radius: 10)
                         }
                     }
-                    .mapStyle(.hybrid)
-                    .ignoresSafeArea(edges: .bottom)
-                    .accessibilityIdentifier("checkpointMap")
-                    .onMapCameraChange(frequency: .continuous) { context in
-                        pinCoordinate = context.region.center
-                    }
+                                                                    .mapStyle(.hybrid)
+                                                                    .ignoresSafeArea(edges: .bottom)
+                                                                    .accessibilityIdentifier("checkpointMap")
+                                                                    .onMapCameraChange(frequency: .continuous) { context in
+                                                                        pinCoordinate = context.region.center
+                                                                    }
                 }
                 .frame(minHeight: 300)
-
+                
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("Checkpoint Name", text: $name)
+                    HStack(spacing: 12) {
+                        TextField("Latitude", text: Binding(
+                            get: { String(format: "%.6f", pinCoordinate.latitude) },
+                            set: { newValue in
+                                if let v = Double(newValue), v >= -90, v <= 90 {
+                                    pinCoordinate.latitude = v
+                                }
+                            }
+                        ))
+                        .keyboardType(.numbersAndPunctuation)
                         .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("checkpointNameField")
-
+                        
+                        TextField("Longitude", text: Binding(
+                            get: { String(format: "%.6f", pinCoordinate.longitude) },
+                            set: { newValue in
+                                if let v = Double(newValue), v >= -180, v <= 180 {
+                                    pinCoordinate.longitude = v
+                                }
+                            }
+                        ))
+                        .keyboardType(.numbersAndPunctuation)
+                        .textFieldStyle(.roundedBorder)
+                    }
+                    
                     HStack {
                         Text("Latitude: \(pinCoordinate.latitude,format: .number.precision(.fractionLength(6)))")
                         Spacer()
@@ -62,16 +80,12 @@ struct CheckpointMapPickerView: View {
             .navigationTitle("Pick Checkpoint")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { onCancel() }
-                        .accessibilityIdentifier("checkpointCancelButton")
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(name, pinCoordinate)
+                        onSave(pinCoordinate)
+                        dismiss()
                     }
                     .accessibilityIdentifier("checkpointSaveButton")
-                    .disabled(name.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty)
                 }
             }
         }

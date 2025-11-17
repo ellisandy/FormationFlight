@@ -36,15 +36,15 @@ struct SlidingSheetView<Content: View>: View {
     
     @State private var contentHeight: CGFloat = 0
     @State private var firstItemHeight: CGFloat = 0
-
+    
     var maxHeightMultiplier: CGFloat
     let sheetContent: Content
-
+    
     init(maxHeightMultiplier: CGFloat = 0.4, @ViewBuilder sheetContent: () -> Content) {
         self.maxHeightMultiplier = maxHeightMultiplier
         self.sheetContent = sheetContent()
     }
-
+    
     private func offset() -> CGFloat {
         // When closed, show only the first item (plus indicator area). When open, offset is 0.
         guard contentHeight > 0 else { return 0 }
@@ -52,21 +52,21 @@ struct SlidingSheetView<Content: View>: View {
         let closedOffset = max(contentHeight - collapsedVisibleHeight, 0)
         return isOpen ? 0 : closedOffset
     }
-
+    
     private var indicator: some View {
         RoundedRectangle(cornerRadius: Constants.radius)
             .fill(Color.secondary)
             .frame(
                 width: Constants.indicatorWidth,
                 height: Constants.indicatorHeight
-        )
+            )
     }
     
     private var sheetBackground: some View {
         RoundedRectangle(cornerRadius: Constants.radius, style: .continuous)
             .fill(Color(.systemBackground))
     }
-
+    
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
@@ -159,11 +159,11 @@ struct TestView: View {
                     }
                 }
             }
-
+            
         }.ignoresSafeArea(.all)
     }
 }
-    
+
 #Preview {
     return TestView()
 }

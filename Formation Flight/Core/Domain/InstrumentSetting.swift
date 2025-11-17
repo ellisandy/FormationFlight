@@ -7,22 +7,22 @@
 
 import Foundation
 
-struct InstrumentSetting: Identifiable, Codable, Equatable {
-    let type: InFlightInfo
-    var isEnabled: Bool
-    var id: InFlightInfo { type }
-
+public struct InstrumentSetting: Identifiable, Codable, Equatable {
+    public let type: InFlightInfo
+    public var isEnabled: Bool
+    public var id: InFlightInfo { type }
+    
     private enum CodingKeys: String, CodingKey {
         case type
         case isEnabled
     }
-
+    
     init(type: InFlightInfo, isEnabled: Bool) {
         self.type = type
         self.isEnabled = isEnabled
     }
-
-    init(from decoder: Decoder) throws {
+    
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // Decode `type` as a raw string value
         let raw = try container.decode(String.self, forKey: .type)
@@ -37,8 +37,8 @@ struct InstrumentSetting: Identifiable, Codable, Equatable {
         }
         self.isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
     }
-
-    func encode(to encoder: Encoder) throws {
+    
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         // Encode `type` using its raw string value directly
         try container.encode(type.rawValue, forKey: .type)

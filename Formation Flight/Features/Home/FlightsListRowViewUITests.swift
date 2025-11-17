@@ -8,10 +8,10 @@
 import XCTest
 
 final class FlightsListRowViewUITests: XCTestCase {
-
+    
     var app: XCUIApplication!
     private let flightsListIdentifier = "FlightsListTable"
-
+    
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
@@ -22,7 +22,7 @@ final class FlightsListRowViewUITests: XCTestCase {
         XCTAssertTrue(app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 10))
         _ = app.otherElements["FlightsListViewRoot"].waitForHittable(timeout: 2)
     }
-
+    
     // Helper: ensure at least N rows exist by creating flights if needed
     private func ensureAtLeastRows(_ count: Int) {
         let root = app.otherElements["FlightsListViewRoot"]
@@ -32,7 +32,7 @@ final class FlightsListRowViewUITests: XCTestCase {
         // To keep UI tests simple, we’ll create flights only when an empty-state exists,
         // and verify behaviors that don’t require saving (like delete confirmation visibility).
         if !(list.exists) || list.cells.count >= count { return }
-
+        
         // If empty state exists, just create placeholder flights by opening editor and canceling
         // since save requires checkpoints; we’ll focus row UI behaviors that don’t require saved data.
         // If you want to truly insert, consider exposing a debug-only shortcut to preseed data in UI tests.
@@ -46,7 +46,7 @@ final class FlightsListRowViewUITests: XCTestCase {
                     titleField.tap()
                     titleField.typeText("UI Row Test \(UUID().uuidString.prefix(4))")
                 }
-
+                
                 // Add a checkpoint
                 let newCP = app.buttons["newCheckpointButton"]
                 if newCP.waitForExistence(timeout: 3) {
@@ -62,7 +62,7 @@ final class FlightsListRowViewUITests: XCTestCase {
                         if saveCP.waitForExistence(timeout: 2) { saveCP.tap() }
                     }
                 }
-
+                
                 // Now Save editor
                 let save = app.navigationBars.buttons["Save"]
                 if save.waitForExistence(timeout: 3) {
@@ -77,7 +77,7 @@ final class FlightsListRowViewUITests: XCTestCase {
             }
         }
     }
-
+    
     func test_tappingRowButtonPresentsEditor() throws {
         ensureAtLeastRows(1)
         let root = app.otherElements["FlightsListViewRoot"]
@@ -86,10 +86,10 @@ final class FlightsListRowViewUITests: XCTestCase {
             XCTFail("Flights list should exist")
             return
         }
-
+        
         let firstCell = list.cells.element(boundBy: 0)
         XCTAssertTrue(firstCell.waitForExistence(timeout: 3), "First flight row should exist")
-
+        
         // Tap the button inside the row (we can also tap the cell content if needed)
         // Prefer the button identifier if present; otherwise tap the cell.
         let rowButton = firstCell.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'flightRowButton_'")).firstMatch
@@ -98,7 +98,7 @@ final class FlightsListRowViewUITests: XCTestCase {
         } else {
             firstCell.tap()
         }
-
+        
         // Editor sheet should appear; we can detect by a known field or toolbar title
         let saveButton = app.navigationBars.buttons["Save"]
         XCTAssertTrue(saveButton.waitForExistence(timeout: 5), "Editor should be presented after tapping row")
@@ -107,7 +107,7 @@ final class FlightsListRowViewUITests: XCTestCase {
         let cancelButton = app.navigationBars.buttons["Cancel"]
         if cancelButton.exists { cancelButton.tap() }
     }
-
+    
     func test_swipeRowShowsDeleteAndCancelConfirmationKeepsRow() throws {
         ensureAtLeastRows(2)
         let root = app.otherElements["FlightsListViewRoot"]
@@ -116,16 +116,16 @@ final class FlightsListRowViewUITests: XCTestCase {
             XCTFail("Flights list should exist")
             return
         }
-
+        
         let initialCount = list.cells.count
         let firstCell = list.cells.element(boundBy: 0)
         XCTAssertTrue(firstCell.exists)
-
+        
         // Swipe to reveal delete
         firstCell.swipeLeft()
         // Small delay to allow the action to attach
         RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-
+        
         // Search globally for our custom-identified delete, then fall back to system "Delete"
         var deleteButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'flightRowDelete_'")).firstMatch
         if !deleteButton.exists {
@@ -136,20 +136,20 @@ final class FlightsListRowViewUITests: XCTestCase {
         }
         XCTAssertTrue(deleteButton.waitForExistence(timeout: 3), "Delete button not found after swipe")
         deleteButton.tap()
-
+        
         // Confirmation alert should appear
         let alert = app.alerts["Delete Flight?"]
         XCTAssertTrue(alert.waitForExistence(timeout: 3), "Delete confirmation alert should appear")
-
+        
         // Cancel deletion
         let cancel = alert.buttons["Cancel"]
         XCTAssertTrue(cancel.exists)
         cancel.tap()
-
+        
         // Row count should remain the same
         XCTAssertEqual(list.cells.count, initialCount, "Canceling delete should keep the row")
     }
-
+    
     func test_swipeRowShowsDeleteAndConfirmRemovesRow() throws {
         ensureAtLeastRows(2)
         let root = app.otherElements["FlightsListViewRoot"]
@@ -158,17 +158,17 @@ final class FlightsListRowViewUITests: XCTestCase {
             XCTFail("Flights list should exist")
             return
         }
-
+        
         let initialCount = list.cells.count
         XCTAssertGreaterThanOrEqual(initialCount, 1)
-
+        
         let firstCell = list.cells.element(boundBy: 0)
         XCTAssertTrue(firstCell.exists)
-
+        
         firstCell.swipeLeft()
         // Small delay to allow the action to attach
         RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-
+        
         // Search globally for our custom-identified delete, then fall back to system "Delete"
         var deleteButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'flightRowDelete_'")).firstMatch
         if !deleteButton.exists {
@@ -179,15 +179,15 @@ final class FlightsListRowViewUITests: XCTestCase {
         }
         XCTAssertTrue(deleteButton.waitForExistence(timeout: 3), "Delete button not found after swipe")
         deleteButton.tap()
-
+        
         // Confirm deletion
         let alert = app.alerts["Delete Flight?"]
         XCTAssertTrue(alert.waitForExistence(timeout: 3))
-
+        
         let confirm = alert.buttons["Delete"]
         XCTAssertTrue(confirm.exists)
         confirm.tap()
-
+        
         // Expect one fewer row, or empty state if we deleted the last item
         if initialCount > 1 {
             XCTAssertTrue(list.waitForExistence(timeout: 3))

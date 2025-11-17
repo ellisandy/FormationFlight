@@ -8,36 +8,38 @@
 import SwiftUI
 
 struct SettingsEditor: View{
-    @Binding var settingsEditorConfig: SettingsEditorConfig
-
+    @Environment(\.dismiss) private var dismiss
+    @State var viewModel: SettingsEditorViewModel
+    
     var body: some View {
         NavigationStack {
-                SettingsEditorForm(settingsEditorConfig: $settingsEditorConfig)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        settingsEditorConfig.reset(userDefaults: UserDefaults.standard)
-                        settingsEditorConfig.dismiss()
-                    } label: {
-                        Text("Cancel")
+            SettingsEditorForm(viewModel: viewModel)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            viewModel.reset(userDefaults: UserDefaults.standard)
+                            dismiss()
+                        } label: {
+                            Text("Cancel")
+                        }
                     }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        settingsEditorConfig.save(userDefaults: UserDefaults.standard)
-                        settingsEditorConfig.dismiss()
-                    } label: {
-                        Text("Save")
+                    
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            viewModel.save(userDefaults: UserDefaults.standard)
+                            dismiss()
+                        } label: {
+                            Text("Save")
+                        }
                     }
+                    
                 }
-
-            }
         }
         
     }
 }
 
 #Preview {
-    SettingsEditor(settingsEditorConfig: .constant(SettingsEditorConfig.emptyConfig()))
+    SettingsEditor(viewModel: SettingsEditorViewModel(settings: Settings(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, instrumentSettings: [])))
 }
+

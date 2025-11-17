@@ -13,28 +13,25 @@ import MapKit
 @Model
 final class Flight: Identifiable, Hashable {
     @Attribute(.unique) var id: UUID = UUID()
-    var title: String = ""
-    var missionDate: Date = Date.now
-    var expectedWinds: Winds = Winds(velocity: 0, direction: 0)
-    var checkPoints: [CheckPoint] = []
-    var inflightCheckPoints: [CheckPoint] = []
-    var markTimeInSeconds: Double? = nil
+    var missionName: String = ""
+    var missionType: MissionType
+    var missionDate: Date?
+    var target: Target?
+    var hackTime: TimeInterval?
     
-
+    // TODO: Update the Comments here
     
     /// Initialize a Flight
     /// - Parameters:
     ///   - title: Title of the flight
     ///   - missionDate: Date of the mission
-    ///   - expectedWinds: Expected Winds for calciulation
-    ///   - checkPoints: A list of checkpoints.
-    init(title: String, missionDate: Date, expectedWinds: Winds, checkPoints: [CheckPoint]) {
-        self.title = title
+    init(missionName: String, missionType: MissionType, missionDate: Date? = nil, target: Target, hackTime: Double? = nil) {
+        self.missionName = missionName
+        self.missionType = missionType
         self.missionDate = missionDate
-        self.expectedWinds = expectedWinds
-        self.checkPoints = checkPoints
+        self.target = target
+        self.hackTime = hackTime
     }
-
 }
 
 extension Flight {
@@ -43,51 +40,37 @@ extension Flight {
 }
 
 extension Flight {
-    func mapPoints(currentLocation: CLLocationCoordinate2D?) -> [MKMapPoint] {
-        var locations = inflightCheckPoints.map {
-            MKMapPoint($0.getCLCoordinate())
-        }
-        if currentLocation != nil {
-            locations.insert(MKMapPoint(currentLocation!), at: 0)
-        }
-        
-        return locations
-    }
-    
-    static func emptyFlight() -> Flight {
-        return Flight(title: "", missionDate: Date.now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-    }
-    
-    func validFlight() -> Bool {
+    func validFlight() -> (valid: Bool, message: String?)  {
         var validStatus = true
+        var message: String?
         
-        if checkPoints.isEmpty {
+        if missionName.isEmpty {
             validStatus = false
+            message = "Please enter a name for the mission"
         }
         
-        return validStatus
-    }
-    
-    func getCLCoordinate2D() -> [CLLocationCoordinate2D] {
-        return self.inflightCheckPoints.map { checkpoint in
-            CLLocationCoordinate2D(latitude: checkpoint.latitude, longitude: checkpoint.longitude)
+        if missionType == .hackTime && hackTime == nil {
+            validStatus = false
+            message = "Please enter a hack time"
         }
-    }
-    
-    func getCLLocations() -> [CLLocation] {
-        return self.inflightCheckPoints.map { cp in
-            CLLocation(latitude: cp.latitude, longitude: cp.longitude)
+        
+        if missionType == .tot && missionDate == nil {
+            validStatus = false
+            message = "Please enter a date for the mission"
         }
+        
+        if target == nil {
+            validStatus = false
+            message = "Please enter a target"
+        }
+        
+        return (validStatus, message)
     }
-    
-    func getCLCoordinate2D(userLocation startPoint: CLLocationCoordinate2D?) -> [CLLocationCoordinate2D] {
-        guard let startPointSafe = startPoint else { return getCLCoordinate2D() }
-        
-        var locations = getCLCoordinate2D()
-        
-        //SAFE
-        locations.insert(startPointSafe, at: 0)
-        
-        return locations
+}
+
+extension Flight {
+    var title: String {
+        get { missionName }
+        set { missionName = newValue }
     }
 }

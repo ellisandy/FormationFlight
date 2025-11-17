@@ -5,18 +5,18 @@
 //  Created by Jack Ellis on 12/15/23.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 private struct FlightsListRowView: View {
     let flight: Flight
     let onEdit: () -> Void
     let onDelete: () -> Void
-
+    
     var body: some View {
         HStack {
             Button(action: onEdit) {
-                Text(flight.title)
+                Text(flight.missionName)
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -36,7 +36,7 @@ private struct FlightsListRowView: View {
 
 private struct FlightsEmptyStateView: View {
     let onCreateFirstFlight: () -> Void
-
+    
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "airplane")
@@ -50,8 +50,11 @@ private struct FlightsEmptyStateView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
             Button(action: onCreateFirstFlight) {
-                Label("Create your first flight", systemImage: "plus.circle.fill")
-                    .font(.headline)
+                Label(
+                    "Create your first flight",
+                    systemImage: "plus.circle.fill"
+                )
+                .font(.headline)
             }
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier("emptyStateCreateFirstFlightButton")
@@ -67,7 +70,7 @@ struct FlightsListView: View {
     
     @Environment(\.modelContext) private var modelContext
     @Query var flights: [Flight]
-
+    
     @StateObject private var viewModel = FlightsListViewModel()
     
     var body: some View {
@@ -81,6 +84,22 @@ struct FlightsListView: View {
                 } else {
                     listContent
                 }
+            }
+            .navigationDestination(isPresented: $viewModel.isPresentingEditFlight) {
+                FlightEditorView(
+                    flight: viewModel.selectedFlight,
+                    onSave: { editorVM in
+                        if let editing = viewModel.selectedFlight {
+                            viewModel.updateFlight(editing, from: editorVM, modelContext: modelContext)
+                        } else {
+                            viewModel.saveNewFlight(from: editorVM, modelContext: modelContext)
+                        }
+                    },
+                    onCancel: {
+                        viewModel.cancelEditor()
+                    }
+                )
+                .navigationBarTitleDisplayMode(.inline)
             }
             .navigationTitle("Flights")
             .toolbar {
@@ -96,10 +115,10 @@ struct FlightsListView: View {
                 }
                 ToolbarItem {
                     Button {
-                        withAnimation {
-                            uiLog.debug("Presenting add flight")
-                            viewModel.presentAddFlight()
-                        }
+                        //                        withAnimation {
+                        uiLog.debug("Presenting add flight")
+                        viewModel.presentAddFlight()
+                        //                        }
                     } label: {
                         Label("Add Item", systemImage: "plus")
                     }
@@ -109,24 +128,37 @@ struct FlightsListView: View {
                 }
             }
         }
-        .sheet(isPresented: $viewModel.flightEditorConfig.isPresented,
-               onDismiss: { viewModel.didDismissEditor(modelContext: modelContext) }) {
-            FlightEditor(config: $viewModel.flightEditorConfig)
-        }
-        .sheet(isPresented: $viewModel.settingsConfig.isPresented) {
-            SettingsEditor(settingsEditorConfig: $viewModel.settingsConfig)
-        }
+        .sheet(isPresented: $viewModel.isPresentingSettings, onDismiss: {
+            viewModel.dismissSettings()
+        }, content: {
+            SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
+        })
+        //        .sheet(isPresented: $viewModel.isPresentingSettings) {
+        //        } content: {
+        //            SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
+        //        } 
+        //
+        //        {
+        //            SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
+        //        }
         .onAppear {
             uiLog.debug("FlightsListView appeared")
             viewModel.startMonitoring()
         }
-        .alert("Validation", isPresented: .constant(viewModel.validationMessage != nil)) {
+        .alert(
+            "Validation",
+            isPresented: .constant(viewModel.validationMessage != nil)
+        ) {
             Button("OK") { viewModel.validationMessage = nil }
         } message: {
             Text(viewModel.validationMessage ?? "")
         }
         // Deletion confirmation, driven by view model state
-        .alert("Delete Flight?", isPresented: $viewModel.showDeleteConfirmation, presenting: viewModel.pendingDeleteFlight) { _ in
+        .alert(
+            "Delete Flight?",
+            isPresented: $viewModel.showDeleteConfirmation,
+            presenting: viewModel.pendingDeleteFlight
+        ) { _ in
             Button("Delete", role: .destructive) {
                 withAnimation {
                     viewModel.confirmDelete(modelContext: modelContext)
@@ -136,19 +168,20 @@ struct FlightsListView: View {
                 viewModel.cancelDelete()
             }
         } message: { flight in
-            Text("Are you sure you want to delete “\(flight.title)”? This action cannot be undone.")
+            Text("Are you sure you want to delete \(flight.missionName)? This action cannot be undone.")
         }
         .accessibilityIdentifier("FlightsListViewRoot")
-        .animation(.default, value: flights)
     }
-
+    
     private var listContent: some View {
         List {
             ForEach(flights, id: \.id) { flight in
                 FlightsListRowView(
                     flight: flight,
                     onEdit: {
-                        uiLog.debug("Editing flight: \(flight.title, privacy: .public)")
+                        uiLog.debug(
+                            "Editing flight: \(flight.missionName, privacy: .public)"
+                        )
                         viewModel.presentEditFlight(flight)
                     },
                     onDelete: {
@@ -158,29 +191,40 @@ struct FlightsListView: View {
                 )
             }
             .onDelete { indexSet in
-                viewModel.handleOnDelete(indexSet: indexSet, flights: flights, modelContext: modelContext)
+                viewModel.handleOnDelete(
+                    indexSet: indexSet,
+                    flights: flights,
+                    modelContext: modelContext
+                )
             }
         }
     }
 }
 
 #Preview {
-    // In-memory SwiftData container with sample flights for preview
-    do {
+    @MainActor
+    func makeInMemoryContainer() -> ModelContainer {
         let schema = Schema([Flight.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true
+        )
+        let container = try! ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        
         // Seed data
         let context = ModelContext(container)
-        let f1 = Flight(title: "Training Run", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        let f2 = Flight(title: "Formation Practice", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
+        let f1 = Flight(missionName: "F1", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0.0, latitude: 0.0))
+        let f2 = Flight(missionName: "F2", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0.0, latitude: 0.0))
         context.insert(f1)
         context.insert(f2)
-
-        return FlightsListView()
-            .modelContainer(container)
-    } catch {
-        return Text("Preview failed: \(error.localizedDescription)")
+        
+        return container
     }
+    
+    let container = makeInMemoryContainer()
+    return FlightsListView()
+        .modelContainer(container)
 }
