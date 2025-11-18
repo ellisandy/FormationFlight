@@ -133,14 +133,6 @@ struct FlightsListView: View {
         }, content: {
             SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
         })
-        //        .sheet(isPresented: $viewModel.isPresentingSettings) {
-        //        } content: {
-        //            SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
-        //        } 
-        //
-        //        {
-        //            SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
-        //        }
         .onAppear {
             uiLog.debug("FlightsListView appeared")
             viewModel.startMonitoring()

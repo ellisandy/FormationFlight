@@ -8,14 +8,28 @@
 import SwiftUI
 import CoreLocation
 
+public protocol LocationProviding: AnyObject {
+    // State
+    var updateDelegate: (() -> Void)? { get set }
+    var authroizationStatus: CLAuthorizationStatus? { get }
+    var speed: Measurement<UnitSpeed> { get }
+    var altitude: Measurement<UnitLength> { get }
+    var course: Measurement<UnitAngle> { get }
+    var currentLocation: CLLocation? { get }
+    var computedSpeedAndCourse: Bool { get }
+
+    // Control
+    func startMonitoring()
+    func stopMonitoring()
+}
+
 private struct TimedLocation {
     let location: CLLocation
     let timestamp: Date
 }
 
 @Observable
-class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject {
-    var locationManager: CLLocationManager = CLLocationManager()
+class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, LocationProviding {
     var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
     var speed: Measurement<UnitSpeed> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
@@ -25,7 +39,8 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject {
     var computedSpeedAndCourse: Bool = false
     
     private var previousLocations: [TimedLocation] = []
-    
+    private var locationManager: CLLocationManager = CLLocationManager()
+
     init(clManager: CLLocationManager = CLLocationManager()) {
         
         super.init()
@@ -86,19 +101,19 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject {
                 previousLocations = Array(previousLocations.suffix(10))
             }
             
-            if _lastLocation.speed < 0 {
+            if _lastLocation.speed > 0 {
                 speed = Measurement(value: _lastLocation.speed, unit: UnitSpeed.metersPerSecond)
             }
             
-            if _lastLocation.altitude < 0 {
+            if _lastLocation.altitude > 0 {
                 altitude = Measurement(value: _lastLocation.altitude, unit: UnitLength.meters)
             }
             
-            if _lastLocation.course < 0 {
+            if _lastLocation.course > 0 {
                 course = Measurement(value: _lastLocation.course, unit: UnitAngle.degrees)
             }
             
-            if course.value < 0 || speed.value < 0 {
+            if course.value > 0 || speed.value > 0 {
                 if let computed = computeManualSpeedAndCourse() {
                     speed = computed.speed
                     course = computed.course
@@ -189,3 +204,4 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject {
         return θ
     }
 }
+

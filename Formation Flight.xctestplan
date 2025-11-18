@@ -22,19 +22,18 @@
   },
   "testTargets" : [
     {
+      "target" : {
+        "containerPath" : "container:Formation Flight.xcodeproj",
+        "identifier" : "C29255732B2D648D0064F41F",
+        "name" : "Formation FlightUITests"
+      }
+    },
+    {
       "parallelizable" : false,
       "target" : {
         "containerPath" : "container:Formation Flight.xcodeproj",
         "identifier" : "C29255692B2D648D0064F41F",
         "name" : "Formation FlightTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:Formation Flight.xcodeproj",
-        "identifier" : "C29255732B2D648D0064F41F",
-        "name" : "Formation FlightUITests"
       }
     }
   ],

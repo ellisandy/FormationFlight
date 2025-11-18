@@ -15,7 +15,7 @@ final class FlightsListViewModel: ObservableObject {
     private let dataLog = AppLogger.data
     
     // TODO: Consider abstracting LocationProvider behind a protocol for testability.
-    let locationProvider: LocationProvider = LocationProvider()
+    let locationProvider: LocationProviding
     
     // Validation feedback
     @Published var validationMessage: String?
@@ -30,6 +30,24 @@ final class FlightsListViewModel: ObservableObject {
     // Deletion coordination
     @Published var pendingDeleteFlight: Flight?
     @Published var showDeleteConfirmation: Bool = false
+    
+    init(validationMessage: String? = nil,
+         isPresentingSettings: Bool = false,
+         isPresentingEditFlight: Bool = false,
+         selectedFlight: Flight? = nil,
+         settings: Settings = Settings.load(from: UserDefaults.standard),
+         pendingDeleteFlight: Flight? = nil,
+         showDeleteConfirmation: Bool = false,
+         locationProvider: LocationProviding = LocationProvider()) {
+        self.validationMessage = validationMessage
+        self.isPresentingSettings = isPresentingSettings
+        self.isPresentingEditFlight = isPresentingEditFlight
+        self.selectedFlight = selectedFlight
+        self.settings = settings
+        self.pendingDeleteFlight = pendingDeleteFlight
+        self.showDeleteConfirmation = showDeleteConfirmation
+        self.locationProvider = locationProvider
+    }
     
     // MARK: - Lifecycle
     func startMonitoring() {
@@ -59,12 +77,20 @@ final class FlightsListViewModel: ObservableObject {
     // MARK: - Editor Actions (Closures from Child)
     func saveNewFlight(from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
         dataLog.info("Saving new flight from editor")
-        let target = Target(longitude: editorVM.selectedTargetLocation?.longitude ?? 0,
-                            latitude: editorVM.selectedTargetLocation?.latitude ?? 0)
+        
+        // Validate required target location
+        guard let targetLocation = editorVM.selectedTargetLocation else {
+            dataLog.info("Missing Target for new flight")
+            validationMessage = "Missing target location. Please try again."
+            return
+        }
+        
+        // Bind to temp variables before creating the model objects
         let missionType: MissionType = editorVM.useTOT ? .tot : .hackTime
         let missionDate: Date? = editorVM.timeEntry
         let hackDuration: Double? = Double(editorVM.hackDurationSeconds)
-        //Date = editorVM.useTOT ? editorVM.timeEntry : Date().addingTimeInterval(TimeInterval(editorVM.hackDurationSeconds))
+        let target = Target(longitude: targetLocation.longitude, latitude: targetLocation.latitude)
+        
         let flight = Flight(missionName: editorVM.missionName,
                             missionType: missionType,
                             missionDate: missionDate,
@@ -84,14 +110,16 @@ final class FlightsListViewModel: ObservableObject {
     func updateFlight(_ flight: Flight, from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
         dataLog.info("Updating existing flight: \(flight.missionName, privacy: .public)")
         
-        if let target = editorVM.selectedTargetLocation {
-            flight.target = Target(longitude: editorVM.selectedTargetLocation?.longitude ?? 0,
-                                   latitude: editorVM.selectedTargetLocation?.latitude ?? 0)
-        } else {
+        // Validate required target location
+        guard let targetLocation = editorVM.selectedTargetLocation else {
             dataLog.info("Missing Target for flight: \(flight.missionName, privacy: .public)")
             validationMessage = "Missing target location. Please try again."
             return
         }
+        
+        // Bind to temp variables before mutating the model
+        flight.target = Target(longitude: targetLocation.longitude, latitude: targetLocation.latitude)
+        
         flight.missionType = editorVM.useTOT ? .tot : .hackTime
         flight.missionDate = editorVM.timeEntry
         flight.hackTime = Double(editorVM.hackDurationSeconds)

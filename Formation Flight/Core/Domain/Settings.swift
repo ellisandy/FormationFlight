@@ -61,9 +61,6 @@ public struct Settings: Codable, Equatable {
         case distanceUnit
         case yellowTolerance
         case redTolerance
-        case minSpeed
-        case maxSpeed
-        case proximityToNextPoint
         case instrumentSettings
     }
     

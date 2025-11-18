@@ -1,4 +1,5 @@
 import Testing
+import CoreLocation
 import Foundation
 @testable import Formation_Flight
 import SwiftData
@@ -21,242 +22,307 @@ struct FlightsListViewModel_SwiftTests_Extra {
         
         sut.presentAddFlight()
         
-        #expect(sut.flightEditorConfig.isPresented)
-        #expect(sut.flightEditorConfig.shouldSaveChanges == false)
-        #expect(sut.flightEditorConfig.flight.title == "")
+        #expect(sut.isPresentingEditFlight)
     }
     
-    @Test("presentAddFlight called twice keeps a fresh empty flight")
-    func presentAddFlight_idempotent() async throws {
+    // MARK: - Editor coordination (edit / cancel)
+    @Test("presentEditFlight sets selectedFlight and presents editor")
+    func presentEditFlight_setsState() async throws {
         let sut = FlightsListViewModel()
-        
-        sut.presentAddFlight()
-        sut.flightEditorConfig.flight.title = "Temp"
-        sut.presentAddFlight()
-        
-        #expect(sut.flightEditorConfig.isPresented)
-        #expect(sut.flightEditorConfig.flight.title == "") // reset to empty flight
-    }
-    
-    @Test("presentEditFlight loads flight and presents editor")
-    func presentEditFlight_loadsFlight() async throws {
-        let sut = FlightsListViewModel()
-        let flight = Flight.emptyFlight()
-        flight.title = "Edit Me"
+        let flight = Flight(missionName: "Test", missionType: .hackTime, missionDate: .now, target: Target(longitude: 1, latitude: 2))
         
         sut.presentEditFlight(flight)
         
-        #expect(sut.flightEditorConfig.isPresented)
-        #expect(sut.flightEditorConfig.shouldSaveChanges == false)
-        #expect(sut.flightEditorConfig.flight.title == "Edit Me")
+        #expect(sut.selectedFlight?.id == flight.id)
+        #expect(sut.isPresentingEditFlight)
     }
     
-    // MARK: - Save flow
-    @Test("didDismissEditor no-op when shouldSaveChanges is false")
-    func didDismissEditor_noop_whenNotSaving() async throws {
+    @Test("cancelEditor resets selection and hides editor")
+    func cancelEditor_resetsState() async throws {
+        let sut = FlightsListViewModel()
+        sut.isPresentingEditFlight = true
+        sut.selectedFlight = Flight(missionName: "X", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        
+        sut.cancelEditor()
+        
+        #expect(sut.selectedFlight == nil)
+        #expect(!sut.isPresentingEditFlight)
+    }
+    
+    // MARK: - Settings coordination
+    @Test("presentSettings toggles presentation flag")
+    func presentSettings_setsFlag() async throws {
+        let sut = FlightsListViewModel()
+        sut.presentSettings()
+        #expect(sut.isPresentingSettings)
+    }
+    
+    @Test("dismissSettings reloads settings and hides sheet")
+    func dismissSettings_hides() async throws {
+        let sut = FlightsListViewModel()
+        sut.isPresentingSettings = true
+        sut.dismissSettings()
+        #expect(!sut.isPresentingSettings)
+    }
+    
+    // MARK: - Location monitoring
+    final class MockLocationProvider: LocationProviding {
+        var authroizationStatus: CLAuthorizationStatus?
+                
+        // MARK: - LocationProviding
+        var updateDelegate: (() -> Void)?
+
+        var authorizationStatus: CLAuthorizationStatus = .notDetermined
+
+        var speed: Measurement<UnitSpeed> = .init(value: 0, unit: .knots)
+
+        var altitude: Measurement<UnitLength> = .init(value: 0, unit: .meters)
+
+        var course: Measurement<UnitAngle> = .init(value: 0, unit: .degrees)
+
+        var currentLocation: CLLocation? = nil
+
+        var computedSpeedAndCourse: Bool = false
+
+        // MARK: - Lifecycle
+        init() {}
+
+        // MARK: - Monitoring
+        private(set) var didStart = false
+        private(set) var didStop = false
+        func startMonitoring() { didStart = true }
+        func stopMonitoring() { didStop = true }
+    }
+    
+    @Test("start/stop monitoring forwards to provider")
+    func monitoring_forwards() async throws {
+        let mock = MockLocationProvider()
+        // This assumes FlightsListViewModel has an initializer that accepts a LocationProviding.
+        // If not present, add `init(locationProvider: LocationProviding)` to the ViewModel in production code.
+        let sut = FlightsListViewModel(locationProvider: mock)
+        sut.startMonitoring()
+        sut.stopMonitoring()
+        #expect(mock.didStart)
+        #expect(mock.didStop)
+    }
+    
+    // MARK: - Persistence helpers
+    private func insertSampleFlight(into context: ModelContext, name: String = "F1") -> Flight {
+        let f = Flight(missionName: name, missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        context.insert(f)
+        return f
+    }
+    
+    // MARK: - Editor Actions: save new flight
+    @Test("saveNewFlight inserts and saves a flight")
+    func saveNewFlight_inserts() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
         let sut = FlightsListViewModel()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "New Mission"
+        editor.useTOT = true
+        editor.timeEntry = Date()
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
         
-        sut.flightEditorConfig.presentAddFlight()
-        sut.flightEditorConfig.flight.title = "Won't Save"
-        sut.flightEditorConfig.shouldSaveChanges = false
-        sut.flightEditorConfig.isPresented = false
+        sut.saveNewFlight(from: editor, modelContext: context)
         
-        sut.didDismissEditor(modelContext: context)
-        
+        // Fetch to verify persistence
+        let fetch = FetchDescriptor<Flight>()
+        let flights = try context.fetch(fetch)
+        #expect(flights.contains { $0.missionName == "New Mission" })
+        #expect(!sut.isPresentingEditFlight)
+        #expect(sut.selectedFlight == nil)
+    }
+
+    @Test("saveNewFlight with missing target sets validation and does not insert")
+    func saveNewFlight_missingTarget_setsValidation() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = FlightsListViewModel()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "No Target Mission"
+        editor.useTOT = false
+        editor.timeEntry = Date()
+        editor.selectedTargetLocation = nil // Explicitly missing
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        // No insertion should have occurred
         let flights = try context.fetch(FetchDescriptor<Flight>())
         #expect(flights.isEmpty)
-        #expect(sut.validationMessage == nil)
+        #expect(sut.validationMessage != nil)
     }
     
-    @Test("didDismissEditor rejects whitespace-only title")
-    func didDismissEditor_rejectsWhitespaceOnlyTitle() async throws {
+    // MARK: - Editor Actions: update flight success and validation
+    @Test("updateFlight updates existing flight when target provided")
+    func updateFlight_success() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
+        let existing = insertSampleFlight(into: context, name: "Old")
+        try context.save()
+        
         let sut = FlightsListViewModel()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.missionName = "Updated" // name is taken from model, but we still set other fields
+        editor.useTOT = false
+        editor.timeEntry = Date().addingTimeInterval(60)
+        editor.selectedTargetLocation = .init(latitude: 1, longitude: 2)
+        editor.hackDurationSeconds = 123
         
-        sut.flightEditorConfig.presentAddFlight()
-        sut.flightEditorConfig.flight.title = "   \n\t  "
-        sut.flightEditorConfig.shouldSaveChanges = true
-        sut.flightEditorConfig.isPresented = false
+        sut.updateFlight(existing, from: editor, modelContext: context)
         
-        sut.didDismissEditor(modelContext: context)
+        #expect(existing.missionType == .hackTime)
+        #expect(existing.missionDate != nil)
+        #expect(existing.target != nil)
+        #expect(existing.hackTime == 123)
+        #expect(!sut.isPresentingEditFlight)
+        #expect(sut.selectedFlight == nil)
+    }
+    
+    @Test("updateFlight without target sets validation message and does not save")
+    func updateFlight_missingTarget_setsValidation() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = insertSampleFlight(into: context)
+        try context.save()
+        
+        let sut = FlightsListViewModel()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.selectedTargetLocation = nil
+        
+        sut.updateFlight(existing, from: editor, modelContext: context)
         
         #expect(sut.validationMessage != nil)
-        #expect(sut.flightEditorConfig.isPresented) // re-present editor
-        let flights = try context.fetch(FetchDescriptor<Flight>())
-        #expect(flights.isEmpty)
-    }
-    
-    @Test("didDismissEditor with valid title inserts flight")
-    func didDismissEditor_validTitle_inserts() async throws {
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let sut = FlightsListViewModel()
-        
-        sut.flightEditorConfig.presentAddFlight()
-        sut.flightEditorConfig.flight.title = "Valid Flight"
-        sut.flightEditorConfig.shouldSaveChanges = true
-        sut.flightEditorConfig.isPresented = false
-        
-        sut.didDismissEditor(modelContext: context)
-        
-        let flights = try context.fetch(FetchDescriptor<Flight>())
-        #expect(flights.count == 1)
-        #expect(flights.first?.title == "Valid Flight")
-    }
-    
-    // MARK: - Settings
-    @Test("presentSettings sets isPresented on settingsConfig")
-    func presentSettings_setsPresented() async throws {
-        let sut = FlightsListViewModel()
-        #expect(sut.settingsConfig.isPresented == false)
-        
-        sut.presentSettings()
-        
-        #expect(sut.settingsConfig.isPresented == true)
     }
     
     // MARK: - Deletion flow
-    @Test("requestDelete sets pending flight and shows confirmation")
+    @Test("requestDelete sets pending and shows confirmation")
     func requestDelete_setsState() async throws {
         let sut = FlightsListViewModel()
-        let flight = Flight.emptyFlight()
-        flight.title = "Delete Me"
-        
-        sut.requestDelete(flight: flight)
-        
-        #expect(sut.pendingDeleteFlight?.id == flight.id)
+        let f = Flight(missionName: "ToDelete", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        sut.requestDelete(flight: f)
+        #expect(sut.pendingDeleteFlight?.id == f.id)
         #expect(sut.showDeleteConfirmation)
     }
     
-    @Test("confirmDelete without pending flight is a no-op")
-    func confirmDelete_noPending_noop() async throws {
+    @Test("delete removes a flight from the model context")
+    func delete_removesFlight() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "ToRemove")
+        try context.save()
+
+        // Sanity check present
+        var flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.contains { $0.id == f.id })
+
         let sut = FlightsListViewModel()
-        
-        // No pendingDeleteFlight set
+        sut.delete(f, modelContext: context)
+
+        flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(!flights.contains { $0.id == f.id })
+    }
+
+    @Test("confirmDelete deletes pending flight and resets state when present")
+    func confirmDelete_withPending_deletesAndResets() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Pending")
+        try context.save()
+
+        let sut = FlightsListViewModel()
+        sut.pendingDeleteFlight = f
+        sut.showDeleteConfirmation = true
+
         sut.confirmDelete(modelContext: context)
-        
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(!flights.contains { $0.id == f.id })
         #expect(sut.pendingDeleteFlight == nil)
-        #expect(sut.showDeleteConfirmation == false)
-        let remaining = try context.fetch(FetchDescriptor<Flight>())
-        #expect(remaining.isEmpty)
+        #expect(!sut.showDeleteConfirmation)
+    }
+
+    @Test("confirmDelete with no pending hides confirmation and does nothing")
+    func confirmDelete_withoutPending_doesNothing() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Keep")
+        try context.save()
+
+        let sut = FlightsListViewModel()
+        sut.pendingDeleteFlight = nil
+        sut.showDeleteConfirmation = true
+
+        sut.confirmDelete(modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.contains { $0.id == f.id })
+        #expect(sut.pendingDeleteFlight == nil)
+        #expect(!sut.showDeleteConfirmation)
     }
     
-    @Test("confirmDelete deletes and clears state")
+    @Test("confirmDelete deletes pending and resets state")
     func confirmDelete_deletes() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
-        
-        let flight = Flight(title: "Seed", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        context.insert(flight)
-        
-        var all = try context.fetch(FetchDescriptor<Flight>())
-        #expect(all.count == 1)
+        let f = insertSampleFlight(into: context)
+        try context.save()
         
         let sut = FlightsListViewModel()
-        sut.requestDelete(flight: flight)
+        sut.pendingDeleteFlight = f
+        sut.showDeleteConfirmation = true
+        
         sut.confirmDelete(modelContext: context)
         
+        // Try fetching to ensure deletion
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(!flights.contains { $0.id == f.id })
         #expect(sut.pendingDeleteFlight == nil)
-        #expect(sut.showDeleteConfirmation == false)
-        
-        all = try context.fetch(FetchDescriptor<Flight>())
-        #expect(all.isEmpty)
+        #expect(!sut.showDeleteConfirmation)
     }
     
-    @Test("cancelDelete clears state")
-    func cancelDelete_clears() async throws {
+    @Test("cancelDelete resets state without deleting")
+    func cancelDelete_resets() async throws {
         let sut = FlightsListViewModel()
-        sut.requestDelete(flight: Flight.emptyFlight())
+        sut.pendingDeleteFlight = Flight(missionName: "X", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        sut.showDeleteConfirmation = true
         
         sut.cancelDelete()
         
         #expect(sut.pendingDeleteFlight == nil)
-        #expect(sut.showDeleteConfirmation == false)
+        #expect(!sut.showDeleteConfirmation)
     }
     
-    @Test("handleOnDelete with empty index set is a no-op")
-    func handleOnDelete_emptyIndexSet_noop() async throws {
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        
-        let f1 = Flight(title: "One", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        let f2 = Flight(title: "Two", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        context.insert(f1); context.insert(f2)
-        
-        let sut = FlightsListViewModel()
-        sut.handleOnDelete(indexSet: IndexSet(), flights: [f1, f2], modelContext: context)
-        
-        let remaining = try context.fetch(FetchDescriptor<Flight>())
-        #expect(remaining.count == 2)
-        #expect(sut.pendingDeleteFlight == nil)
-        #expect(sut.showDeleteConfirmation == false)
-    }
-    
-    @Test("handleOnDelete single index routes to confirmation")
+    @Test("handleOnDelete with single item triggers confirmation flow")
     func handleOnDelete_single() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
-        
-        let f1 = Flight(title: "One", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        let f2 = Flight(title: "Two", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        context.insert(f1); context.insert(f2)
-        
+        let f = insertSampleFlight(into: context)
+        try context.save()
         let sut = FlightsListViewModel()
-        sut.handleOnDelete(indexSet: IndexSet(integer: 1), flights: [f1, f2], modelContext: context)
         
-        #expect(sut.pendingDeleteFlight?.id == f2.id)
+        sut.handleOnDelete(indexSet: IndexSet(integer: 0), flights: [f], modelContext: context)
+        
+        #expect(sut.pendingDeleteFlight?.id == f.id)
         #expect(sut.showDeleteConfirmation)
     }
     
-    @Test("handleOnDelete multiple indices deletes directly")
+    @Test("handleOnDelete with multiple items deletes immediately")
     func handleOnDelete_multiple() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
-        
-        let f1 = Flight(title: "One", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        let f2 = Flight(title: "Two", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        let f3 = Flight(title: "Three", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        context.insert(f1); context.insert(f2); context.insert(f3)
-        
+        let f1 = insertSampleFlight(into: context, name: "A")
+        let f2 = insertSampleFlight(into: context, name: "B")
+        try context.save()
         let sut = FlightsListViewModel()
-        sut.handleOnDelete(indexSet: IndexSet([0, 2]), flights: [f1, f2, f3], modelContext: context)
         
-        let remaining = try context.fetch(FetchDescriptor<Flight>())
-        #expect(remaining.count == 1)
-        #expect(remaining.first?.id == f2.id)
+        sut.handleOnDelete(indexSet: IndexSet([0, 1]), flights: [f1, f2], modelContext: context)
         
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.isEmpty)
         #expect(sut.pendingDeleteFlight == nil)
-        #expect(sut.showDeleteConfirmation == false)
-    }
-    
-    // MARK: - Direct delete API
-    @Test("delete removes flight immediately")
-    func delete_removesImmediately() async throws {
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        
-        let f = Flight(title: "Direct", missionDate: .now, expectedWinds: Winds(velocity: 0, direction: 0), checkPoints: [])
-        context.insert(f)
-        
-        let sut = FlightsListViewModel()
-        sut.delete(f, modelContext: context)
-        
-        let remaining = try context.fetch(FetchDescriptor<Flight>())
-        #expect(remaining.isEmpty)
-    }
-    
-    // MARK: - Lifecycle smoke tests
-    @Test("start/stop monitoring are callable without crashing")
-    func lifecycle_smoke() async throws {
-        let sut = FlightsListViewModel()
-        sut.startMonitoring()
-        sut.stopMonitoring()
-        // No expectations; just ensure no crash and main-actor reentrancy is fine.
-        #expect(true)
+        #expect(!sut.showDeleteConfirmation)
     }
 }
+
