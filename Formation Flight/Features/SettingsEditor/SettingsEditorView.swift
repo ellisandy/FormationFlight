@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SettingsEditor: View{
+struct SettingsEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State var viewModel: SettingsEditorViewModel
     
@@ -40,6 +40,6 @@ struct SettingsEditor: View{
 }
 
 #Preview {
-    SettingsEditor(viewModel: SettingsEditorViewModel(settings: Settings(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, instrumentSettings: [])))
+    SettingsEditorView(viewModel: SettingsEditorViewModel(settings: Settings(speedUnit: .kts, distanceUnit: .nm, yellowTolerance: 5, redTolerance: 10, instrumentSettings: [])))
 }
 

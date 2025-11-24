@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SettingsEditorForm: View {
+struct SettingsEditorFormView: View {
     @ObservedObject var viewModel: SettingsEditorViewModel
     @State private var editMode: EditMode = .active
     
@@ -75,6 +75,6 @@ struct SettingsEditorForm: View {
 }
 
 #Preview {
-    SettingsEditorForm(viewModel: SettingsEditorViewModel())
+    SettingsEditorFormView(viewModel: SettingsEditorViewModel())
 }
 
