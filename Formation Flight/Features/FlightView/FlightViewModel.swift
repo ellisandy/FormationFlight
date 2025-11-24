@@ -40,7 +40,7 @@ final class FlightViewModel: ObservableObject {
     
     // MARK: - Dependencies / Model Objects
     var settings: Settings
-    var locationProvider: LocationProvider
+    var locationProvider: LocationProviding
     var missionType: MissionType
     var missionDate: Date?
     var hackTime: TimeInterval?
@@ -50,13 +50,18 @@ final class FlightViewModel: ObservableObject {
     @Published var isEditingHackTime: Bool = false
     
     // MARK: - Private
-    private var timerCancellable: AnyCancellable?
+    private let timerScheduler: TimerScheduling
+    private var timerToken: AnyCancellableLike?
     private let requiredSpeedTrackToleranceDegrees: Double = 15
     
     // MARK: - Initialization
-    init(flight: Flight, settings: Settings, locationProvider: LocationProvider = LocationProvider()) {
+    init(flight: Flight,
+         settings: Settings,
+         locationProvider: LocationProviding = LocationProvider.shared,
+         timerScheduler: TimerScheduling = DefaultTimerScheduler()) {
         self.settings = settings
         self.locationProvider = locationProvider
+        self.timerScheduler = timerScheduler
         
         // Derived Data
         self.missionName = flight.missionName
@@ -70,9 +75,17 @@ final class FlightViewModel: ObservableObject {
         configure()
     }
     
-    init(missionName: String = "", target: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 0.0, longitude: 0.0), missionType: MissionType = .tot, missionDate: Date? = nil, hackTime: TimeInterval? = nil, settings: Settings = Settings.empty(), locationProvider: LocationProvider = LocationProvider()) {
+    init(missionName: String = "",
+         target: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 0.0, longitude: 0.0),
+         missionType: MissionType = .tot,
+         missionDate: Date? = nil,
+         hackTime: TimeInterval? = nil,
+         settings: Settings = Settings.empty(),
+         locationProvider: LocationProviding = LocationProvider.shared,
+         timerScheduler: TimerScheduling = DefaultTimerScheduler()) {
         self.settings = settings
         self.locationProvider = locationProvider
+        self.timerScheduler = timerScheduler
         
         self.missionName = missionName
         self.target = target
@@ -93,12 +106,6 @@ final class FlightViewModel: ObservableObject {
     
     private func configure() {
         startTimer()
-        self.locationProvider.updateDelegate = self.onLocationUpdate
-    }
-    
-    // MARK: - Lifecycle
-    deinit {
-        timerCancellable?.cancel()
     }
     
     // MARK: - Public API (UI Intents)
@@ -125,25 +132,23 @@ final class FlightViewModel: ObservableObject {
     
     // MARK: - Location Updates
     func onLocationUpdate() {
-        updateTimings()
+        AppLogger.viewModel.debug("Location update received from LocationProvider")
         updateInstruments()
     }
     
     // MARK: - Timer
     private func startTimer() {
         locationProvider.startMonitoring()
-        
-        // Update every second on the main run loop
-        timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self else { return }
-                self.currentTime = Date()
-            }
+        // Schedule 1-second updates using injected scheduler
+        timerToken = timerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
+            self?.updateTimings()
+        }
     }
     
     // MARK: - Update Pipelines
     private func updateTimings() {
+        self.currentTime = Date()
+
         // Set ETE
         if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
            let dist = self.distance?.converted(to: .meters),
@@ -260,3 +265,4 @@ extension FlightViewModel {
         MeasurementFormatters.distanceString(m, unitPreference: settings.distanceUnit)
     }
 }
+

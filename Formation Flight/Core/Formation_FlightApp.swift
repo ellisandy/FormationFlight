@@ -24,6 +24,7 @@ struct Formation_FlightApp: App {
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
 
+            // coverage:ignore-start
             // Optional: seed data for UI tests when requested
             if useInMemory, args.contains("-uiTestsSeedFlights") {
                 let context = ModelContext(container)
@@ -33,6 +34,7 @@ struct Formation_FlightApp: App {
                 context.insert(f2)
                 try? context.save()
             }
+            // coverage:ignore-end
 
             return container
         } catch {

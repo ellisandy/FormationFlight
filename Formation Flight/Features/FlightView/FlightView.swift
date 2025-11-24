@@ -351,6 +351,7 @@ struct FlightView: View {
     }
 }
 
+// coverage:ignore-start
 @MainActor private func makeHackMissionGoodVM() -> FlightViewModel {
     let vm = FlightViewModel(
         missionName: "Training Hack",
@@ -426,4 +427,4 @@ struct FlightView: View {
 #Preview("Instruments - Really Bad Status") {
     FlightView(viewModel: makeInstrumentsReallyBadVM())
 }
-
+// coverage:ignore-end

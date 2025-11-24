@@ -29,7 +29,8 @@ private struct TimedLocation {
 }
 
 @Observable
-class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, LocationProviding {
+final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, LocationProviding {
+    @MainActor static let shared = LocationProvider()
     var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
     var speed: Measurement<UnitSpeed> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
@@ -42,20 +43,19 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, L
     private var locationManager: CLLocationManager = CLLocationManager()
 
     init(clManager: CLLocationManager = CLLocationManager()) {
-        
         super.init()
         self.locationManager = clManager
         self.locationManager.delegate = self
     }
     
     func startMonitoring() {
-        print("LocationProvider: Start monitoring")
+        AppLogger.location.debug("LocationProvider: Start monitoring")
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
     }
     
     func stopMonitoring() {
-        print("LocationProvider: Stop monitoring")
+        AppLogger.location.debug("LocationProvider: Stop monitoring")
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
     }
@@ -71,7 +71,7 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, L
             
         case .restricted, .denied: // Location services currently unavailable.
             // Insert code here of what should happen when Location services are NOT authorized
-            print("LocationProvider: Status \(manager.authorizationStatus)")
+            AppLogger.location.warning("LocationProvider: Status \(manager.authorizationStatus.rawValue)")
             break
             
         case .notDetermined: // Authorization not determined yet.
@@ -84,11 +84,11 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, L
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("LocationProvider: ERROR \(error.localizedDescription)")
+        AppLogger.location.error("LocationProvider error: \(error.localizedDescription)")
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        print("LocationProvider: location Updated")
+        AppLogger.location.debug("LocationProvider: location updated")
         
         if let _lastLocation = locations.last {
             currentLocation = _lastLocation
@@ -113,10 +113,15 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, L
                 course = Measurement(value: _lastLocation.course, unit: UnitAngle.degrees)
             }
             
-            if course.value > 0 || speed.value > 0 {
+            if _lastLocation.speed == -1.0 {
+                
+                
                 if let computed = computeManualSpeedAndCourse() {
                     speed = computed.speed
-                    course = computed.course
+                    
+                    if _lastLocation.course == -1.0 {
+                        course = computed.course
+                    }
                     
                     computedSpeedAndCourse = true
                 }
@@ -125,7 +130,7 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, L
             }
         }
         
-        (updateDelegate ?? {print("No Update Delegate")})()
+        (updateDelegate ?? { AppLogger.location.debug("LocationProvider: No update delegate") })()
     }
     
     /// Computes manual ground speed and course using the buffered previous locations.
@@ -204,4 +209,3 @@ class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, L
         return θ
     }
 }
-

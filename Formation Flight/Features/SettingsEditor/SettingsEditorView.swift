@@ -13,7 +13,7 @@ struct SettingsEditorView: View {
     
     var body: some View {
         NavigationStack {
-            SettingsEditorForm(viewModel: viewModel)
+            SettingsEditorFormView(viewModel: viewModel)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button {

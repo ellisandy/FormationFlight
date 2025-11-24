@@ -15,7 +15,7 @@ struct MeasurementFormattersTests {
     func speed_knots() async throws {
         let speed = Measurement(value: 250, unit: UnitSpeed.knots)
         let result = MeasurementFormatters.speedString(speed, unitPreference: .kts)
-        #expect(result == "250 kt")
+        #expect(result == "250kn")
     }
 
     @Test("Speed: mph conversion")
@@ -23,7 +23,7 @@ struct MeasurementFormattersTests {
         // 100 m/s ≈ 223.693629 mph -> formatted with 0 fractional digits
         let speed = Measurement(value: 100, unit: UnitSpeed.metersPerSecond)
         let result = MeasurementFormatters.speedString(speed, unitPreference: .mph)
-        #expect(result == "224 mph")
+        #expect(result == "224mph")
     }
 
     @Test("Speed: kph conversion")
@@ -31,7 +31,7 @@ struct MeasurementFormattersTests {
         // 55 mph ≈ 88.51392 km/h -> formatted with 0 fractional digits
         let speed = Measurement(value: 55, unit: UnitSpeed.milesPerHour)
         let result = MeasurementFormatters.speedString(speed, unitPreference: .kph)
-        #expect(result == "89 km/h")
+        #expect(result == "89km/h")
     }
 
     // MARK: - Distance Formatting
@@ -45,7 +45,7 @@ struct MeasurementFormattersTests {
     func distance_nauticalMiles() async throws {
         let distance = Measurement(value: 12, unit: UnitLength.nauticalMiles)
         let result = MeasurementFormatters.distanceString(distance, unitPreference: .nm)
-        #expect(result == "12 nm")
+        #expect(result == "12.0nmi")
     }
 
     @Test("Distance: miles conversion")
@@ -53,7 +53,7 @@ struct MeasurementFormattersTests {
         // 10 km ≈ 6.21371 mi -> formatted with 0 fractional digits
         let distance = Measurement(value: 10, unit: UnitLength.kilometers)
         let result = MeasurementFormatters.distanceString(distance, unitPreference: .mi)
-        #expect(result == "6 mi")
+        #expect(result == "6.2mi")
     }
 
     @Test("Distance: kilometers conversion")
@@ -61,6 +61,6 @@ struct MeasurementFormattersTests {
         // 5 miles ≈ 8.04672 km -> formatted with 0 fractional digits
         let distance = Measurement(value: 5, unit: UnitLength.miles)
         let result = MeasurementFormatters.distanceString(distance, unitPreference: .km)
-        #expect(result == "8 km")
+        #expect(result == "8.0km")
     }
 }

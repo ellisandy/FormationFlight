@@ -59,22 +59,30 @@ final class FlightsListViewUITests: XCTestCase {
         // Select a target – attempts to find button, scrolling if necessary
         var selectTargetButton = app.buttons["Select Target"]
         if !selectTargetButton.waitForExistence(timeout: 2) {
-            // Try to scroll within a scroll view or the first scrollable container
-            let scrollView = app.scrollViews.firstMatch
-            if scrollView.exists {
-                scrollView.swipeUp()
-            } else {
-                // Fallback: swipe up on the root if no explicit scroll view is found
-                app.swipeUp()
+            // Try up to 3 times: swipe up and re-query the button
+            let window = app.windows.element(boundBy: 0)
+            for _ in 0..<3 {
+                if selectTargetButton.exists { break }
+                let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1))
+                start.press(forDuration: 0.02, thenDragTo: end)
+                // Re-query after swiping
+                selectTargetButton = app.buttons["Select Target"]
+                _ = selectTargetButton.waitForExistence(timeout: 1)
             }
-            // Re-query after scrolling
-            selectTargetButton = app.buttons["Select Target"]
+            // If still not found, fail the test early with a clear message
+            XCTAssertTrue(selectTargetButton.exists, "'Select Target' button should be visible after scrolling attempts")
         }
         if selectTargetButton.waitForExistence(timeout: 2) {
             selectTargetButton.tap()
             // For simplicity, tap the first selectable coordinate or confirm selection
             // If your UI shows a map, you might need to tap a default pin or use a canned coordinate button.
             // Try a generic "Done" or "Use This Location" button.
+            let window = app.windows.element(boundBy: 0)
+            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+            let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1))
+            start.press(forDuration: 0.02, thenDragTo: end)
+            
             let done = app.buttons["Save"].firstMatch
             if done.waitForExistence(timeout: 2) {
                 done.tap()

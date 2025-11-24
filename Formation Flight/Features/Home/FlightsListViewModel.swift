@@ -38,7 +38,7 @@ final class FlightsListViewModel: ObservableObject {
          settings: Settings = Settings.load(from: UserDefaults.standard),
          pendingDeleteFlight: Flight? = nil,
          showDeleteConfirmation: Bool = false,
-         locationProvider: LocationProviding = LocationProvider()) {
+         locationProvider: LocationProviding = LocationProvider.shared) {
         self.validationMessage = validationMessage
         self.isPresentingSettings = isPresentingSettings
         self.isPresentingEditFlight = isPresentingEditFlight
@@ -69,32 +69,30 @@ final class FlightsListViewModel: ObservableObject {
     
     func presentEditFlight(_ flight: Flight) {
         logger.debug("Present edit flight: \(flight.missionName, privacy: .public)")
-        
         selectedFlight = flight
         isPresentingEditFlight = true
     }
     
     // MARK: - Editor Actions (Closures from Child)
     func saveNewFlight(from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
-        dataLog.info("Saving new flight from editor")
-        
-        // Validate required target location
-        guard let targetLocation = editorVM.selectedTargetLocation else {
-            dataLog.info("Missing Target for new flight")
-            validationMessage = "Missing target location. Please try again."
+        guard !editorVM.missionName.isEmpty else {
+            validationMessage = "Please enter a mission name."
             return
         }
         
-        // Bind to temp variables before creating the model objects
+        guard let location = editorVM.selectedTargetLocation else {
+            validationMessage = "Please enter a valid target location."
+            return
+        }
+        
+        validationMessage = nil
         let missionType: MissionType = editorVM.useTOT ? .tot : .hackTime
         let missionDate: Date? = editorVM.timeEntry
         let hackDuration: Double? = Double(editorVM.hackDurationSeconds)
-        let target = Target(longitude: targetLocation.longitude, latitude: targetLocation.latitude)
-        
         let flight = Flight(missionName: editorVM.missionName,
                             missionType: missionType,
                             missionDate: missionDate,
-                            target: target,
+                            target: Target(longitude: location.longitude, latitude: location.latitude),
                             hackTime: hackDuration)
         modelContext.insert(flight)
         do {
@@ -109,21 +107,21 @@ final class FlightsListViewModel: ObservableObject {
     
     func updateFlight(_ flight: Flight, from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
         dataLog.info("Updating existing flight: \(flight.missionName, privacy: .public)")
-        
-        // Validate required target location
-        guard let targetLocation = editorVM.selectedTargetLocation else {
-            dataLog.info("Missing Target for flight: \(flight.missionName, privacy: .public)")
-            validationMessage = "Missing target location. Please try again."
+        guard !editorVM.missionName.isEmpty else {
+            validationMessage = "Please enter a mission name."
             return
         }
         
-        // Bind to temp variables before mutating the model
-        flight.target = Target(longitude: targetLocation.longitude, latitude: targetLocation.latitude)
+        guard let location = editorVM.selectedTargetLocation else {
+            validationMessage = "Please enter a valid target location."
+            return
+        }
         
+        flight.target = Target(longitude: location.longitude, latitude: location.latitude)
+        flight.missionName = editorVM.missionName
         flight.missionType = editorVM.useTOT ? .tot : .hackTime
         flight.missionDate = editorVM.timeEntry
         flight.hackTime = Double(editorVM.hackDurationSeconds)
-        
         do {
             try modelContext.save()
             isPresentingEditFlight = false
@@ -131,6 +129,7 @@ final class FlightsListViewModel: ObservableObject {
         } catch {
             dataLog.error("Failed to update flight: \(String(describing: error), privacy: .public)")
             validationMessage = "Failed to update flight. Please try again."
+            
         }
     }
     
@@ -195,4 +194,3 @@ final class FlightsListViewModel: ObservableObject {
         }
     }
 }
-

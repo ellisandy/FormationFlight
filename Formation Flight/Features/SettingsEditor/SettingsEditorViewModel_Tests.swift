@@ -35,19 +35,15 @@ struct SettingsEditorViewModelTests {
         let defaults = makeIsolatedDefaults()
         // Prepare persisted settings
         var initial = Settings.empty()
-        initial.callsign = "EAGLE1"
         initial.speedUnit = .mph
         initial.distanceUnit = .km
         initial.save(to: defaults)
 
         // Start VM with different in-memory settings
-        var other = Settings.empty()
-        other.callsign = "FALCON2"
+        let other = Settings.empty()
         let vm = SettingsEditorViewModel(settings: other)
-        #expect(vm.settings.callsign == "FALCON2")
 
         vm.reset(userDefaults: defaults)
-        #expect(vm.settings.callsign == "EAGLE1")
         #expect(vm.settings.speedUnit == .mph)
         #expect(vm.settings.distanceUnit == .km)
     }
@@ -57,7 +53,6 @@ struct SettingsEditorViewModelTests {
     func save_writesToUserDefaults() async throws {
         let defaults = makeIsolatedDefaults()
         var s = Settings.empty()
-        s.callsign = "VIPER3"
         s.speedUnit = .kts
         s.distanceUnit = .nm
         let vm = SettingsEditorViewModel(settings: s)
@@ -65,7 +60,6 @@ struct SettingsEditorViewModelTests {
         vm.save(userDefaults: defaults)
 
         let loaded = Settings.load(from: defaults)
-        #expect(loaded.callsign == "VIPER3")
         #expect(loaded.speedUnit == .kts)
         #expect(loaded.distanceUnit == .nm)
     }
@@ -75,13 +69,11 @@ struct SettingsEditorViewModelTests {
     func factory_fromUserDefaults() async throws {
         let defaults = makeIsolatedDefaults()
         var s = Settings.empty()
-        s.callsign = "GHOST4"
         s.speedUnit = .kph
         s.distanceUnit = .km
         s.save(to: defaults)
 
         let vm = SettingsEditorViewModel.from(userDefaults: defaults)
-        #expect(vm.settings.callsign == "GHOST4")
         #expect(vm.settings.speedUnit == .kph)
         #expect(vm.settings.distanceUnit == .km)
     }

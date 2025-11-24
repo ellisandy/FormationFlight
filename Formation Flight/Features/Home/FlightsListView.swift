@@ -49,6 +49,7 @@ private struct FlightsEmptyStateView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
+
             Button(action: onCreateFirstFlight) {
                 Label(
                     "Create your first flight",
@@ -56,7 +57,9 @@ private struct FlightsEmptyStateView: View {
                 )
                 .font(.headline)
             }
-            .buttonStyle(.borderedProminent)
+            .tint(.blue)
+            .buttonStyle(.glassProminent)
+
             .accessibilityIdentifier("emptyStateCreateFirstFlightButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -131,7 +134,7 @@ struct FlightsListView: View {
         .sheet(isPresented: $viewModel.isPresentingSettings, onDismiss: {
             viewModel.dismissSettings()
         }, content: {
-            SettingsEditor(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
+            SettingsEditorView(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
         })
         .onAppear {
             uiLog.debug("FlightsListView appeared")
@@ -219,4 +222,24 @@ struct FlightsListView: View {
     let container = makeInMemoryContainer()
     return FlightsListView()
         .modelContainer(container)
+}
+
+#Preview("Empty State") {
+    @MainActor
+    func makeEmptyInMemoryContainer() -> ModelContainer {
+        let schema = Schema([Flight.self])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true
+        )
+        let container = try! ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        return container
+    }
+
+    let emptyContainer = makeEmptyInMemoryContainer()
+    return FlightsListView()
+        .modelContainer(emptyContainer)
 }

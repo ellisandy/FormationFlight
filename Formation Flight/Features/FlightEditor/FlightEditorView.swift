@@ -19,6 +19,7 @@ struct FlightEditorView: View {
             Form {
                 Section("Mission Name") {
                     TextField("Mission Name", text: $viewModel.missionName)
+                        .accessibilityIdentifier("missionNameField")
                 }
                 Section("Time Type") {
                     Picker("Time Type", selection: Binding(
@@ -29,6 +30,7 @@ struct FlightEditorView: View {
                         Text("Hack").tag(1)
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier("timeTypeSegmentedControl")
                 }
                 Section("Time Entry") {
                     if viewModel.useTOT {
@@ -69,11 +71,14 @@ struct FlightEditorView: View {
                                 if let coord = viewModel.selectedTargetLocation {
                                     VStack(alignment: .leading) {
                                         Text("Lat: \(coord.latitude, format: .number.precision(.fractionLength(4)))")
+                                            .accessibilityIdentifier("targetLatitudeLabel")
                                         Text("Lon: \(coord.longitude, format: .number.precision(.fractionLength(4)))")
+                                            .accessibilityIdentifier("targetLongitudeLabel")
                                     }
                                 } else {
                                     Text("Select Target")
                                         .foregroundStyle(.secondary)
+                                        .accessibilityIdentifier("SelectNewTargetLabel")
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -88,15 +93,18 @@ struct FlightEditorView: View {
                                             .foregroundStyle(.red)
                                     }
                                 }
-                                                                                .mapStyle(.standard)
-                                                                                .frame(width: 80, height: 50)
-                                                                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                                                                .allowsHitTesting(false)
-                                                                                .accessibilityHidden(true)
+                                .accessibilityIdentifier("targetMapThumbnail")
+                                .mapStyle(.standard)
+                                .frame(width: 80, height: 50)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
                             }
                         }
                         .contentShape(Rectangle())
                     }
+                    .accessibilityIdentifier("targetRow")
+
                 }
                 Section {
                     Button {
@@ -109,6 +117,7 @@ struct FlightEditorView: View {
                             .tint(.primary)
                             .frame(maxWidth: .infinity)
                     }
+                    .accessibilityIdentifier("goFlyButton")
                     .padding(.horizontal, 8)
                     .buttonStyle(.glass)
                 }
