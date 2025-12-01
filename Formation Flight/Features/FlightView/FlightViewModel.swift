@@ -52,7 +52,6 @@ final class FlightViewModel: ObservableObject {
     // MARK: - Private
     private let timerScheduler: TimerScheduling
     private var timerToken: AnyCancellableLike?
-    private let requiredSpeedTrackToleranceDegrees: Double = 15
     
     // MARK: - Initialization
     init(flight: Flight,
@@ -105,6 +104,7 @@ final class FlightViewModel: ObservableObject {
     }
     
     private func configure() {
+        self.locationProvider.updateDelegate = self.onLocationUpdate
         startTimer()
     }
     
@@ -178,9 +178,9 @@ final class FlightViewModel: ObservableObject {
         if let _delta = delta {
             let absDelta = abs(_delta)
             
-            if absDelta < Double(settings.yellowTolerance) {
+            if absDelta <= Double(settings.yellowTolerance) {
                 statusColor = .good
-            } else if absDelta < Double(settings.redTolerance) {
+            } else if absDelta <= Double(settings.redTolerance) {
                 statusColor = .bad
             } else if absDelta >= Double(settings.redTolerance) {
                 statusColor = .reallyBad
@@ -191,6 +191,11 @@ final class FlightViewModel: ObservableObject {
     }
     
     private func updateInstruments() {
+        guard let _currentLocation = locationProvider.currentLocation else {
+            AppLogger.viewModel.debug("No current location available in updateInstruments")
+            return
+        }
+        
         // Set Current Ground Speed
         if locationProvider.speed.value > 0 {
             currentGroundSpeed = locationProvider.speed
@@ -199,17 +204,17 @@ final class FlightViewModel: ObservableObject {
         }
         
         // Set Distance to Final
-        self.distance = locationProvider.currentLocation?.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude))
+        self.distance = _currentLocation.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Bearing to Final
-        self.bearing = locationProvider.currentLocation?.getBearing(to: CLLocation(latitude: target.latitude, longitude: target.longitude))
+        AppLogger.viewModel.debug("Calculating bearing to target: \(_currentLocation.coordinate.latitude.description)")
+        self.bearing = _currentLocation.getBearing(to: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Historical Track
         self.track = locationProvider.course
         
         // If track is within tolerance of bearing, calculate the required ground speed.
-        if let _track = self.track, let _bearing = self.bearing, let _tot = self.tot,
-           isWithinDegrees(_track, _bearing, tolerance: requiredSpeedTrackToleranceDegrees) {
+        if let _track = self.track, let _bearing = self.bearing, let _tot = self.tot {
             
             if let _distance = self.distance {
                 if let rgs = computeRequiredGroundSpeed(distance: _distance, arrivalTime: _tot, now: .now) {
@@ -229,16 +234,6 @@ final class FlightViewModel: ObservableObject {
     }
     
     // MARK: - Helpers
-    private func isWithinDegrees(_ a: Measurement<UnitAngle>,
-                                 _ b: Measurement<UnitAngle>,
-                                 tolerance: Double) -> Bool {
-        let aDeg = a.converted(to: .degrees).value
-        let bDeg = b.converted(to: .degrees).value
-        var diff = abs(aDeg - bDeg).truncatingRemainder(dividingBy: 360)
-        if diff > 180 { diff = 360 - diff }
-        return diff <= tolerance
-    }
-    
     private func computeRequiredGroundSpeed(distance: Measurement<UnitLength>,
                                             arrivalTime: Date,
                                             now: Date) -> Measurement<UnitSpeed>? {

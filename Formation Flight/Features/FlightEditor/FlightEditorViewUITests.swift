@@ -17,6 +17,37 @@ final class FlightEditorViewUITests: XCTestCase {
         addButton.tap()
     }
 
+    /// Scrolls within the first scrollable container to find an element, waiting up to `timeout` seconds.
+    /// Returns true if the element is found to exist within the timeout window.
+    @discardableResult
+    func scrollToFind(_ element: XCUIElement, in app: XCUIApplication, timeout: TimeInterval = 5.0) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        // Try to find a scrollable container: tables, collectionViews, or scrollViews.
+        let scrollContainers: [XCUIElementQuery] = [app.tables, app.collectionViews, app.scrollViews]
+        let container = scrollContainers.compactMap { $0.firstMatch.exists ? $0.firstMatch : nil }.first
+        // If no specific container, fall back to the app itself for swipes.
+        let scroller = container ?? app
+
+        // If it already exists without scrolling, we're done.
+        if element.exists { return true }
+
+        // Repeatedly swipe up and down until found or timeout.
+        var lastSwipeWasUp = true
+        while Date() < deadline {
+            if element.exists { return true }
+            if lastSwipeWasUp {
+                scroller.swipeUp()
+            } else {
+                scroller.swipeDown()
+            }
+            lastSwipeWasUp.toggle()
+            // Briefly yield to UI to update accessibility tree
+            _ = element.waitForExistence(timeout: 0.3)
+            if element.exists { return true }
+        }
+        return element.exists
+    }
+
     func testMissionNameEntry() throws {
         let missionField = app.textFields["missionNameField"]
         XCTAssertTrue(missionField.waitForExistence(timeout: 5), "Mission name field should exist")
@@ -36,7 +67,7 @@ final class FlightEditorViewUITests: XCTestCase {
 
     func testSelectTargetAndGoFly() throws {
         let targetRow = app.staticTexts["SelectNewTargetLabel"].firstMatch
-        XCTAssertTrue(targetRow.waitForExistence(timeout: 5), "Target row should exist")
+        XCTAssertTrue(scrollToFind(targetRow, in: app, timeout: 7), "Target row should exist")
         targetRow.tap()
 
         let saveButton = app.buttons["Save"]
@@ -60,7 +91,7 @@ final class FlightEditorViewUITests: XCTestCase {
     func testValidationError_MissingMissionTitle_WhenTargetSelected() throws {
         // Select a target first
         let targetRow = app.staticTexts["SelectNewTargetLabel"].firstMatch
-        XCTAssertTrue(targetRow.waitForExistence(timeout: 5), "Target row should exist")
+        XCTAssertTrue(scrollToFind(targetRow, in: app, timeout: 7), "Target row should exist")
         targetRow.tap()
 
         let mapSave = app.buttons["Save"]
@@ -69,7 +100,7 @@ final class FlightEditorViewUITests: XCTestCase {
 
         // Ensure mission title is empty
         let missionField = app.textFields["missionNameField"]
-        XCTAssertTrue(missionField.waitForExistence(timeout: 5), "Mission name field should exist")
+        XCTAssertTrue(scrollToFind(missionField, in: app, timeout: 7), "Mission name field should exist")
         missionField.tap()
         if let current = missionField.value as? String, current.isEmpty == false {
             let deleteString = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count)
@@ -115,10 +146,20 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(missionField.waitForExistence(timeout: 5))
         missionField.tap()
         missionField.typeText("Mission Alpha")
+        
+        // Dismiss the keyboard to reveal rows below
+        if app.keyboards.keys["Return"].exists {
+            app.keyboards.keys["Return"].tap()
+        } else if app.keyboards.buttons["Return"].exists {
+            app.keyboards.buttons["Return"].tap()
+        } else {
+            // Fallback: tap outside to dismiss
+            app.otherElements.firstMatch.tap()
+        }
 
         // Select target
         let targetRow = app.staticTexts["SelectNewTargetLabel"].firstMatch
-        XCTAssertTrue(targetRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToFind(targetRow, in: app, timeout: 7), "Target row should exist")
         targetRow.tap()
 
         let mapSave = app.buttons["Save"]
@@ -171,3 +212,4 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(updatedCell.waitForExistence(timeout: 5), "Edited flight should show updated name")
     }
 }
+

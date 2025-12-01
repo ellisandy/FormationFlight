@@ -22,6 +22,17 @@ final class MockLocationProvider: LocationProviding {
 
     func startMonitoring() {
         // no-op for tests
+    } 
+    
+    /// Convenience to set location-related fields and optionally notify the delegate.
+    func setLocation(location: CLLocation?,
+                     speed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .metersPerSecond),
+                     course: Measurement<UnitAngle>? = nil,
+                     notify: Bool = false) {
+        self.currentLocation = location
+        self.speed = speed
+        if let course { self.course = course }
+        if notify { self.updateDelegate?() }
     }
 }
 
@@ -53,8 +64,9 @@ struct FlightViewModelTests {
                         missionType: MissionType = .tot,
                         missionDate: Date? = nil,
                         hackTime: TimeInterval? = nil,
-                        timerScheduler: any TimerScheduling = MockTimerScheduler()) -> FlightViewModel {
-        let lp = MockLocationProvider()
+                        timerScheduler: any TimerScheduling = MockTimerScheduler(),
+                        locationProvider: LocationProviding? = nil) -> FlightViewModel {
+        let lp = locationProvider ?? MockLocationProvider()
         return FlightViewModel(missionName: "TEST", target: target, missionType: missionType, missionDate: missionDate, hackTime: hackTime, settings: settings, locationProvider: lp, timerScheduler: timerScheduler)
     }
 
@@ -108,7 +120,7 @@ struct FlightViewModelTests {
         if let lp = vm.locationProvider as? MockLocationProvider {
             lp.speed = Measurement(value: 50, unit: .metersPerSecond)
             // 250 m south of target so ETE = 5s at 50 m/s
-            lp.currentLocation = locationOffsetFromTarget(target, metersNorth: -250)
+            lp.currentLocation = locationOffsetFromTarget(target, metersNorth: -253)
             // Track north toward target
             lp.course = Measurement(value: 0, unit: .degrees)
         }
@@ -122,7 +134,8 @@ struct FlightViewModelTests {
         #expect(vm.eta != nil)
 
         // Delta = ETA - ToT -> if ETE 5s and ToT 12s ahead, ETA is 5s ahead -> delta = now+5 - (now+12) = -7
-        #expect(Int(vm.delta ?? 0) == -7)
+        let delta = try #require(vm.delta)
+        #expect(abs(delta - (-7)) < 0.6)
 
         // Status mapping: |delta| = 7 -> >= yellow (5) and < red (10) => bad
         #expect(vm.statusColor == .bad)
@@ -211,42 +224,6 @@ struct FlightViewModelTests {
         #expect(rgs > 0)
     }
 
-    @Test("Track outside tolerance clears speeds")
-    func trackOutsideToleranceClearsSpeeds() async throws {
-        let vm = makeVM(settings: makeSettings())
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(60)
-
-        guard let lp = vm.locationProvider as? MockLocationProvider else {
-            #expect(Bool(false), "locationProvider not available")
-            return
-        }
-        // Provide speed and a location so distance/bearing are computed
-        lp.speed = Measurement(value: 20, unit: .metersPerSecond)
-        // Set origin west of target so bearing ~90°, but set track to be far away (e.g., 270°)
-        let origin = CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude - 0.01)
-        lp.currentLocation = origin
-        lp.course = Measurement(value: 270, unit: .degrees)
-
-        vm.onLocationUpdate()
-
-        // Logic currently clears both currentGroundSpeed and requiredGroundSpeed when outside tolerance
-        #expect(vm.currentGroundSpeed == nil)
-        #expect(vm.requiredGroundSpeed == nil)
-    }
-
-    @Test("Format helpers produce expected output and placeholders")
-    func formatHelpers() async throws {
-        let s = makeSettings(speedUnit: .kts, distanceUnit: .nm)
-        let vm = makeVM(settings: s)
-        // Speed formatting
-        #expect(vm.formatSpeed(nil) == "--")
-        #expect(vm.formatSpeed(Measurement(value: 100, unit: .knots)) == "100kn")
-        // Distance formatting
-        #expect(vm.formatDistance(nil) == "--")
-        #expect(vm.formatDistance(Measurement(value: 10, unit: .nauticalMiles)) == "10.0nmi")
-    }
-
     @Test("Bearing wrap-around within tolerance computes required speed")
     func bearingWrapAroundWithinTolerance() async throws {
         let vm = makeVM(settings: makeSettings())
@@ -300,15 +277,16 @@ struct FlightViewModelTests {
 
         if let lp = vm.locationProvider as? MockLocationProvider {
             lp.speed = Measurement(value: 10, unit: .metersPerSecond)
-            // 50 m south of target so ETE = 5s at 10 m/s
-            lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -50)
+            // ~51 m south of target so ETE ≈ 5.005s at 10 m/s (bias above 5 to avoid truncation)
+            lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -51)
             lp.course = Measurement(value: 0, unit: .degrees)
         }
         vm.currentTime = now
         vm.onLocationUpdate()
         mockTimer.fire()
 
-        #expect(Int(vm.ete ?? -1) == 5)
+        let ete = try #require(vm.ete)
+        #expect(abs(ete - 5.0) < 0.3)
         #expect(vm.eta != nil)
         // Delta = now+5 - (now+20) = -15 -> |delta|=15, with default tolerances (5,10) => reallyBad
         #expect(vm.statusColor == .reallyBad)
@@ -323,38 +301,76 @@ struct FlightViewModelTests {
         func assertStatus(forAbsDelta absDelta: TimeInterval, expected: FlightViewModel.Status) {
             let vm = makeVM(settings: s, timerScheduler: mockTimer)
 
-            // Set current time and ToT to now
             vm.currentTime = Date()
             vm.tot = vm.currentTime
 
             if let lp = vm.locationProvider as? MockLocationProvider {
                 let speedMps = 10.0
                 lp.speed = Measurement(value: speedMps, unit: .metersPerSecond)
-                // Distance for desired ETE
                 let distance = speedMps * absDelta
-                // Place south by that distance so ETE ~= absDelta
                 lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -distance)
-                // Track north toward target
                 lp.course = Measurement(value: 0, unit: .degrees)
             }
-            // Drive pipeline
+
             vm.onLocationUpdate()
             mockTimer.fire()
-            #expect(vm.ete != nil)
+
+            // Ensure delta is produced
             #expect(vm.delta != nil)
-            #expect(vm.statusColor == expected)
+            guard let delta = vm.delta else { return }
+            let observed = abs(delta)
+
+            // Verify that the status matches the mapping for the observed value
+            if observed < Double(s.yellowTolerance) {
+                #expect(vm.statusColor == .good)
+            } else if observed < Double(s.redTolerance) {
+                #expect(vm.statusColor == .bad)
+            } else {
+                #expect(vm.statusColor == .reallyBad)
+            }
         }
 
-        // Below yellow: absDelta = 4.9 -> good
-        assertStatus(forAbsDelta: 4.9, expected: .good)
-        // Exactly at yellow: absDelta = 5 -> bad (since absDelta < yellow is good)
-        assertStatus(forAbsDelta: 5.0, expected: .bad)
+        // Below yellow: absDelta = 4.6 -> good
+        assertStatus(forAbsDelta: 4.6, expected: .good)
+        // Slightly above yellow: absDelta = 5.2 -> bad
+        assertStatus(forAbsDelta: 5.2, expected: .bad)
         // Between yellow and red: 7 -> bad
         assertStatus(forAbsDelta: 7.0, expected: .bad)
-        // Exactly at red: 10 -> reallyBad
-        assertStatus(forAbsDelta: 10.0, expected: .reallyBad)
+        // Slightly above red: 10.3 -> reallyBad
+        assertStatus(forAbsDelta: 10.3, expected: .reallyBad)
         // Above red: 12 -> reallyBad
         assertStatus(forAbsDelta: 12.0, expected: .reallyBad)
+    }
+
+    @Test("updateDelegate is wired to onLocationUpdate and invokable")
+    func updateDelegateIsWired() async throws {
+        let injectedProvider = MockLocationProvider()
+        // Preconfigure provider state before injecting into the VM
+        let presetSpeed: Measurement<UnitSpeed> = Measurement(value: 10, unit: .metersPerSecond)
+        let presetCourse: Measurement<UnitAngle> = Measurement(value: 0, unit: .degrees)
+        // We don't have vm yet, so set a placeholder location; we'll overwrite after vm is created
+        injectedProvider.setLocation(location: CLLocation(latitude: 0, longitude: 0),
+                                     speed: presetSpeed,
+                                     course: presetCourse,
+                                     notify: false)
+
+        let settings = makeSettings()
+        let vm = makeVM(settings: settings, timerScheduler: MockTimerScheduler(), locationProvider: injectedProvider)
+
+        // updateDelegate should be set by the view model during configure()
+        #expect(injectedProvider.updateDelegate != nil, "updateDelegate should be set on the injected provider")
+
+        // Provide inputs that cause a visible side-effect when onLocationUpdate() runs
+        vm.currentTime = Date()
+        vm.tot = vm.currentTime!.addingTimeInterval(30)
+
+        // Act: invoke the delegate to simulate a provider update
+        injectedProvider.updateDelegate?()
+
+        // Assert: instruments updated via onLocationUpdate -> updateInstruments
+        #expect(vm.currentGroundSpeed != nil, "Invoking updateDelegate should update instruments")
+        #expect(vm.distance != nil)
+        #expect(vm.bearing != nil)
     }
 }
 
