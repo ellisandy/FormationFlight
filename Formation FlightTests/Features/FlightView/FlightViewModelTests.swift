@@ -43,6 +43,16 @@ final class MockLocationProvider: LocationProviding {
     }
 }
 
+/// A clock the test can move between ticks. Injected as `{ clock.now }` so tests can prove
+/// that a value tracks the wall clock (B-09, B-24, B-07) rather than a stale sample of it.
+/// MainActor because the view model only ever reads it from MainActor-isolated code.
+@MainActor
+final class MutableClock {
+    var now: Date
+    init(_ now: Date) { self.now = now }
+    func advance(by seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
+}
+
 /// Exact tolerance boundaries for `makeSettings(yellow: 5, red: 10)` with ETE fixed at 10 s.
 /// Production maps `|Δ| <= yellow → good`, `|Δ| <= red → bad`, otherwise `reallyBad`.
 /// Positive Δ is late (ETA after ToT), negative Δ is early.
@@ -169,6 +179,49 @@ struct FlightViewModelTests {
 
         let tot = try #require(vm.tot)
         #expect(tot == Self.fixedNow.addingTimeInterval(120))
+    }
+
+    @Test("startHack anchors to the clock at the button press, even before the first tick")
+    func startHackBeforeFirstTickUsesClock() async throws {
+        // Built directly, never started: `currentTime` is nil because no tick has sampled it.
+        let vm = FlightViewModel(missionName: "HACK",
+                                 missionType: .hackTime,
+                                 hackTime: 90,
+                                 settings: makeSettings(),
+                                 locationProvider: MockLocationProvider(),
+                                 timerScheduler: MockTimerScheduler(),
+                                 now: fixedClock)
+        #expect(vm.currentTime == nil)
+
+        vm.startHack()
+
+        // B-09: the press itself is the hack instant. It must not silently no-op because the
+        // timer has not fired yet.
+        let tot = try #require(vm.tot, "startHack must set ToT even before the first timer tick")
+        #expect(tot == Self.fixedNow.addingTimeInterval(90))
+    }
+
+    @Test("startHack uses the current clock, not the last timer sample")
+    func startHackUsesCurrentClockNotStaleSample() async throws {
+        let clock = MutableClock(Self.fixedNow)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 90,
+                        timerScheduler: mockTimer, now: { clock.now })
+        mockTimer.fire()
+        #expect(vm.currentTime == Self.fixedNow)
+
+        // The pilot presses "Hack!" 0.9 s after the last tick. In an app whose tolerances are
+        // whole seconds the anchor must be the press, truncated to the second it falls in.
+        clock.advance(by: 0.9)
+        vm.startHack()
+        let tot = try #require(vm.tot)
+        #expect(tot == Self.fixedNow.addingTimeInterval(90), "0.9 s truncates to the same second")
+
+        // A full second later the anchor must move with the clock, not stay on the stale sample.
+        clock.advance(by: 1.1)
+        vm.startHack()
+        let laterTot = try #require(vm.tot)
+        #expect(laterTot == Self.fixedNow.addingTimeInterval(92))
     }
 
     // MARK: - Timing pipeline and status mapping
