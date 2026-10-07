@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CoreLocation
 import Testing
 @testable import Formation_Flight
@@ -824,6 +825,27 @@ struct FlightViewModelTests {
         #expect(vm.tot == missionDate)
         #expect(vm.missionDate == missionDate)
         #expect(vm.hackTime == nil)
+    }
+
+    // MARK: - Published mutable state (B-18)
+    @Test("Assigning hackTime, missionType and settings publishes a change")
+    func mutableModelStateIsPublished() async throws {
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 60, now: fixedClock)
+
+        var emissions = 0
+        let subscription = vm.objectWillChange.sink { _ in emissions += 1 }
+        defer { subscription.cancel() }
+
+        // B-18: the in-flight hack wheel binds to `hackTime`; without `@Published` the view is
+        // never told the value changed and the wheel can snap back to the old value.
+        vm.hackTime = 45
+        #expect(emissions == 1, "hackTime assignment must emit objectWillChange")
+
+        vm.missionType = .tot
+        #expect(emissions == 2, "missionType assignment must emit objectWillChange")
+
+        vm.settings = makeSettings(yellow: 1, red: 2)
+        #expect(emissions == 3, "settings assignment must emit objectWillChange")
     }
 
     // MARK: - Hack mission before "Hack!" (B-08)
