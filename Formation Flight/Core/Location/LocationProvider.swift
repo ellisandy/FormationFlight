@@ -105,7 +105,9 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
                 speed = Measurement(value: _lastLocation.speed, unit: UnitSpeed.metersPerSecond)
             }
             
-            if _lastLocation.altitude > 0 {
+            // Core Location reports "no altitude" with a negative verticalAccuracy; the
+            // altitude value itself may legitimately be negative (below sea level).
+            if _lastLocation.verticalAccuracy >= 0 {
                 altitude = Measurement(value: _lastLocation.altitude, unit: UnitLength.meters)
             }
             
