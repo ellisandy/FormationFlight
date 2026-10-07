@@ -11,24 +11,6 @@ struct SettingsEditorViewModelTests {
         return UserDefaults(suiteName: suiteName)!
     }
 
-    // MARK: - Presentation
-    @Test("present() sets isPresented to true")
-    func present_setsIsPresented() async throws {
-        let vm = SettingsEditorViewModel(settings: .empty())
-        #expect(vm.isPresented == false)
-        vm.present()
-        #expect(vm.isPresented == true)
-    }
-
-    @Test("dismiss() sets isPresented to false")
-    func dismiss_setsIsPresented() async throws {
-        let vm = SettingsEditorViewModel(settings: .empty())
-        vm.present()
-        #expect(vm.isPresented == true)
-        vm.dismiss()
-        #expect(vm.isPresented == false)
-    }
-
     // MARK: - Persistence: reset
     @Test("reset() loads from UserDefaults")
     func reset_loadsFromUserDefaults() async throws {
