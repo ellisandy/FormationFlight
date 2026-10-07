@@ -6,6 +6,8 @@ import Testing
 // Protocol-based mock for LocationProviding used by FlightViewModel.
 // This is a standalone class that conforms to the protocol; it does not subclass the
 // production LocationProvider, so every stored property here is plain test state.
+// `LocationProviding` is a MainActor protocol (B-27), so the mock is MainActor too.
+@MainActor
 final class MockLocationProvider: LocationProviding {
     var authroizationStatus: CLAuthorizationStatus?
 

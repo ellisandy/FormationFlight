@@ -80,6 +80,10 @@ class MockCLLocationManager: CLLocationManager {
     }
 }
 
+/// `LocationProvider` is MainActor-isolated (B-27). XCTest runs every test method on the main
+/// thread, so isolating the whole case lets the tests touch the provider's state directly and
+/// lets the mock's synchronous delegate call-backs land on the actor the provider expects.
+@MainActor
 final class LocationProvider_Test: XCTestCase {
     /// Every test injects a `MockCLLocationManager` so no test constructs the default
     /// `CLLocationManager()` argument or reaches the real location service.

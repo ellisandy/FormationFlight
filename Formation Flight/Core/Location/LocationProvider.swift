@@ -8,6 +8,10 @@
 import SwiftUI
 import CoreLocation
 
+/// Every consumer (`FlightViewModel`, `FlightsListViewModel`) is MainActor-isolated and the
+/// `updateDelegate` callback drives UI state, so the protocol itself is MainActor. Conforming
+/// mocks in the test target inherit that isolation.
+@MainActor
 public protocol LocationProviding: AnyObject {
     // State
     var updateDelegate: (() -> Void)? { get set }
@@ -28,9 +32,19 @@ private struct TimedLocation {
     let timestamp: Date
 }
 
+/// MainActor-isolated location source (B-27).
+///
+/// `CLLocationManagerDelegate` is a nonisolated Objective-C protocol, so the conformance is
+/// declared `@preconcurrency`. That lets the delegate methods below stay MainActor-isolated
+/// (they mutate observed state) while satisfying the protocol; Swift inserts a runtime
+/// isolation check in each Objective-C thunk instead of a compile-time error. The check holds
+/// because Core Location delivers delegate callbacks on the run loop of the thread that
+/// created the `CLLocationManager`, and every manager handed to this class is created on the
+/// main thread (`shared`, SwiftUI view models, and the unit tests).
 @Observable
-final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, LocationProviding {
-    @MainActor static let shared = LocationProvider()
+@MainActor
+final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegate, LocationProviding {
+    static let shared = LocationProvider()
     var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
     var speed: Measurement<UnitSpeed> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
@@ -38,13 +52,14 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
     var course: Measurement<UnitAngle> = Measurement(value: -1.0, unit: UnitAngle.degrees)
     var currentLocation: CLLocation?
     var computedSpeedAndCourse: Bool = false
-    
+
     private var previousLocations: [TimedLocation] = []
-    private var locationManager: CLLocationManager = CLLocationManager()
+    /// Assigned once in `init`; no second manager is allocated when one is injected (T-07).
+    private let locationManager: CLLocationManager
 
     init(clManager: CLLocationManager = CLLocationManager()) {
-        super.init()
         self.locationManager = clManager
+        super.init()
         self.locationManager.delegate = self
     }
     
