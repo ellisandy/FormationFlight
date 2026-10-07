@@ -64,6 +64,9 @@
     "End Flight?" : {
 
     },
+    "Failed to delete flight. Please try again." : {
+      "comment" : "Shown when persisting a flight deletion fails"
+    },
     "Failed to save flight. Please try again." : {
       "comment" : "Shown when persisting a new flight fails"
     },
