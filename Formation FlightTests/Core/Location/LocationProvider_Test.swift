@@ -198,6 +198,34 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(provider.altitude.value, 300, "Altitude must not change when verticalAccuracy < 0")
     }
 
+    // MARK: - Manual speed/course estimate (B-22)
+
+    /// Two fixes in one batch, both without a Core Location speed, 10 s and 200 m apart due
+    /// north. The estimate must use each fix's own `timestamp` (dt = 10 s) rather than the
+    /// receipt time, which is identical for every fix in a batch and makes dt = 0.
+    func testManualEstimateUsesFixTimestampsForBatchedLocations() {
+        let (provider, mockManager) = makeProvider()
+
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        let first = CLLocation.make(
+            latitude: 0, longitude: 0,
+            altitude: 100,
+            course: -1, speed: -1,
+            timestamp: start
+        )
+        let second = CLLocation.make(
+            latitude: 200 / CLLocation.metresPerDegreeLatitude, longitude: 0,
+            altitude: 100,
+            course: -1, speed: -1,
+            timestamp: start.addingTimeInterval(10)
+        )
+        mockManager.simulateLocations([first, second])
+
+        XCTAssertEqual(provider.speed.value, 20, accuracy: 0.5, "200 m in 10 s is 20 m/s")
+        XCTAssertEqual(provider.course.value, 0, accuracy: 1, "Due north along a meridian")
+        XCTAssertTrue(provider.computedSpeedAndCourse)
+    }
+
     func testDidFailWithErrorLeavesStateUntouchedAndDoesNotNotify() {
         let (provider, mockManager) = makeProvider()
 
@@ -227,13 +255,19 @@ private extension CLLocation {
                      horizontalAccuracy: CLLocationAccuracy = 5,
                      verticalAccuracy: CLLocationAccuracy = 5,
                      course: CLLocationDirection,
-                     speed: CLLocationSpeed) -> CLLocation {
+                     speed: CLLocationSpeed,
+                     timestamp: Date = Date()) -> CLLocation {
         CLLocation(coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
                    altitude: altitude,
                    horizontalAccuracy: horizontalAccuracy,
                    verticalAccuracy: verticalAccuracy,
                    course: course,
                    speed: speed,
-                   timestamp: Date())
+                   timestamp: timestamp)
     }
+
+    /// One degree of latitude along a meridian, in metres, for the spherical Earth radius
+    /// (6 371 000 m) that `LocationProvider`'s haversine uses. Lets tests express a
+    /// north-south displacement in metres and get the matching speed back exactly.
+    static let metresPerDegreeLatitude = 6_371_000.0 * .pi / 180
 }
