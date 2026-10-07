@@ -307,6 +307,87 @@ final class FlightEditorViewModelTests {
         #expect(vm.validationMessage == nil)
     }
 
+    // MARK: - Dirty tracking (B-21)
+    //
+    // Cancel asks "Discard changes?" only when something differs from the state the editor
+    // opened with: the pristine new-flight defaults, or the loaded flight's values.
+
+    @Test
+    func testNewEditorIsNotDirty() {
+        let vm = FlightEditorViewModel()
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testTypingANameMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "D"
+        #expect(vm.isDirty == true)
+        vm.missionName = ""
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testChangingTimeTypeMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.useTOT = false
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testChangingHackDurationMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.hackDurationSeconds = 30
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testChangingTimeEntryMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.timeEntry = vm.timeEntry.addingTimeInterval(60)
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testSelectingATargetMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 1, longitude: 2))
+        #expect(vm.isDirty == true)
+        vm.applyTargetSelection(coordinate: nil)
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testEditorLoadedFromFlightIsNotDirtyUntilAFieldChanges() {
+        let target = Target(longitude: -122.0, latitude: 37.0)
+        let flight = Flight(missionName: "Loaded", missionType: .hackTime, missionDate: nil, target: target, hackTime: 300)
+
+        let vm = FlightEditorViewModel(flight: flight)
+        #expect(vm.isDirty == false)
+
+        vm.hackDurationSeconds = 301
+        #expect(vm.isDirty == true)
+        vm.hackDurationSeconds = 300
+        #expect(vm.isDirty == false)
+
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.5))
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testMapToValuesResetsTheDirtyBaseline() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Typed"
+        #expect(vm.isDirty == true)
+
+        let flight = Flight(missionName: "Mapped", missionType: .tot,
+                            missionDate: Date().addingTimeInterval(600),
+                            target: Target(longitude: 0, latitude: 0), hackTime: nil)
+        vm.mapToValues(flight: flight)
+
+        #expect(vm.isDirty == false)
+    }
+
     @Test
     func testMapToValuesWithTOTFlight_MapsAllFields() async {
         let target = Target(longitude: 20.0, latitude: 10.0)

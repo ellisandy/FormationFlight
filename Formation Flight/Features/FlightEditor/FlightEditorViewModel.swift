@@ -21,6 +21,11 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     var flight: Flight?
     var isEditing: Bool { flight != nil }
     
+    // MARK: Dirty tracking (B-21)
+    /// `true` when any editable field differs from the flight as loaded (or from the pristine
+    /// new-flight state). Placeholder: always `false` until the snapshot lands.
+    var isDirty: Bool { false }
+
     // MARK: Flight View
     @Published var isFlightViewPresented: Bool = false
 
