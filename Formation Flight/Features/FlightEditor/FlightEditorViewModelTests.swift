@@ -40,6 +40,29 @@ final class FlightEditorViewModelTests {
         #expect(Calendar.current.component(.second, from: vm.timeEntry) == 59)
     }
 
+    /// B-04 regression coverage: the editor's hour setter must accept midnight (0) and
+    /// clamp an out-of-range 24 to 23 on the same day, matching the picker's 0...23 wheel.
+    @Test
+    func testHourComponentAcceptsMidnightAndClampsTwentyFour() throws {
+        let vm = FlightEditorViewModel()
+        let calendar = Calendar.current
+        vm.timeEntry = try #require(calendar.date(from:
+            DateComponents(year: 2025, month: 6, day: 15, hour: 12, minute: 20, second: 30)))
+
+        vm.hourComponent = 0
+        #expect(vm.hourComponent == 0)
+        #expect(calendar.component(.hour, from: vm.timeEntry) == 0)
+        #expect(calendar.component(.day, from: vm.timeEntry) == 15)
+
+        vm.hourComponent = 23
+        #expect(vm.hourComponent == 23)
+        #expect(calendar.component(.day, from: vm.timeEntry) == 15)
+
+        vm.hourComponent = 24
+        #expect(vm.hourComponent == 23)
+        #expect(calendar.component(.day, from: vm.timeEntry) == 15)
+    }
+
     @Test
     func testApplyTargetSelectionSetsSelectedTargetLocation() {
         let vm = FlightEditorViewModel()

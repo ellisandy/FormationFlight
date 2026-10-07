@@ -3,38 +3,44 @@
 import SwiftUI
 
 struct TOTTimePickerView: View {
+    /// Values offered by each wheel. Exposed so tests can check they line up
+    /// with the `Date` model (`Date.hour` is 0...23, minute/second 0...59).
+    static let hourRange = 1..<25
+    static let minuteRange = 0..<60
+    static let secondRange = 0..<60
+
     @Binding var date: Date
     @Binding var hour: Int
     @Binding var minute: Int
     @Binding var second: Int
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             DatePicker("Date", selection: $date, displayedComponents: [.date])
                 .datePickerStyle(.compact)
-            
+
             HStack {
                 // Hour wheel 1-24 (changed from 0-23)
                 Picker("Hour", selection: $hour) {
-                    ForEach(1..<25, id: \.self) { h in
+                    ForEach(Self.hourRange, id: \.self) { h in
                         Text(String(format: "%02d", h)).tag(h)
                     }
                 }
                 .pickerStyle(.wheel)
                 .frame(maxWidth: .infinity)
-                
+
                 // Minute wheel 0-59
                 Picker("Minute", selection: $minute) {
-                    ForEach(0..<60, id: \.self) { m in
+                    ForEach(Self.minuteRange, id: \.self) { m in
                         Text(String(format: "%02d", m)).tag(m)
                     }
                 }
                 .pickerStyle(.wheel)
                 .frame(maxWidth: .infinity)
-                
+
                 // Second wheel 0-59
                 Picker("Second", selection: $second) {
-                    ForEach(0..<60, id: \.self) { s in
+                    ForEach(Self.secondRange, id: \.self) { s in
                         Text(String(format: "%02d", s)).tag(s)
                     }
                 }
@@ -46,6 +52,35 @@ struct TOTTimePickerView: View {
             .clipped()
             .accessibilityElement(children: .contain)
         }
+    }
+}
+
+// MARK: - Date component bindings
+
+/// Hour/minute/second projections of a `Binding<Date>` for driving `TOTTimePickerView`.
+///
+/// These route through the shared `Date.updatingHour/Minute/Second(to:)` helpers so every
+/// TOT editor clamps to 0...23 / 0...59 and never rolls the date over into the next day.
+extension Binding where Value == Date {
+    var hourComponent: Binding<Int> {
+        Binding<Int>(
+            get: { self.wrappedValue.hour },
+            set: { self.wrappedValue = self.wrappedValue.updatingHour(to: $0) }
+        )
+    }
+
+    var minuteComponent: Binding<Int> {
+        Binding<Int>(
+            get: { self.wrappedValue.minute },
+            set: { self.wrappedValue = self.wrappedValue.updatingMinute(to: $0) }
+        )
+    }
+
+    var secondComponent: Binding<Int> {
+        Binding<Int>(
+            get: { self.wrappedValue.second },
+            set: { self.wrappedValue = self.wrappedValue.updatingSecond(to: $0) }
+        )
     }
 }
 
