@@ -256,34 +256,38 @@ struct FlightsListViewModel_SwiftTests_Extra {
         #expect(!sut.showDeleteConfirmation)
     }
 
-    @Test("handleOnDelete with single item triggers confirmation flow")
-    func handleOnDelete_single() async throws {
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let f = insertSampleFlight(into: context)
-        try context.save()
+    // MARK: - Deletion flow: name snapshot (B-30)
+    @Test("requestDelete captures the pending flight's name for the alert")
+    func requestDelete_capturesName() async throws {
         let sut = makeSUT()
+        let f = Flight(missionName: "Bravo Two", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
 
-        sut.handleOnDelete(indexSet: IndexSet(integer: 0), flights: [f], modelContext: context)
+        sut.requestDelete(flight: f)
 
-        #expect(sut.pendingDeleteFlight?.id == f.id)
-        #expect(sut.showDeleteConfirmation)
+        #expect(sut.pendingDeleteFlightName == "Bravo Two")
     }
 
-    @Test("handleOnDelete with multiple items deletes immediately")
-    func handleOnDelete_multiple() async throws {
+    @Test("cancelDelete clears the captured name")
+    func cancelDelete_clearsName() async throws {
+        let sut = makeSUT()
+        sut.requestDelete(flight: Flight(missionName: "Cancelled", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0)))
+
+        sut.cancelDelete()
+
+        #expect(sut.pendingDeleteFlightName == nil)
+    }
+
+    @Test("confirmDelete clears the captured name")
+    func confirmDelete_clearsName() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
-        let f1 = insertSampleFlight(into: context, name: "A")
-        let f2 = insertSampleFlight(into: context, name: "B")
+        let f = insertSampleFlight(into: context, name: "Confirmed")
         try context.save()
         let sut = makeSUT()
+        sut.requestDelete(flight: f)
 
-        sut.handleOnDelete(indexSet: IndexSet([0, 1]), flights: [f1, f2], modelContext: context)
+        sut.confirmDelete(modelContext: context)
 
-        let flights = try context.fetch(FetchDescriptor<Flight>())
-        #expect(flights.isEmpty)
-        #expect(sut.pendingDeleteFlight == nil)
-        #expect(!sut.showDeleteConfirmation)
+        #expect(sut.pendingDeleteFlightName == nil)
     }
 }
