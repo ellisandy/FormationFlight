@@ -173,22 +173,30 @@ final class FlightViewModel: ObservableObject {
     }
     
     // MARK: - Update Pipelines
+    /// Whole-second policy (B-40): Time, ETE and ETA are each shown truncated to the second
+    /// (`Formatting.timeHHmmss` / `durationHMS` both drop fractions). If the clock and ETE were
+    /// kept fractional and truncated independently at display time, the Time and ETE readouts
+    /// could add up to one second less than the ETA readout. So the pipeline truncates (never
+    /// rounds) at the source: the clock is floored to the second, ETE is floored to the second,
+    /// and ETA is derived from those two floored values. Delta then inherits the same basis.
     private func updateTimings() {
-        self.currentTime = now()
+        let wallClock = now()
+        let flooredClock = Date(timeIntervalSinceReferenceDate: wallClock.timeIntervalSinceReferenceDate.rounded(.down))
+        self.currentTime = flooredClock
 
-        // Set ETE
+        // Set ETE, truncated to a whole second so that it matches what durationHMS displays.
         if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
            let dist = self.distance?.converted(to: .meters),
            gs.value > 0 {
-            self.ete = dist.value / gs.value // seconds
+            let rawETE = dist.value / gs.value // seconds
+            self.ete = rawETE.isFinite ? rawETE.rounded(.down) : nil
         } else {
             self.ete = nil
         }
-        
-        // Set ETA
+
+        // Set ETA from the floored clock and the truncated ETE so Time + ETE == ETA on screen.
         if let ete = self.ete {
-            let reference = self.currentTime ?? now()
-            self.eta = reference.addingTimeInterval(ete)
+            self.eta = flooredClock.addingTimeInterval(ete)
         } else {
             self.eta = nil
         }

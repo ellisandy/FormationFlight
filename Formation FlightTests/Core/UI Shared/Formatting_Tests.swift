@@ -26,8 +26,10 @@ final class FormattingTests {
     @Test
     func test_durationHMS() {
         #expect(Formatting.durationHMS(0) == "00:00:00")
-        // Documents current truncation behaviour. B-40 (round instead of truncate) is still
-        // open; when it lands this expectation becomes "00:01:00".
+        // Truncation is the deliberate app-wide policy (B-40, resolved): FlightViewModel floors
+        // the clock and ETE to whole seconds and derives ETA from them, so every readout
+        // truncates and Time + ETE always equals ETA on screen. 59.5 must stay "00:00:59",
+        // never round up to "00:01:00".
         #expect(Formatting.durationHMS(59.5) == "00:00:59")
         #expect(Formatting.durationHMS(61.2) == "00:01:01")
         #expect(Formatting.durationHMS(nil) == "--:--:--")
