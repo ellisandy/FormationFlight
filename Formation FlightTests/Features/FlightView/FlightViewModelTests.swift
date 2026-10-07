@@ -26,6 +26,7 @@ final class MockLocationProvider: LocationProviding {
     var speed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .metersPerSecond)
     var currentLocation: CLLocation?
     var course: Measurement<UnitAngle> = Measurement(value: 0, unit: .degrees)
+    var lastFixTimestamp: Date?
 
     func startMonitoring() {
         startMonitoringCallCount += 1

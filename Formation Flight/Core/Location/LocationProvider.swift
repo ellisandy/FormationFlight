@@ -21,6 +21,9 @@ public protocol LocationProviding: AnyObject {
     var course: Measurement<UnitAngle> { get }
     var currentLocation: CLLocation? { get }
     var computedSpeedAndCourse: Bool { get }
+    /// The newest fix's own Core Location `timestamp` (when it was measured, not delivered).
+    /// `nil` until the first fix arrives.
+    var lastFixTimestamp: Date? { get }
 
     // Control
     func startMonitoring()
@@ -47,6 +50,7 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
     var course: Measurement<UnitAngle> = Measurement(value: -1.0, unit: UnitAngle.degrees)
     var currentLocation: CLLocation?
     var computedSpeedAndCourse: Bool = false
+    var lastFixTimestamp: Date?
 
     /// The most recent fixes, oldest first, each carrying its own Core Location `timestamp`
     /// (B-22). Capped at `maxBufferedFixes`.
@@ -108,7 +112,8 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
         
         if let _lastLocation = locations.last {
             currentLocation = _lastLocation
-            
+            lastFixTimestamp = _lastLocation.timestamp
+
             // Buffer the incoming fixes with their own timestamps (B-22). Stamping them with
             // the receipt time collapsed every fix in a batch onto one instant (dt == 0) and
             // folded delivery latency into cross-batch segments.
