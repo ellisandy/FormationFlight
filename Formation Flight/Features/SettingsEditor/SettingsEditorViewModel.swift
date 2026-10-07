@@ -23,6 +23,9 @@ final class SettingsEditorViewModel: ObservableObject {
     }
     
     func save(userDefaults: UserDefaults) {
+        // Normalise the tolerance pair (no negatives, yellow <= red) before persisting,
+        // and reflect the normalised values back into the editor.
+        settings = settings.validated()
         settings.save(to: userDefaults)
     }
 }

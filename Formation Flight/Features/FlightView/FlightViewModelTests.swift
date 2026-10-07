@@ -342,6 +342,45 @@ struct FlightViewModelTests {
         assertStatus(forAbsDelta: 12.0, expected: .reallyBad)
     }
 
+    // MARK: - Default tolerances (B-05)
+    /// Drives the timing pipeline so that |delta| ≈ `absDelta` seconds and returns the resulting status.
+    /// Uses speed 10 m/s, places the aircraft `speed * absDelta` metres south of the target, and sets ToT = now.
+    private func statusForAbsDelta(_ absDelta: TimeInterval, settings: Settings) -> FlightViewModel.Status {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: settings, timerScheduler: mockTimer)
+
+        vm.currentTime = Date()
+        vm.tot = vm.currentTime
+
+        if let lp = vm.locationProvider as? MockLocationProvider {
+            let speedMps = 10.0
+            lp.speed = Measurement(value: speedMps, unit: .metersPerSecond)
+            lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -(speedMps * absDelta))
+            lp.course = Measurement(value: 0, unit: .degrees)
+        }
+
+        vm.onLocationUpdate()
+        mockTimer.fire()
+
+        #expect(vm.delta != nil)
+        return vm.statusColor
+    }
+
+    @Test("Settings.empty() tolerances treat a small 3 s delta as good")
+    func defaultSettingsSmallDeltaIsGood() async throws {
+        // B-05: with the shipped 0/0 tolerances, |delta| = 3 s fell straight through to reallyBad
+        // because `absDelta <= 0` was the only path to .good. A fresh install must be forgiving
+        // of a few seconds of drift.
+        #expect(statusForAbsDelta(3, settings: Settings.empty()) == .good)
+    }
+
+    @Test("Settings.empty() tolerances map 20 s to bad and 45 s to reallyBad")
+    func defaultSettingsMidAndLargeDelta() async throws {
+        // Regression coverage for the chosen defaults (yellow 10 s, red 30 s).
+        #expect(statusForAbsDelta(20, settings: Settings.empty()) == .bad)
+        #expect(statusForAbsDelta(45, settings: Settings.empty()) == .reallyBad)
+    }
+
     @Test("updateDelegate is wired to onLocationUpdate and invokable")
     func updateDelegateIsWired() async throws {
         let injectedProvider = MockLocationProvider()

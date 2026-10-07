@@ -174,18 +174,16 @@ final class FlightViewModel: ObservableObject {
             self.delta = nil
         }
         
-        // Map absolute delta (seconds) to status using settings tolerances: < yellow = good, < red = bad, >= red = reallyBad.
+        // Map absolute delta (seconds) to status using settings tolerances: <= yellow = good, <= red = bad, > red = reallyBad.
         if let _delta = delta {
             let absDelta = abs(_delta)
-            
+
             if absDelta <= Double(settings.yellowTolerance) {
                 statusColor = .good
             } else if absDelta <= Double(settings.redTolerance) {
                 statusColor = .bad
-            } else if absDelta >= Double(settings.redTolerance) {
-                statusColor = .reallyBad
             } else {
-                statusColor = .unknown
+                statusColor = .reallyBad
             }
         }
     }
