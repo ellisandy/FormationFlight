@@ -39,11 +39,14 @@ final class FlightViewModel: ObservableObject {
     @Published var target: CLLocationCoordinate2D
     
     // MARK: - Dependencies / Model Objects
-    var settings: Settings
+    // B-18: the view reads `settings` (units, instrument layout) and `missionType`, and the
+    // in-flight hack wheel binds to `hackTime`, so all three must publish or the view can
+    // render a stale value after an edit.
+    @Published var settings: Settings
     var locationProvider: LocationProviding
-    var missionType: MissionType
+    @Published var missionType: MissionType
     var missionDate: Date?
-    var hackTime: TimeInterval?
+    @Published var hackTime: TimeInterval?
     
     // MARK: - UI State
     @Published var isEditingToT: Bool = false
