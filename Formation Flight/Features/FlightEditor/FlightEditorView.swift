@@ -7,13 +7,35 @@ struct FlightEditorView: View {
     @StateObject private var viewModel = FlightEditorViewModel()
     var onSave: (FlightEditorViewModel) -> Void = { _ in }
     var onCancel: () -> Void = {}
-    
+
+    // B-33: the thumbnail camera is view state so it can follow a changed target.
+    @State private var thumbnailPosition: MapCameraPosition
+
     init(flight: Flight? = nil, onSave: @escaping (FlightEditorViewModel) -> Void = { _ in }, onCancel: @escaping () -> Void = {}) {
         _viewModel = StateObject(wrappedValue: FlightEditorViewModel(flight: flight))
+        _thumbnailPosition = State(initialValue: Self.thumbnailPosition(for: flight?.target?.getCLCoordinate()))
         self.onSave = onSave
         self.onCancel = onCancel
     }
-    
+
+    /// `CLLocationCoordinate2D` is not `Equatable`, so `onChange` observes this snapshot instead.
+    private struct CoordinateKey: Equatable {
+        let latitude: Double
+        let longitude: Double
+    }
+
+    private var selectedTargetKey: CoordinateKey? {
+        viewModel.selectedTargetLocation.map {
+            CoordinateKey(latitude: $0.latitude, longitude: $0.longitude)
+        }
+    }
+
+    private static func thumbnailPosition(for coordinate: CLLocationCoordinate2D?) -> MapCameraPosition {
+        guard let coordinate else { return .automatic }
+        return .region(MKCoordinateRegion(center: coordinate,
+                                          span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Form {
@@ -86,8 +108,7 @@ struct FlightEditorView: View {
                             
                             // Right: Thumbnail map if we have a coordinate (fixed size)
                             if let coord = viewModel.selectedTargetLocation {
-                                Map(initialPosition: .region(MKCoordinateRegion(center: coord,
-                                                                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))) {
+                                Map(position: $thumbnailPosition) {
                                     Annotation("", coordinate: coord, anchor: .bottom) {
                                         Image(systemName: "mappin")
                                             .font(.body)
@@ -131,6 +152,9 @@ struct FlightEditorView: View {
         .task {
             // B-37: single request per appearance; `.onAppear` used to fire a duplicate.
             viewModel.requestLocationIfNeeded()
+        }
+        .onChange(of: selectedTargetKey) { _, _ in
+            thumbnailPosition = Self.thumbnailPosition(for: viewModel.selectedTargetLocation)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
