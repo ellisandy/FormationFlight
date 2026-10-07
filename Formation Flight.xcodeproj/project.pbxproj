@@ -34,7 +34,6 @@
 		C2E5A2042EE1B00000A5F0D1 /* Exceptions for "Formation Flight" folder in "Formation Flight" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Shared Assets/Formation_Flight.entitlements",
 				"Shared Assets/Info.plist",
 			);
 			target = C29255552B2D648C0064F41F /* Formation Flight */;
