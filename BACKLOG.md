@@ -4,7 +4,15 @@ Generated 2026-10-07 from a five-track code review (concurrency, crash risk, nav
 
 Priority key: **P0** ship-blocker / safety / stuck-UI · **R** App Store release readiness · **P1** pilot-visible wrong behavior · **P2** robustness & architecture · **P3** tests · **P4** hygiene.
 
-Paths are relative to `Formation Flight/`.
+Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTests/` and `Formation FlightUITests/` (same sub-folder layout); the project uses Xcode synchronized folders, so file membership follows the file system.
+
+## Status (2026-10-07)
+
+- **P0 B-01 – B-06: done** (PRs #3–#8, merged into `feature/stability-backlog`).
+- **P3: done** for everything not blocked by an open P1 item. T-01 – T-13 are all addressed; "tests to add" 1, 3 (hemispheres), 4, 7, 9 (corrupt data), 10, 12, 13, 14, 15 are in. Still open because they would fail until the referenced fix lands: 2 (B-10), 3 minute padding (B-10), 5 (B-08), 6 (B-23), 8 (B-14), 9 ordering (B-12), 11 (B-07/B-22). Two residual T-07 touches remain in production code, not tests: `FlightEditorViewModel()` owns a real `CLLocationManager` (B-16) and `LocationProvider` still allocates a default manager even when one is injected.
+- **P4: done.** H-01 – H-08 complete, including the string catalog (73 keys extracted, view-model strings via `String(localized:)`), `.gitignore`, and the Xcode Cloud manifest committed. `Design.swift` needed no change (the 12.5 never reached the repo). The GPX no longer ships (R-03's file half); `README` was never in the project file.
+- **Enablers landed along the way:** B-29 (injectable clock), the model half of B-11 (`.unknown` status), B-38 (dead `CLLocationManager` in the map picker).
+- **Next:** R-01 – R-08 release readiness, then P1 starting with B-07/B-08 (instrument readouts) and B-14 (call `validFlight()` from save and Go Fly; also de-duplicates the validation strings).
 
 ---
 
