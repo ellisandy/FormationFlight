@@ -321,7 +321,8 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let persisted = try #require(try fresh.fetch(FetchDescriptor<Flight>(predicate: #Predicate { $0.id == id })).first)
         #expect(persisted.missionName == "Keep Me")
         #expect(persisted.hackTime == 300)
-        // ...and the in-memory model was rolled back so the list does not show a phantom edit.
+        // ...and the in-memory model was never mutated (validation runs before the edits are
+        // applied), so the list does not show a phantom edit.
         #expect(existing.missionName == "Keep Me")
         #expect(existing.hackTime == 300)
     }

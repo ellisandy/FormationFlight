@@ -123,20 +123,24 @@ final class FlightsListViewModel: ObservableObject {
             return
         }
 
+        // B-14: validate the draft BEFORE touching the model. `ModelContext.rollback()` does
+        // not reliably revert values already cached on a fetched `@Model` instance, so a
+        // rejected edit applied first would linger on screen as a phantom change.
+        if let message = FlightValidation.message(missionName: editorVM.missionName,
+                                                  missionType: editorVM.missionType,
+                                                  missionDate: editorVM.missionDateToSave,
+                                                  hackTime: editorVM.hackTimeToSave,
+                                                  hasTarget: true) {
+            validationMessage = message
+            return
+        }
+
         flight.target = Target(longitude: location.longitude, latitude: location.latitude)
         flight.missionName = editorVM.missionName
         flight.missionType = editorVM.missionType
-        // B-14: only the field that belongs to the mission type is kept; the other is cleared.
+        // Only the field that belongs to the mission type is kept; the other is cleared.
         flight.missionDate = editorVM.missionDateToSave
         flight.hackTime = editorVM.hackTimeToSave
-
-        let validation = flight.validFlight()
-        guard validation.valid else {
-            // Revert the staged edits so the list keeps showing what is actually stored.
-            modelContext.rollback()
-            validationMessage = validation.message
-            return
-        }
 
         validationMessage = nil
         do {
