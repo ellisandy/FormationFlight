@@ -252,6 +252,56 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertFalse(flightRoot.exists, "flightViewRoot should be gone after ending the flight")
     }
 
+    // MARK: - Cancel (B-21)
+
+    func testCancelWithEditsAsksToDiscardAndReturnsToList() throws {
+        launch()
+        openNewFlightEditor()
+
+        enterMissionName("Abandoned Draft")
+
+        let cancelButton = app.buttons["flightEditorCancelButton"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5), "flightEditorCancelButton should be in the editor toolbar")
+        cancelButton.tap()
+
+        // The confirmation dialog is a system action sheet; its buttons carry
+        // their titles only.
+        let dialog = app.sheets.firstMatch
+        XCTAssertTrue(dialog.waitForExistence(timeout: 5), "Cancelling a dirty editor should show the Discard changes? dialog")
+        let keepEditing = dialog.buttons["Keep Editing"]
+        XCTAssertTrue(keepEditing.exists, "The discard dialog should offer Keep Editing")
+        let discard = dialog.buttons["Discard"]
+        XCTAssertTrue(discard.exists, "The discard dialog should offer Discard")
+        discard.tap()
+
+        XCTAssertTrue(
+            app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 5),
+            "Discarding should pop the editor back to FlightsListViewRoot"
+        )
+        XCTAssertFalse(app.textFields["missionNameField"].exists, "missionNameField should be gone once the editor is popped")
+        XCTAssertEqual(flightRows.count, 0, "Discarding must not create a flightRow_ element")
+        XCTAssertTrue(app.otherElements["emptyStateView"].waitForExistence(timeout: 5), "The empty state should be back; nothing was saved")
+    }
+
+    func testCancelKeepEditingStaysInEditor() throws {
+        launch()
+        openNewFlightEditor()
+
+        enterMissionName("Still Editing")
+
+        let cancelButton = app.buttons["flightEditorCancelButton"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5), "flightEditorCancelButton should be in the editor toolbar")
+        cancelButton.tap()
+
+        let dialog = app.sheets.firstMatch
+        XCTAssertTrue(dialog.waitForExistence(timeout: 5), "Cancelling a dirty editor should show the Discard changes? dialog")
+        dialog.buttons["Keep Editing"].tap()
+
+        let missionField = app.textFields["missionNameField"]
+        XCTAssertTrue(missionField.waitForExistence(timeout: 5), "Keep Editing should leave the editor on screen")
+        XCTAssertEqual(missionField.value as? String, "Still Editing", "Keep Editing must not lose the typed name")
+    }
+
     // MARK: - Validation
 
     func testValidationError_MissingMissionTitle_WhenTargetSelected() throws {

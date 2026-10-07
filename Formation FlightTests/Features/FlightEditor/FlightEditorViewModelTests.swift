@@ -189,6 +189,88 @@ final class FlightEditorViewModelTests {
         #expect(vm.validationMessage == nil)
     }
 
+    // MARK: - Shared validation rules (B-14)
+    //
+    // Go Fly and Save must agree: the editor's message for a failure is the same string
+    // `Flight.validFlight()` produces for a model in the same state, so one wording exists
+    // per rule and the string catalog carries each only once.
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForZeroHack() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Hack Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = false
+        vm.hackDurationSeconds = 0
+
+        let flight = Flight(missionName: "Hack Mission", missionType: .hackTime, missionDate: nil,
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: 0)
+
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+    }
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForEmptyName() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = ""
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+
+        let flight = Flight(missionName: "", missionType: .tot, missionDate: Date().addingTimeInterval(600),
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: nil)
+
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+    }
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForMissingTarget() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Mission"
+
+        let flight = Flight(missionName: "Mission", missionType: .tot, missionDate: Date().addingTimeInterval(600),
+                            target: Target(longitude: 0, latitude: 0), hackTime: nil)
+        flight.target = nil
+
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+    }
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForPastTOT() throws {
+        let past = Date().addingTimeInterval(-3_600)
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Late"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = true
+        vm.timeEntry = past
+
+        let flight = Flight(missionName: "Late", missionType: .tot, missionDate: past,
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: nil)
+
+        #expect(vm.canGoFly == false)
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+        #expect(editorMessage.localizedCaseInsensitiveContains("past"))
+    }
+
+    @Test
+    func testPresentFlightViewPastTOT_DoesNotPresent() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Late"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.timeEntry = Date().addingTimeInterval(-3_600)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        #expect(vm.validationMessage != nil)
+    }
+
     @Test
     func testCanGoFlyTracksStateChanges() {
         let vm = FlightEditorViewModel()
@@ -223,6 +305,87 @@ final class FlightEditorViewModelTests {
 
         #expect(vm.isFlightViewPresented == true)
         #expect(vm.validationMessage == nil)
+    }
+
+    // MARK: - Dirty tracking (B-21)
+    //
+    // Cancel asks "Discard changes?" only when something differs from the state the editor
+    // opened with: the pristine new-flight defaults, or the loaded flight's values.
+
+    @Test
+    func testNewEditorIsNotDirty() {
+        let vm = FlightEditorViewModel()
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testTypingANameMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "D"
+        #expect(vm.isDirty == true)
+        vm.missionName = ""
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testChangingTimeTypeMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.useTOT = false
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testChangingHackDurationMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.hackDurationSeconds = 30
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testChangingTimeEntryMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.timeEntry = vm.timeEntry.addingTimeInterval(60)
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testSelectingATargetMakesTheEditorDirty() {
+        let vm = FlightEditorViewModel()
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 1, longitude: 2))
+        #expect(vm.isDirty == true)
+        vm.applyTargetSelection(coordinate: nil)
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testEditorLoadedFromFlightIsNotDirtyUntilAFieldChanges() {
+        let target = Target(longitude: -122.0, latitude: 37.0)
+        let flight = Flight(missionName: "Loaded", missionType: .hackTime, missionDate: nil, target: target, hackTime: 300)
+
+        let vm = FlightEditorViewModel(flight: flight)
+        #expect(vm.isDirty == false)
+
+        vm.hackDurationSeconds = 301
+        #expect(vm.isDirty == true)
+        vm.hackDurationSeconds = 300
+        #expect(vm.isDirty == false)
+
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.5))
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
+    func testMapToValuesResetsTheDirtyBaseline() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Typed"
+        #expect(vm.isDirty == true)
+
+        let flight = Flight(missionName: "Mapped", missionType: .tot,
+                            missionDate: Date().addingTimeInterval(600),
+                            target: Target(longitude: 0, latitude: 0), hackTime: nil)
+        vm.mapToValues(flight: flight)
+
+        #expect(vm.isDirty == false)
     }
 
     @Test

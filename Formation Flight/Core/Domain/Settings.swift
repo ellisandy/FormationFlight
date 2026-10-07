@@ -158,19 +158,11 @@ extension Settings {
         let instrumentSettings: [InstrumentSetting] = {
             guard
                 let data = userDefaults.data(forKey: instrumentSettingsUDK),
-                let decoded = try? JSONDecoder().decode([InstrumentSetting].self, from: data)
+                let decoded = try? JSONDecoder().decode([LenientInstrumentSetting].self, from: data)
             else {
                 return Settings.empty().instrumentSettings
             }
-            // Merge logic: preserve saved isEnabled for saved types, add missing defaults enabled by default
-            let defaults = Settings.empty().instrumentSettings
-            var merged = defaults
-            for (index, def) in defaults.enumerated() {
-                if let saved = decoded.first(where: { $0.type == def.type }) {
-                    merged[index].isEnabled = saved.isEnabled
-                }
-            }
-            return merged
+            return mergeInstrumentSettings(saved: decoded.compactMap(\.setting))
         }()
         
         return Settings(
@@ -182,6 +174,38 @@ extension Settings {
         ).validated()
     }
     
+    /// Rebuilds the instrument list from what the user saved (B-12).
+    ///
+    /// The saved order is the user's order, so it is kept as-is. Any default instrument the
+    /// saved list lacks (a new instrument, or one that failed to decode) is appended enabled,
+    /// and anything that is not a default instrument, or repeats an earlier entry, is dropped.
+    static func mergeInstrumentSettings(saved: [InstrumentSetting]) -> [InstrumentSetting] {
+        let defaults = Settings.empty().instrumentSettings
+        let knownTypes = Set(defaults.map(\.type))
+        var merged: [InstrumentSetting] = []
+        var seen = Set<InFlightInfo>()
+        for setting in saved where knownTypes.contains(setting.type) && seen.insert(setting.type).inserted {
+            merged.append(setting)
+        }
+        for setting in defaults where !seen.contains(setting.type) {
+            merged.append(setting)
+        }
+        return merged
+    }
+
+    /// Decodes one saved instrument entry, yielding `nil` instead of failing the whole array.
+    ///
+    /// `InstrumentSetting.init(from:)` throws on a type string this build does not know (for
+    /// example one written by a newer or older build). Decoding the array as this wrapper lets
+    /// a single stale element be dropped while the user's remaining layout survives.
+    private struct LenientInstrumentSetting: Decodable {
+        let setting: InstrumentSetting?
+
+        init(from decoder: Decoder) throws {
+            setting = try? InstrumentSetting(from: decoder)
+        }
+    }
+
     public func save(to userDefaults: UserDefaults) {
         userDefaults.set(speedUnit.rawValue, forKey: Self.speedUnitUDK)
         userDefaults.set(distanceUnit.rawValue, forKey: Self.distanceUnitUDK)

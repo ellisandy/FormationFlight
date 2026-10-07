@@ -84,25 +84,26 @@ final class FlightsListViewModel: ObservableObject {
     
     // MARK: - Editor Actions (Closures from Child)
     func saveNewFlight(from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
-        guard !editorVM.missionName.isEmpty else {
-            validationMessage = Self.missingNameMessage
+        // `Flight.init` needs a target, so a draft without one is reported through the shared
+        // rules before a model can be built; every other rule runs via `validFlight()` below.
+        guard let location = editorVM.selectedTargetLocation else {
+            validationMessage = editorVM.goFlyValidationMessage ?? FlightValidation.missingTargetMessage
             return
         }
 
-        guard let location = editorVM.selectedTargetLocation else {
-            validationMessage = Self.missingTargetMessage
+        // B-14: only the field that belongs to the mission type is written; the other is nil.
+        let flight = Flight(missionName: editorVM.missionName,
+                            missionType: editorVM.missionType,
+                            missionDate: editorVM.missionDateToSave,
+                            target: Target(longitude: location.longitude, latitude: location.latitude),
+                            hackTime: editorVM.hackTimeToSave)
+        let validation = flight.validFlight()
+        guard validation.valid else {
+            validationMessage = validation.message
             return
         }
-        
+
         validationMessage = nil
-        let missionType: MissionType = editorVM.useTOT ? .tot : .hackTime
-        let missionDate: Date? = editorVM.timeEntry
-        let hackDuration: Double? = Double(editorVM.hackDurationSeconds)
-        let flight = Flight(missionName: editorVM.missionName,
-                            missionType: missionType,
-                            missionDate: missionDate,
-                            target: Target(longitude: location.longitude, latitude: location.latitude),
-                            hackTime: hackDuration)
         modelContext.insert(flight)
         do {
             try modelContext.save()
@@ -117,21 +118,27 @@ final class FlightsListViewModel: ObservableObject {
 
     func updateFlight(_ flight: Flight, from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
         dataLog.info("Updating existing flight: \(flight.missionName, privacy: .private)")
-        guard !editorVM.missionName.isEmpty else {
-            validationMessage = Self.missingNameMessage
+        guard let location = editorVM.selectedTargetLocation else {
+            validationMessage = editorVM.goFlyValidationMessage ?? FlightValidation.missingTargetMessage
             return
         }
 
-        guard let location = editorVM.selectedTargetLocation else {
-            validationMessage = Self.missingTargetMessage
-            return
-        }
-        
         flight.target = Target(longitude: location.longitude, latitude: location.latitude)
         flight.missionName = editorVM.missionName
-        flight.missionType = editorVM.useTOT ? .tot : .hackTime
-        flight.missionDate = editorVM.timeEntry
-        flight.hackTime = Double(editorVM.hackDurationSeconds)
+        flight.missionType = editorVM.missionType
+        // B-14: only the field that belongs to the mission type is kept; the other is cleared.
+        flight.missionDate = editorVM.missionDateToSave
+        flight.hackTime = editorVM.hackTimeToSave
+
+        let validation = flight.validFlight()
+        guard validation.valid else {
+            // Revert the staged edits so the list keeps showing what is actually stored.
+            modelContext.rollback()
+            validationMessage = validation.message
+            return
+        }
+
+        validationMessage = nil
         do {
             try modelContext.save()
             isPresentingEditFlight = false
@@ -143,20 +150,10 @@ final class FlightsListViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Validation Messages
-    private static var missingNameMessage: String {
-        String(localized: "Please enter a mission name.",
-               comment: "Validation message when a flight has no mission name")
-    }
-
-    private static var missingTargetMessage: String {
-        String(localized: "Please enter a valid target location.",
-               comment: "Validation message when a flight has no target selected")
-    }
-    
+    /// The editor's Cancel action (B-21). Clearing `isPresentingEditFlight` pops the editor
+    /// through the `navigationDestination(isPresented:)` binding in `FlightsListView`.
     func cancelEditor() {
         logger.debug("Editor canceled by user")
-        // Reset any selection and close the editor
         selectedFlight = nil
         isPresentingEditFlight = false
     }

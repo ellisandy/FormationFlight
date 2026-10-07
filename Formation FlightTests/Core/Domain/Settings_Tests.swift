@@ -166,10 +166,82 @@ struct SettingsTests {
         #expect(loaded.redTolerance == 0)
     }
 
-    // MARK: - Persistence: corrupt instrumentSettings payloads fall back to defaults
+    // MARK: - Persistence: instrument ordering (B-12)
     //
-    // `Settings.load(from:)` reads the blob under the "instrumentSettings" key. Ordering of the
-    // merged list is deliberately not asserted here: B-12 (load rebuilds default order) is open.
+    // `Settings.load(from:)` must rebuild the list in the SAVED order (the user reordered it),
+    // then append any default type the saved list lacks, enabled, and drop anything it does
+    // not recognise.
+
+    @Test("load(from:) keeps the saved instrument order and appends missing defaults enabled")
+    func testLoadPreservesSavedOrderAndAppendsMissingDefaults() throws {
+        let suiteName = "SettingsTests.testLoadPreservesSavedOrderAndAppendsMissingDefaults"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        var saved = Settings.empty()
+        saved.instrumentSettings = [
+            InstrumentSetting(type: .track, isEnabled: false),
+            InstrumentSetting(type: .distance, isEnabled: true),
+            InstrumentSetting(type: .currentGroundSpeed, isEnabled: false),
+        ]
+        saved.save(to: defaults)
+
+        let loaded = Settings.load(from: defaults)
+
+        #expect(loaded.instrumentSettings.map(\.type) == [.track, .distance, .currentGroundSpeed, .requiredGroundSpeed, .bearing])
+        #expect(loaded.instrumentSettings.map(\.isEnabled) == [false, true, false, true, true])
+    }
+
+    @Test("load(from:) drops a saved type that is not a default instrument")
+    func testLoadDropsNonInstrumentTypes() throws {
+        let suiteName = "SettingsTests.testLoadDropsNonInstrumentTypes"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // "ToT" is a valid InFlightInfo case but not an instrument the settings list offers.
+        let json = """
+        [
+          {"type": "ToT", "isEnabled": true},
+          {"type": "Track", "isEnabled": false}
+        ]
+        """
+        defaults.set(Data(json.utf8), forKey: "instrumentSettings")
+
+        let loaded = Settings.load(from: defaults)
+        #expect(!loaded.instrumentSettings.contains { $0.type == .tot })
+        #expect(loaded.instrumentSettings.first?.type == .track)
+        #expect(loaded.instrumentSettings.first?.isEnabled == false)
+        #expect(loaded.instrumentSettings.count == 5)
+    }
+
+    @Test("load(from:) keeps the first of duplicate saved types")
+    func testLoadDropsDuplicateSavedTypes() throws {
+        let suiteName = "SettingsTests.testLoadDropsDuplicateSavedTypes"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let json = """
+        [
+          {"type": "Dist", "isEnabled": false},
+          {"type": "Dist", "isEnabled": true}
+        ]
+        """
+        defaults.set(Data(json.utf8), forKey: "instrumentSettings")
+
+        let loaded = Settings.load(from: defaults)
+        #expect(loaded.instrumentSettings.filter { $0.type == .distance }.count == 1)
+        #expect(loaded.instrumentSettings.first?.type == .distance)
+        #expect(loaded.instrumentSettings.first?.isEnabled == false)
+        #expect(loaded.instrumentSettings.count == 5)
+    }
+
+    // MARK: - Persistence: corrupt instrumentSettings payloads
+    //
+    // A blob that is not JSON at all falls back to the defaults. A blob with one bad element
+    // is decoded leniently so a single unknown type does not wipe the user's layout.
 
     @Test("load(from:) returns the default instrument list when the stored blob is not JSON")
     func testLoadCorruptInstrumentSettingsDataFallsBackToDefaults() throws {
@@ -185,16 +257,18 @@ struct SettingsTests {
         #expect(loaded.instrumentSettings.allSatisfy { $0.isEnabled })
     }
 
-    @Test("load(from:) returns the default instrument list when a saved entry has an unknown type")
-    func testLoadUnknownInstrumentTypeFallsBackToDefaults() throws {
-        let suiteName = "SettingsTests.testLoadUnknownInstrumentTypeFallsBackToDefaults"
+    @Test("load(from:) drops a saved entry with an unknown type and keeps the valid entries")
+    func testLoadUnknownInstrumentTypeIsDroppedAndValidEntriesKept() throws {
+        let suiteName = "SettingsTests.testLoadUnknownInstrumentTypeIsDroppedAndValidEntriesKept"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        // `InstrumentSetting.init(from:)` throws on an unknown `type`, so the whole array fails
-        // to decode. The valid "Cur GS": false entry must therefore NOT be merged: if it were,
-        // currentGroundSpeed would come back disabled and this would be a partial decode.
+        // Decision (B-12): decode leniently per element. Before, `InstrumentSetting.init(from:)`
+        // throwing on the unknown `type` failed the whole array and this test pinned the
+        // all-or-nothing fallback. One stale entry (for example from a build that had an
+        // instrument this one does not) must not discard the user's whole layout, so now the
+        // bad element is dropped and the valid "Cur GS": false entry survives in first place.
         let json = """
         [
           {"type": "Cur GS", "isEnabled": false},
@@ -204,9 +278,29 @@ struct SettingsTests {
         defaults.set(Data(json.utf8), forKey: "instrumentSettings")
 
         let loaded = Settings.load(from: defaults)
-        #expect(loaded.instrumentSettings == Settings.empty().instrumentSettings)
-        let currentGroundSpeed = loaded.instrumentSettings.first { $0.type == .currentGroundSpeed }
-        #expect(currentGroundSpeed?.isEnabled == true)
+        #expect(loaded.instrumentSettings.map(\.type) == [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track])
+        #expect(loaded.instrumentSettings.map(\.isEnabled) == [false, true, true, true, true])
+    }
+
+    @Test("load(from:) drops a saved element that is not an object")
+    func testLoadNonObjectElementIsDropped() throws {
+        let suiteName = "SettingsTests.testLoadNonObjectElementIsDropped"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let json = """
+        [
+          42,
+          {"type": "Final Bearing", "isEnabled": false}
+        ]
+        """
+        defaults.set(Data(json.utf8), forKey: "instrumentSettings")
+
+        let loaded = Settings.load(from: defaults)
+        #expect(loaded.instrumentSettings.first?.type == .bearing)
+        #expect(loaded.instrumentSettings.first?.isEnabled == false)
+        #expect(loaded.instrumentSettings.count == 5)
     }
 
     // MARK: - Tolerance validation

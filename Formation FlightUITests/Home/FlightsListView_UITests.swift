@@ -200,15 +200,15 @@ final class FlightsListViewUITests: XCTestCase {
         let nameField = app.textFields["missionNameField"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5), "Tapping the empty-state button should push the editor (missionNameField)")
 
-        // The editor has no Cancel button (B-21); the navigation back button is
-        // the only way out, and it is the leading button of the editor's bar.
-        let backButton = app.navigationBars.firstMatch.buttons.firstMatch
-        XCTAssertTrue(backButton.waitForExistence(timeout: 2), "The editor's navigation bar should have a back button")
-        backButton.tap()
+        // B-21: Cancel is the editor's single exit (the system back button is
+        // hidden). The editor is pristine here, so no discard dialog appears.
+        let cancelButton = app.buttons["flightEditorCancelButton"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 2), "The editor's navigation bar should have flightEditorCancelButton")
+        cancelButton.tap()
 
         XCTAssertTrue(
             app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 5),
-            "FlightsListViewRoot should be back after navigating back from the editor"
+            "FlightsListViewRoot should be back after cancelling the editor"
         )
         XCTAssertTrue(emptyState.waitForExistence(timeout: 5), "emptyStateView should be shown again; nothing was saved")
         XCTAssertFalse(nameField.exists, "missionNameField should be gone once the editor is popped")

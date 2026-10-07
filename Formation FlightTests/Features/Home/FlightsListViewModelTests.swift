@@ -133,6 +133,119 @@ struct FlightsListViewModel_SwiftTests_Extra {
         #expect(sut.validationMessage != nil)
     }
 
+    // MARK: - Editor Actions: save goes through Flight.validFlight() (B-14)
+
+    @Test("saveNewFlight rejects a hack mission with a 0 s hack and does not insert")
+    func saveNewFlight_hackWithZeroDuration_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "Zero Hack"
+        editor.useTOT = false
+        editor.hackDurationSeconds = 0
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.isEmpty)
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("hack"))
+    }
+
+    @Test("saveNewFlight rejects an empty mission name and does not insert")
+    func saveNewFlight_emptyName_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = ""
+        editor.useTOT = true
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.isEmpty)
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("name"))
+    }
+
+    @Test("saveNewFlight rejects a whitespace-only mission name, matching Go Fly")
+    func saveNewFlight_whitespaceName_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "   "
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        #expect(try context.fetch(FetchDescriptor<Flight>()).isEmpty)
+        #expect(sut.validationMessage != nil)
+    }
+
+    @Test("saveNewFlight stores no missionDate for a hack mission")
+    func saveNewFlight_hackMission_hasNilMissionDate() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "Hack Mission"
+        editor.useTOT = false
+        editor.hackDurationSeconds = 90
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let saved = try #require(try context.fetch(FetchDescriptor<Flight>()).first)
+        #expect(saved.missionType == .hackTime)
+        #expect(saved.hackTime == 90)
+        #expect(saved.missionDate == nil)
+        #expect(sut.validationMessage == nil)
+    }
+
+    @Test("saveNewFlight stores no hackTime for a TOT mission")
+    func saveNewFlight_totMission_hasNilHackTime() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "TOT Mission"
+        editor.useTOT = true
+        editor.timeEntry = Date().addingTimeInterval(600)
+        // A stale hack duration left over from switching segments must not be persisted.
+        editor.hackDurationSeconds = 45
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let saved = try #require(try context.fetch(FetchDescriptor<Flight>()).first)
+        #expect(saved.missionType == .tot)
+        #expect(saved.hackTime == nil)
+        #expect(saved.missionDate != nil)
+    }
+
+    @Test("saveNewFlight rejects a TOT in the past and does not insert")
+    func saveNewFlight_pastTOT_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "Late"
+        editor.useTOT = true
+        editor.timeEntry = Date().addingTimeInterval(-3_600)
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        #expect(try context.fetch(FetchDescriptor<Flight>()).isEmpty)
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("past"))
+    }
+
     // MARK: - Editor Actions: update flight success and validation
     @Test("updateFlight updates existing flight when target provided")
     func updateFlight_success() async throws {
@@ -143,7 +256,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
 
         let sut = makeSUT()
         let editor = FlightEditorViewModel(flight: existing)
-        editor.missionName = "Updated" // name is taken from model, but we still set other fields
+        editor.missionName = "Updated"
         editor.useTOT = false
         editor.timeEntry = Date().addingTimeInterval(60)
         editor.selectedTargetLocation = .init(latitude: 1, longitude: 2)
@@ -151,12 +264,66 @@ struct FlightsListViewModel_SwiftTests_Extra {
 
         sut.updateFlight(existing, from: editor, modelContext: context)
 
+        #expect(existing.missionName == "Updated")
         #expect(existing.missionType == .hackTime)
-        #expect(existing.missionDate != nil)
+        // B-14: a hack mission carries no mission date; the editor's time entry is not persisted.
+        #expect(existing.missionDate == nil)
         #expect(existing.target != nil)
         #expect(existing.hackTime == 123)
         #expect(!sut.isPresentingEditFlight)
         #expect(sut.selectedFlight == nil)
+    }
+
+    @Test("updateFlight switching to TOT clears the stored hackTime")
+    func updateFlight_switchToTOT_clearsHackTime() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = Flight(missionName: "Hack", missionType: .hackTime, missionDate: nil,
+                              target: Target(longitude: 0, latitude: 0), hackTime: 300)
+        context.insert(existing)
+        try context.save()
+
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.useTOT = true
+        editor.timeEntry = Date().addingTimeInterval(600)
+
+        sut.updateFlight(existing, from: editor, modelContext: context)
+
+        #expect(existing.missionType == .tot)
+        #expect(existing.hackTime == nil)
+        #expect(existing.missionDate != nil)
+        #expect(sut.validationMessage == nil)
+    }
+
+    @Test("updateFlight with a 0 s hack is refused and the stored flight is left untouched")
+    func updateFlight_hackWithZeroDuration_notSaved() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = Flight(missionName: "Keep Me", missionType: .hackTime, missionDate: nil,
+                              target: Target(longitude: 0, latitude: 0), hackTime: 300)
+        context.insert(existing)
+        try context.save()
+        let id = existing.id
+
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.missionName = "Renamed"
+        editor.hackDurationSeconds = 0
+
+        sut.updateFlight(existing, from: editor, modelContext: context)
+
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("hack"))
+
+        // Nothing reached the store...
+        let fresh = ModelContext(container)
+        let persisted = try #require(try fresh.fetch(FetchDescriptor<Flight>(predicate: #Predicate { $0.id == id })).first)
+        #expect(persisted.missionName == "Keep Me")
+        #expect(persisted.hackTime == 300)
+        // ...and the in-memory model was rolled back so the list does not show a phantom edit.
+        #expect(existing.missionName == "Keep Me")
+        #expect(existing.hackTime == 300)
     }
 
     @Test("updateFlight without target sets validation message and does not save")
