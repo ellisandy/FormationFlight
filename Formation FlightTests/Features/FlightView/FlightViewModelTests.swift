@@ -739,6 +739,55 @@ struct FlightViewModelTests {
         #expect(vm.currentTime != nil, "start must seed the clock so the UI shows a time before the first tick")
     }
 
+    // MARK: - init(flight:) (B-23)
+    /// Builds a VM from a persisted `Flight` the way `Go Fly` does. Constructing a `Flight`
+    /// without a container is fine for a read-only model, as `FlightTests` already relies on.
+    private func makeVM(from flight: Flight) -> FlightViewModel {
+        FlightViewModel(flight: flight,
+                        settings: makeSettings(),
+                        locationProvider: MockLocationProvider(),
+                        timerScheduler: MockTimerScheduler(),
+                        now: fixedClock)
+    }
+
+    @Test("init(flight:) copies hackTime for a hack mission and leaves ToT nil")
+    func initFromHackFlightCopiesHackTime() async throws {
+        // A saved hack mission. `missionDate` is populated too, as the editor currently writes
+        // both fields regardless of type (B-14); it must not leak into `tot` for a hack mission.
+        let flight = Flight(missionName: "Hack Sortie",
+                            missionType: .hackTime,
+                            missionDate: Self.fixedNow.addingTimeInterval(600),
+                            target: Target(longitude: -122.4194, latitude: 37.7749),
+                            hackTime: 90)
+
+        let vm = makeVM(from: flight)
+
+        #expect(vm.missionType == .hackTime)
+        #expect(vm.hackTime == 90, "the hack wheel and startHack() both read hackTime")
+        #expect(vm.tot == nil, "a hack mission has no ToT until Hack! is pressed")
+        #expect(vm.missionDate == Self.fixedNow.addingTimeInterval(600))
+        #expect(vm.missionName == "Hack Sortie")
+        #expect(vm.target.latitude == 37.7749)
+        #expect(vm.target.longitude == -122.4194)
+    }
+
+    @Test("init(flight:) seeds ToT and missionDate from a .tot flight")
+    func initFromTOTFlightSeedsToT() async throws {
+        let missionDate = Self.fixedNow.addingTimeInterval(300)
+        let flight = Flight(missionName: "TOT Sortie",
+                            missionType: .tot,
+                            missionDate: missionDate,
+                            target: Target(longitude: -122.4194, latitude: 37.7749),
+                            hackTime: nil)
+
+        let vm = makeVM(from: flight)
+
+        #expect(vm.missionType == .tot)
+        #expect(vm.tot == missionDate)
+        #expect(vm.missionDate == missionDate)
+        #expect(vm.hackTime == nil)
+    }
+
     // MARK: - Hack mission before "Hack!" (B-08)
     @Test("Hack mission before Hack! keeps current ground speed and only blanks required speed")
     func hackMissionBeforeHackKeepsCurrentGroundSpeed() async throws {
