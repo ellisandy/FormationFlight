@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+@testable import Formation_Flight
 
 @Suite("Double+Extensions Tests")
 struct DoubleExtensionsTests {
