@@ -24,7 +24,8 @@ struct CheckpointMapPickerView: View {
                                                                     span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)))) {
                         Annotation("", coordinate: pinCoordinate, anchor: .bottom) {
                             Image(systemName: "mappin")
-                                .font(.system(size: 42))
+                                .font(.largeTitle)
+                                .imageScale(.large)
                                 .foregroundStyle(.red)
                                 .shadow(radius: 10)
                         }

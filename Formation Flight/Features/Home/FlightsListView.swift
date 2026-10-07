@@ -40,7 +40,8 @@ private struct FlightsEmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "airplane")
-                .font(.system(size: 48))
+                .font(.largeTitle)
+                .imageScale(.large)
                 .foregroundStyle(.secondary)
             Text("No Flights Yet")
                 .font(.title2)

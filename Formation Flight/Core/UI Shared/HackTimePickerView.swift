@@ -45,9 +45,6 @@ struct HackTimePickerView: View {
             .pickerStyle(.wheel)
             .frame(maxWidth: .infinity)
         }
-        .frame(height: 140)
-        .scaleEffect(0.8)
-        .clipped()
         .accessibilityElement(children: .contain)
     }
 }

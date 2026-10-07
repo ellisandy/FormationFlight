@@ -88,7 +88,7 @@ struct FlightEditorView: View {
                                                                                 span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))) {
                                     Annotation("", coordinate: coord, anchor: .bottom) {
                                         Image(systemName: "mappin")
-                                            .font(.system(size: 16))
+                                            .font(.body)
                                             .foregroundStyle(.red)
                                     }
                                 }
