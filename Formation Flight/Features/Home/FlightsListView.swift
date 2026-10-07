@@ -77,7 +77,9 @@ struct FlightsListView: View {
     private let uiLog = AppLogger.ui
     
     @Environment(\.modelContext) private var modelContext
-    @Query var flights: [Flight]
+    // B-31: a stable order so rows do not shuffle between launches or after edits.
+    @Query(sort: [SortDescriptor(\Flight.missionDate), SortDescriptor(\Flight.missionName)])
+    var flights: [Flight]
     
     @StateObject private var viewModel = FlightsListViewModel()
 
