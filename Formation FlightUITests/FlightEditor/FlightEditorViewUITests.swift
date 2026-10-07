@@ -16,9 +16,10 @@ final class FlightEditorViewUITests: XCTestCase {
 
     /// Matches the list row container of every flight (`flightRow_<uuid>`).
     ///
-    /// Built fresh on each access: `NSPredicate` is not `Sendable`, and under Swift 6
-    /// a stored instance cannot be handed to `XCUIElementQuery` more than once.
-    private var flightRowPredicate: NSPredicate {
+    /// Built fresh on each call: `NSPredicate` is not `Sendable`, and under Swift 6 a
+    /// value reachable from `self` cannot be handed to `XCUIElementQuery`, so this is
+    /// a static factory rather than a property.
+    private static func flightRowPredicate() -> NSPredicate {
         NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
     }
 
@@ -70,7 +71,7 @@ final class FlightEditorViewUITests: XCTestCase {
 
     /// All flight rows currently in the list, regardless of element type.
     private var flightRows: XCUIElementQuery {
-        app.descendants(matching: .any).matching(flightRowPredicate)
+        app.descendants(matching: .any).matching(Self.flightRowPredicate())
     }
 
     /// The tappable row of the flight named `name`: the `flightRow_` container whose

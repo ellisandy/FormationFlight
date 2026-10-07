@@ -18,16 +18,16 @@ final class FlightsListViewUITests: XCTestCase {
 
     private var app: XCUIApplication!
 
-    // Predicates are built fresh on each access: `NSPredicate` is not `Sendable`,
-    // and under Swift 6 a stored instance cannot be handed to `XCUIElementQuery`
-    // more than once.
+    // Predicates are built fresh on each call: `NSPredicate` is not `Sendable`, and
+    // under Swift 6 a value reachable from `self` cannot be handed to
+    // `XCUIElementQuery`, so these are static factories rather than properties.
 
     /// Matches the list row container of every flight (`flightRow_<uuid>`).
-    private var flightRowPredicate: NSPredicate {
+    private static func flightRowPredicate() -> NSPredicate {
         NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
     }
     /// Matches the swipe-action delete button of every flight (`flightRowDelete_<uuid>`).
-    private var flightRowDeletePredicate: NSPredicate {
+    private static func flightRowDeletePredicate() -> NSPredicate {
         NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")
     }
 
@@ -81,7 +81,7 @@ final class FlightsListViewUITests: XCTestCase {
 
     /// All flight rows currently in the list, regardless of element type.
     private var flightRows: XCUIElementQuery {
-        app.descendants(matching: .any).matching(flightRowPredicate)
+        app.descendants(matching: .any).matching(Self.flightRowPredicate())
     }
 
     /// Waits until `query` matches exactly `count` elements.
@@ -232,7 +232,7 @@ final class FlightsListViewUITests: XCTestCase {
         let firstRow = flightRows.element(boundBy: 0)
         firstRow.swipeLeft()
 
-        let deleteButtons = app.buttons.matching(flightRowDeletePredicate)
+        let deleteButtons = app.buttons.matching(Self.flightRowDeletePredicate())
         let deleteButton = deleteButtons.element(boundBy: 0)
         XCTAssertTrue(deleteButton.waitForExistence(timeout: 5), "Swiping a row left should reveal its flightRowDelete_ button")
         XCTAssertEqual(deleteButtons.count, 1, "Only the swiped row should expose a flightRowDelete_ button")
