@@ -24,6 +24,10 @@ private struct LabelValueRow: View {
                 .font(.title)
                 .monospacedDigit()
                 .foregroundStyle(valueColor ?? .primary)
+                // Readouts must stay on one line at large Dynamic Type sizes;
+                // shrink the value rather than wrapping or clipping it.
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .padding(.horizontal, Design.Padding.horizontal)
         .accessibilityElement(children: .combine)
@@ -50,6 +54,10 @@ private struct InstrumentCard: View {
                 .font(valueFont)
                 .monospacedDigit()
                 .foregroundStyle(valueColor ?? .primary)
+                // Readouts must stay on one line at large Dynamic Type sizes;
+                // shrink the value rather than wrapping or clipping it.
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, verticalPadding)
