@@ -102,6 +102,72 @@ struct SettingsEditorViewModelTests {
         #expect(loaded.redTolerance == 0)
     }
 
+    // MARK: - Tolerance steppers (B-13)
+    //
+    // The steppers in SettingsEditorFormView drive these setters so the yellow <= red
+    // invariant `Settings.validated()` enforces on save is visible live, not only after Save.
+
+    @Test("setYellowTolerance raising yellow past red drags red up to match")
+    func setYellowTolerance_pushesRedUp() {
+        var s = Settings.empty()
+        s.yellowTolerance = 10
+        s.redTolerance = 30
+        let vm = SettingsEditorViewModel(settings: s)
+
+        vm.setYellowTolerance(31)
+
+        #expect(vm.settings.yellowTolerance == 31)
+        #expect(vm.settings.redTolerance == 31)
+    }
+
+    @Test("setYellowTolerance below red leaves red alone")
+    func setYellowTolerance_belowRed_leavesRed() {
+        var s = Settings.empty()
+        s.yellowTolerance = 10
+        s.redTolerance = 30
+        let vm = SettingsEditorViewModel(settings: s)
+
+        vm.setYellowTolerance(20)
+
+        #expect(vm.settings.yellowTolerance == 20)
+        #expect(vm.settings.redTolerance == 30)
+    }
+
+    @Test("setRedTolerance never drops red below yellow")
+    func setRedTolerance_holdsAtYellow() {
+        var s = Settings.empty()
+        s.yellowTolerance = 20
+        s.redTolerance = 30
+        let vm = SettingsEditorViewModel(settings: s)
+
+        vm.setRedTolerance(15)
+
+        #expect(vm.settings.redTolerance == 20)
+        #expect(vm.settings.yellowTolerance == 20)
+    }
+
+    @Test("tolerance setters clamp to the stepper range")
+    func toleranceSetters_clampToRange() {
+        let vm = SettingsEditorViewModel(settings: .empty())
+
+        vm.setYellowTolerance(-5)
+        #expect(vm.settings.yellowTolerance == SettingsEditorViewModel.toleranceRange.lowerBound)
+
+        vm.setRedTolerance(10_000)
+        #expect(vm.settings.redTolerance == SettingsEditorViewModel.toleranceRange.upperBound)
+
+        vm.setYellowTolerance(10_000)
+        #expect(vm.settings.yellowTolerance == SettingsEditorViewModel.toleranceRange.upperBound)
+        #expect(vm.settings.redTolerance == SettingsEditorViewModel.toleranceRange.upperBound)
+    }
+
+    @Test("tolerance range spans 0 to 600 seconds")
+    func toleranceRange_isZeroToTenMinutes() {
+        #expect(SettingsEditorViewModel.toleranceRange == 0...600)
+        #expect(SettingsEditorViewModel.toleranceRange.contains(Settings.defaultYellowTolerance))
+        #expect(SettingsEditorViewModel.toleranceRange.contains(Settings.defaultRedTolerance))
+    }
+
     // MARK: - Factory
     @Test("from(userDefaults:) creates VM with persisted settings")
     func factory_fromUserDefaults() async throws {
