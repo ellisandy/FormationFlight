@@ -685,4 +685,25 @@ struct FlightViewModelTests {
         #expect(provider.updateDelegate != nil)
         #expect(vm.currentTime != nil, "start must seed the clock so the UI shows a time before the first tick")
     }
+
+    // MARK: - Hack mission before "Hack!" (B-08)
+    @Test("Hack mission before Hack! keeps current ground speed and only blanks required speed")
+    func hackMissionBeforeHackKeepsCurrentGroundSpeed() async throws {
+        let lp = MockLocationProvider()
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 120, locationProvider: lp, now: fixedClock)
+        // No "Hack!" yet, so there is no ToT to compute a required speed against.
+        #expect(vm.tot == nil)
+
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+
+        // B-08: the GPS just reported 10 m/s; the pilot must see it even though the clock has
+        // not been hacked. Only the required speed depends on ToT.
+        #expect(vm.currentGroundSpeed == Measurement(value: 10, unit: .metersPerSecond))
+        #expect(vm.requiredGroundSpeed == nil)
+        #expect(vm.distance != nil)
+        #expect(vm.track != nil)
+    }
 }
