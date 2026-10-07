@@ -421,6 +421,37 @@ struct FlightViewModelTests {
         #expect(abs(delta - (ete - 100)) < 1e-6)
     }
 
+    // MARK: - Midnight crossing (tests #13)
+    @Test("ToT shortly after midnight is compared on absolute dates and renders as 00:00:10")
+    func totCrossingMidnight() async throws {
+        // Build both instants in the current calendar/time zone: Formatting.timeHHmmss formats in
+        // the current time zone, so the expected string is only "00:00:10" if the date is built
+        // the same way. Round to whole seconds so the delta arithmetic is exact.
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        let lateTonightRaw = try #require(calendar.date(bySettingHour: 23, minute: 59, second: 50, of: startOfToday))
+        let lateTonight = Date(timeIntervalSinceReferenceDate: lateTonightRaw.timeIntervalSinceReferenceDate.rounded())
+        let tot = lateTonight.addingTimeInterval(20) // 00:00:10 tomorrow
+
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        missionType: .tot,
+                        missionDate: tot,
+                        timerScheduler: mockTimer,
+                        now: { lateTonight })
+
+        // 200 m at 10 m/s -> ETE exactly 20 s, landing exactly on ToT across the day boundary.
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 200)
+        mockTimer.fire()
+
+        #expect(Formatting.timeHHmmss(vm.currentTime) == "23:59:50")
+        #expect(Formatting.timeHHmmss(vm.tot) == "00:00:10")
+        #expect(vm.ete == 20.0)
+        #expect(vm.eta == tot)
+        #expect(vm.delta == 0.0)
+        #expect(vm.statusColor == .good)
+    }
+
     // MARK: - Default tolerances (B-05)
     /// Drives the timing pipeline with the fixed clock so that `delta == absDelta` exactly
     /// (speed 10 m/s, distance `10 * absDelta` m, ToT = now) and returns the resulting status.
