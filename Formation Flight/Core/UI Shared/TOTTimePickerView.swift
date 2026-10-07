@@ -5,7 +5,7 @@ import SwiftUI
 struct TOTTimePickerView: View {
     /// Values offered by each wheel. Exposed so tests can check they line up
     /// with the `Date` model (`Date.hour` is 0...23, minute/second 0...59).
-    static let hourRange = 1..<25
+    static let hourRange = 0..<24
     static let minuteRange = 0..<60
     static let secondRange = 0..<60
 
@@ -20,7 +20,7 @@ struct TOTTimePickerView: View {
                 .datePickerStyle(.compact)
 
             HStack {
-                // Hour wheel 1-24 (changed from 0-23)
+                // Hour wheel 00-23, matching Date.hour
                 Picker("Hour", selection: $hour) {
                     ForEach(Self.hourRange, id: \.self) { h in
                         Text(String(format: "%02d", h)).tag(h)
