@@ -13,7 +13,9 @@ private struct LabelValueRow: View {
     let label: String
     let value: String?
     var valueColor: Color? = nil
-    
+    /// Accessibility identifier for the combined row, used by UI tests.
+    var identifier: String? = nil
+
     var body: some View {
         HStack {
             Text(label).font(.title)
@@ -25,6 +27,7 @@ private struct LabelValueRow: View {
         }
         .padding(.horizontal, Design.Padding.horizontal)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier ?? "")
         .accessibilityLabel(label)
         .accessibilityValue(value ?? "")
     }
@@ -37,7 +40,9 @@ private struct InstrumentCard: View {
     var verticalPadding: CGFloat = 10
     var titleFont: Font = .title2
     var valueFont: Font = .title
-    
+    /// Accessibility identifier for the combined card, used by UI tests.
+    var identifier: String? = nil
+
     var body: some View {
         VStack(spacing: 5) {
             Text(title).font(titleFont)
@@ -50,6 +55,7 @@ private struct InstrumentCard: View {
         .padding(.vertical, verticalPadding)
         .cardBackground()
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier ?? "")
         .accessibilityLabel(title)
         .accessibilityValue(value ?? "---")
     }
@@ -67,13 +73,13 @@ private struct TimingSection: View {
     
     var body: some View {
         VStack {
-            LabelValueRow(label: "Time", value: time)
+            LabelValueRow(label: "Time", value: time, identifier: "timingTimeRow")
                 .padding(.top, 10)
-            
-            LabelValueRow(label: "ETE", value: ete)
-            LabelValueRow(label: "ETA", value: eta, valueColor: emphasisColor)
-            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor)
-            LabelValueRow(label: "TOT", value: tot)
+
+            LabelValueRow(label: "ETE", value: ete, identifier: "timingETERow")
+            LabelValueRow(label: "ETA", value: eta, valueColor: emphasisColor, identifier: "timingETARow")
+            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor, identifier: "timingDeltaRow")
+            LabelValueRow(label: "TOT", value: tot, identifier: "timingTOTRow")
                 .padding(.bottom, 10)
         }
         .cardBackground()
@@ -94,16 +100,16 @@ private struct InstrumentsSection: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 5) {
-                InstrumentCard(title: "Cur GS", value: curGS, valueColor: emphasisColor)
-                InstrumentCard(title: "Req GS", value: reqGS, valueColor: emphasisColor)
-                InstrumentCard(title: "Dist", value: dist)
+                InstrumentCard(title: "Cur GS", value: curGS, valueColor: emphasisColor, identifier: "instrumentCurGS")
+                InstrumentCard(title: "Req GS", value: reqGS, valueColor: emphasisColor, identifier: "instrumentReqGS")
+                InstrumentCard(title: "Dist", value: dist, identifier: "instrumentDist")
             }
             .padding(.horizontal, Design.Padding.horizontal)
             .padding(.vertical, 5)
-            
+
             HStack(spacing: 5) {
-                InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title)
-                InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title)
+                InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentBrg")
+                InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentTrk")
             }
             .padding(.horizontal, Design.Padding.horizontal)
             .padding(.vertical, 5)
@@ -222,12 +228,14 @@ struct FlightView: View {
                                 Text("Hack!").font(.title)
                                     .frame(maxWidth: .infinity)
                             }
+                            .accessibilityIdentifier("hackButton")
                             Button {
                                 viewModel.presentEditHackTime()
                             } label: {
                                 Text("Edit Hack").font(.title)
                                     .frame(maxWidth: .infinity)
                             }
+                            .accessibilityIdentifier("editHackButton")
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
@@ -239,6 +247,7 @@ struct FlightView: View {
                                 Text("Edit TOT").font(.title)
                                     .frame(maxWidth: .infinity)
                             }
+                            .accessibilityIdentifier("editTOTButton")
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
@@ -253,6 +262,7 @@ struct FlightView: View {
                     }
                     .controlSize(.large)
                     .buttonStyle(.glass)
+                    .accessibilityIdentifier("endFlightButton")
                     .accessibilityHint("Stops tracking and closes out the current mission.")
                 }
                 .padding(.horizontal, Design.Padding.horizontal)
@@ -278,6 +288,7 @@ struct FlightView: View {
                     .padding(.horizontal, Design.Padding.horizontal)
                     .controlSize(.large)
                     .buttonStyle(.glass)
+                    .accessibilityIdentifier("editTOTDoneButton")
                 }
             })
             .sheet(isPresented: $viewModel.isEditingHackTime, content: {
@@ -293,6 +304,7 @@ struct FlightView: View {
                     .padding(.horizontal, Design.Padding.horizontal)
                     .controlSize(.large)
                     .buttonStyle(.glass)
+                    .accessibilityIdentifier("editHackDoneButton")
                 }
             })
             .confirmationDialog(
@@ -308,6 +320,7 @@ struct FlightView: View {
                 Text("This will stop tracking and close out the current mission.")
             }
         }
+        .accessibilityIdentifier("flightViewRoot")
         // Keep the screen awake for the duration of the flight. Pilots need the
         // timing and instrument readouts visible without touching the device, so
         // the system idle timer must not dim or lock the display while this view
