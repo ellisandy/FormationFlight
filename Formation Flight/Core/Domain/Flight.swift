@@ -114,12 +114,3 @@ extension Flight {
         return (validStatus, message)
     }
 }
-
-/// Convenience property aliases.
-extension Flight {
-    /// Alias for `missionName` to support legacy call sites.
-    var title: String {
-        get { missionName }
-        set { missionName = newValue }
-    }
-}

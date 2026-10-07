@@ -13,8 +13,7 @@ final class FlightsListViewModel: ObservableObject {
     // Centralized loggers
     private let logger = AppLogger.viewModel
     private let dataLog = AppLogger.data
-    
-    // TODO: Consider abstracting LocationProvider behind a protocol for testability.
+
     let locationProvider: LocationProviding
     
     // Validation feedback
@@ -68,7 +67,7 @@ final class FlightsListViewModel: ObservableObject {
     }
     
     func presentEditFlight(_ flight: Flight) {
-        logger.debug("Present edit flight: \(flight.missionName, privacy: .public)")
+        logger.debug("Present edit flight: \(flight.missionName, privacy: .private)")
         selectedFlight = flight
         isPresentingEditFlight = true
     }
@@ -106,7 +105,7 @@ final class FlightsListViewModel: ObservableObject {
     }
     
     func updateFlight(_ flight: Flight, from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
-        dataLog.info("Updating existing flight: \(flight.missionName, privacy: .public)")
+        dataLog.info("Updating existing flight: \(flight.missionName, privacy: .private)")
         guard !editorVM.missionName.isEmpty else {
             validationMessage = "Please enter a mission name."
             return
@@ -152,12 +151,6 @@ final class FlightsListViewModel: ObservableObject {
         isPresentingSettings = false
     }
     
-    // MARK: - Data Operations
-    func delete(_ flight: Flight, modelContext: ModelContext) {
-        dataLog.info("Deleting flight: \(flight.missionName, privacy: .public)")
-        modelContext.delete(flight)
-    }
-    
     // MARK: - Deletion Flow (Confirmation)
     func requestDelete(flight: Flight) {
         pendingDeleteFlight = flight
@@ -169,7 +162,7 @@ final class FlightsListViewModel: ObservableObject {
             showDeleteConfirmation = false
             return
         }
-        dataLog.info("Deleting flight (confirmed): \(flight.missionName, privacy: .public)")
+        dataLog.info("Deleting flight (confirmed): \(flight.missionName, privacy: .private)")
         modelContext.delete(flight)
         pendingDeleteFlight = nil
         showDeleteConfirmation = false

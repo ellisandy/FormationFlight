@@ -40,7 +40,8 @@ private struct FlightsEmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "airplane")
-                .font(.system(size: 48))
+                .font(.largeTitle)
+                .imageScale(.large)
                 .foregroundStyle(.secondary)
             Text("No Flights Yet")
                 .font(.title2)
@@ -118,10 +119,8 @@ struct FlightsListView: View {
                 }
                 ToolbarItem {
                     Button {
-                        //                        withAnimation {
                         uiLog.debug("Presenting add flight")
                         viewModel.presentAddFlight()
-                        //                        }
                     } label: {
                         Label("Add Item", systemImage: "plus")
                     }
@@ -142,9 +141,16 @@ struct FlightsListView: View {
         }
         .alert(
             "Validation",
-            isPresented: .constant(viewModel.validationMessage != nil)
+            isPresented: Binding(
+                get: { viewModel.validationMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.validationMessage = nil
+                    }
+                }
+            )
         ) {
-            Button("OK") { viewModel.validationMessage = nil }
+            Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.validationMessage ?? "")
         }
@@ -175,7 +181,7 @@ struct FlightsListView: View {
                     flight: flight,
                     onEdit: {
                         uiLog.debug(
-                            "Editing flight: \(flight.missionName, privacy: .public)"
+                            "Editing flight: \(flight.missionName, privacy: .private)"
                         )
                         viewModel.presentEditFlight(flight)
                     },

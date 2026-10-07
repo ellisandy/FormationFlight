@@ -64,14 +64,6 @@ struct SettingsEditorFormView: View {
         formatter.zeroSymbol = ""
         return formatter
     }()
-    
-    let doubleFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.minimumFractionDigits = .init(0.1)
-        formatter.maximumFractionDigits = 100
-        formatter.zeroSymbol = ""
-        return formatter
-    }()
 }
 
 #Preview {

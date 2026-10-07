@@ -61,8 +61,7 @@ struct FlightEditorView: View {
                             pinCoordinate: location,
                             onSave: { coordinate in
                                 viewModel.applyTargetSelection(coordinate: coordinate)
-                            },
-                            onCancel: { }
+                            }
                         )
                     } label: {
                         HStack(spacing: 8) {
@@ -89,7 +88,7 @@ struct FlightEditorView: View {
                                                                                 span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))) {
                                     Annotation("", coordinate: coord, anchor: .bottom) {
                                         Image(systemName: "mappin")
-                                            .font(.system(size: 16))
+                                            .font(.body)
                                             .foregroundStyle(.red)
                                     }
                                 }
@@ -161,13 +160,11 @@ struct FlightEditorView: View {
             viewModel.dismissFlightView()
         },
                          content: {
-            //            onSave(viewModel)
-            if let _target = viewModel.selectedTargetLocation,
-               let _missionType: MissionType = viewModel.useTOT ? .tot : .hackTime
-            {
+            let missionType: MissionType = viewModel.useTOT ? .tot : .hackTime
+            if let target = viewModel.selectedTargetLocation {
                 FlightView(viewModel: FlightViewModel(missionName: viewModel.missionName,
-                                                      target: _target,
-                                                      missionType: _missionType,
+                                                      target: target,
+                                                      missionType: missionType,
                                                       missionDate: viewModel.timeEntry,
                                                       hackTime: Double(viewModel.hackDurationSeconds),
                                                       settings: Settings.load(from: UserDefaults.standard)
