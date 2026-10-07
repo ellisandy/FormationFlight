@@ -150,6 +150,50 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(updateCount, 1)
     }
 
+    // MARK: - Altitude validity (B-39)
+
+    /// Death Valley, the Dead Sea, and plenty of airfields sit below sea level. A negative
+    /// altitude with a non-negative `verticalAccuracy` is a perfectly valid fix and must be
+    /// published, not dropped by a sign check.
+    func testDidUpdateLocationsAcceptsBelowSeaLevelAltitudeWhenVerticalAccuracyIsValid() {
+        let (provider, mockManager) = makeProvider()
+
+        let belowSeaLevel = CLLocation.make(
+            latitude: 36.2, longitude: -116.8,
+            altitude: -50,
+            verticalAccuracy: 5,
+            course: 0, speed: 0
+        )
+        mockManager.simulateLocations([belowSeaLevel])
+
+        XCTAssertEqual(provider.altitude.value, -50)
+    }
+
+    /// Core Location signals "no altitude available" with a negative `verticalAccuracy`.
+    /// Such a fix must leave the previously published altitude untouched.
+    func testDidUpdateLocationsIgnoresAltitudeWhenVerticalAccuracyIsNegative() {
+        let (provider, mockManager) = makeProvider()
+
+        let validFix = CLLocation.make(
+            latitude: 0, longitude: 0,
+            altitude: 300,
+            verticalAccuracy: 5,
+            course: 0, speed: 0
+        )
+        mockManager.simulateLocations([validFix])
+        XCTAssertEqual(provider.altitude.value, 300)
+
+        let noAltitudeFix = CLLocation.make(
+            latitude: 0, longitude: 0,
+            altitude: 999,
+            verticalAccuracy: -1,
+            course: 0, speed: 0
+        )
+        mockManager.simulateLocations([noAltitudeFix])
+
+        XCTAssertEqual(provider.altitude.value, 300, "Altitude must not change when verticalAccuracy < 0")
+    }
+
     func testDidFailWithErrorLeavesStateUntouchedAndDoesNotNotify() {
         let (provider, mockManager) = makeProvider()
 
@@ -171,15 +215,19 @@ final class LocationProvider_Test: XCTestCase {
 }
 
 private extension CLLocation {
+    /// Builds a fix with sensible defaults. Both accuracies default to a valid (non-negative)
+    /// value so that callers only have to spell out the field a test is actually about.
     static func make(latitude: CLLocationDegrees,
                      longitude: CLLocationDegrees,
                      altitude: CLLocationDistance,
+                     horizontalAccuracy: CLLocationAccuracy = 5,
+                     verticalAccuracy: CLLocationAccuracy = 5,
                      course: CLLocationDirection,
                      speed: CLLocationSpeed) -> CLLocation {
         CLLocation(coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
                    altitude: altitude,
-                   horizontalAccuracy: 0,
-                   verticalAccuracy: 0,
+                   horizontalAccuracy: horizontalAccuracy,
+                   verticalAccuracy: verticalAccuracy,
                    course: course,
                    speed: speed,
                    timestamp: Date())
