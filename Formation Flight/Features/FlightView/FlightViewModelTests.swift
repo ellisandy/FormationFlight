@@ -3,12 +3,14 @@ import CoreLocation
 import Testing
 @testable import Formation_Flight
 
-// Protocol-based mock for LocationProviding used by FlightViewModel
+// Protocol-based mock for LocationProviding used by FlightViewModel.
+// This is a standalone class that conforms to the protocol; it does not subclass the
+// production LocationProvider, so every stored property here is plain test state.
 final class MockLocationProvider: LocationProviding {
     var authroizationStatus: CLAuthorizationStatus?
-    
+
     var altitude: Measurement<UnitLength> = Measurement(value: 0, unit: .meters)
-    
+
     var computedSpeedAndCourse: Bool = false
 
     private(set) var startMonitoringCallCount = 0
@@ -26,7 +28,7 @@ final class MockLocationProvider: LocationProviding {
     func startMonitoring() {
         startMonitoringCallCount += 1
     }
-    
+
     /// Convenience to set location-related fields and optionally notify the delegate.
     func setLocation(location: CLLocation?,
                      speed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .metersPerSecond),
@@ -39,9 +41,31 @@ final class MockLocationProvider: LocationProviding {
     }
 }
 
+/// Exact tolerance boundaries for `makeSettings(yellow: 5, red: 10)` with ETE fixed at 10 s.
+/// Production maps `|Δ| <= yellow → good`, `|Δ| <= red → bad`, otherwise `reallyBad`.
+/// Positive Δ is late (ETA after ToT), negative Δ is early.
+private let statusBoundaryCases: [(delta: TimeInterval, expected: FlightViewModel.Status)] = [
+    (delta: 5, expected: .good),        // == yellow
+    (delta: 6, expected: .bad),         // yellow + 1
+    (delta: 10, expected: .bad),        // == red
+    (delta: 11, expected: .reallyBad),  // red + 1
+    (delta: -5, expected: .good),       // == -yellow (early)
+    (delta: -6, expected: .bad),        // -(yellow + 1)
+    (delta: -10, expected: .bad),       // == -red (early)
+    (delta: -11, expected: .reallyBad), // -(red + 1)
+]
+
 @Suite("FlightViewModel")
 @MainActor
 struct FlightViewModelTests {
+    /// A fixed instant used as the injected clock (B-29). The value is an integral number of
+    /// seconds so that `addingTimeInterval` / `timeIntervalSince` on whole-second offsets are
+    /// exact in Double arithmetic and tests can assert `==` rather than tolerances.
+    private static let fixedNow = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+    /// Clock closure that always returns `fixedNow`.
+    private var fixedClock: () -> Date { { Self.fixedNow } }
+
     // Helper settings with known tolerances
     private func makeSettings(yellow: Int = 5, red: Int = 10,
                               speedUnit: Settings.SpeedUnit = .kts,
@@ -53,8 +77,12 @@ struct FlightViewModelTests {
         s.distanceUnit = distanceUnit
         return s
     }
-    
-    // Helper: place a location at an exact north/south offset (in meters) from target
+
+    /// Places a location due north/south of `target` using a flat-earth 111_320 m/deg
+    /// approximation. CoreLocation measures the resulting distance on the WGS84 ellipsoid, so
+    /// the distance it reports is slightly *less* than `metersNorth` (about 0.3% at 37.8° N,
+    /// where the meridional degree is ~110_990 m). Tests that go through this helper must
+    /// therefore use a geodesic tolerance, not an exact comparison.
     private func locationOffsetFromTarget(_ target: CLLocationCoordinate2D, metersNorth: Double) -> CLLocation {
         let metersPerDegreeLat = 111_320.0
         let deltaLat = metersNorth / metersPerDegreeLat
@@ -62,19 +90,38 @@ struct FlightViewModelTests {
         return CLLocation(latitude: newLat, longitude: target.longitude)
     }
 
+    /// Builds and starts a view model. Pass `now:` to inject a deterministic clock; the
+    /// default is the wall clock, which only the lifecycle tests rely on.
     private func makeVM(settings: Settings = Settings.empty(),
                         target: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
                         missionType: MissionType = .tot,
                         missionDate: Date? = nil,
                         hackTime: TimeInterval? = nil,
                         timerScheduler: any TimerScheduling = MockTimerScheduler(),
-                        locationProvider: LocationProviding? = nil) -> FlightViewModel {
+                        locationProvider: LocationProviding? = nil,
+                        now: (() -> Date)? = nil) -> FlightViewModel {
         let lp = locationProvider ?? MockLocationProvider()
-        let vm = FlightViewModel(missionName: "TEST", target: target, missionType: missionType, missionDate: missionDate, hackTime: hackTime, settings: settings, locationProvider: lp, timerScheduler: timerScheduler)
+        let vm = FlightViewModel(missionName: "TEST",
+                                 target: target,
+                                 missionType: missionType,
+                                 missionDate: missionDate,
+                                 hackTime: hackTime,
+                                 settings: settings,
+                                 locationProvider: lp,
+                                 timerScheduler: timerScheduler,
+                                 now: now ?? { Date() })
         // Lifecycle (B-03): side effects live in start(), not init. Tests built on
         // this helper expect a running VM (delegate wired, timer scheduled).
         vm.start()
         return vm
+    }
+
+    /// Sets ground speed and distance directly on the VM (bypassing the location provider)
+    /// so that `ete = distance / speed` is exact. 10 m/s and whole-metre multiples of 10
+    /// give whole-second ETEs with no floating-point error.
+    private func setDirectInputs(_ vm: FlightViewModel, speedMps: Double, distanceMeters: Double) {
+        vm.currentGroundSpeed = Measurement(value: speedMps, unit: .metersPerSecond)
+        vm.distance = Measurement(value: distanceMeters, unit: .meters)
     }
 
     // MARK: - UI Intents
@@ -101,275 +148,292 @@ struct FlightViewModelTests {
     // MARK: - startHack()
     @Test("startHack computes ToT from hack time and current time")
     func startHackComputesToT() async throws {
-        let settings = makeSettings()
-        let vm = makeVM(settings: settings, missionType: .hackTime, hackTime: 120)
-        // Set current time manually and call startHack
-        let now = Date()
-        vm.currentTime = now
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 120, now: fixedClock)
+        // start() seeded currentTime from the injected clock.
+        #expect(vm.currentTime == Self.fixedNow)
+
         vm.startHack()
-        #expect(vm.tot != nil)
-        let diff = vm.tot!.timeIntervalSince(now)
-        #expect(Int(diff.rounded()) == 120)
+
+        let tot = try #require(vm.tot)
+        #expect(tot == Self.fixedNow.addingTimeInterval(120))
     }
 
     // MARK: - Timing pipeline and status mapping
-    @Test("ETE/ETA/Delta and status mapping")
+    @Test("ETE/ETA/Delta are exact with an injected clock and map to status")
     func timingAndStatus() async throws {
-        let settings = makeSettings(yellow: 5, red: 10)
-        let target = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
         let mockTimer = MockTimerScheduler()
-        let vm = makeVM(settings: settings, target: target, timerScheduler: mockTimer)
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10), timerScheduler: mockTimer, now: fixedClock)
 
-        // Provide inputs
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(12) // 12s in the future
-        
-        if let lp = vm.locationProvider as? MockLocationProvider {
-            lp.speed = Measurement(value: 50, unit: .metersPerSecond)
-            // 250 m south of target so ETE = 5s at 50 m/s
-            lp.currentLocation = locationOffsetFromTarget(target, metersNorth: -253)
-            // Track north toward target
-            lp.course = Measurement(value: 0, unit: .degrees)
-        }
+        vm.tot = Self.fixedNow.addingTimeInterval(12)
+        // 250 m at 50 m/s -> ETE exactly 5 s
+        setDirectInputs(vm, speedMps: 50, distanceMeters: 250)
 
-        // Trigger update
-        vm.onLocationUpdate()
         mockTimer.fire()
 
-        // ETE/ETA
-        #expect(Int(vm.ete ?? -1) == 5)
-        #expect(vm.eta != nil)
-
-        // Delta = ETA - ToT -> if ETE 5s and ToT 12s ahead, ETA is 5s ahead -> delta = now+5 - (now+12) = -7
-        let delta = try #require(vm.delta)
-        #expect(abs(delta - (-7)) < 0.6)
-
-        // Status mapping: |delta| = 7 -> >= yellow (5) and < red (10) => bad
+        #expect(vm.currentTime == Self.fixedNow)
+        #expect(vm.ete == 5.0)
+        #expect(vm.eta == Self.fixedNow.addingTimeInterval(5))
+        // Delta = ETA - ToT = (now + 5) - (now + 12) = -7 (early)
+        #expect(vm.delta == -7.0)
+        // |delta| = 7: above yellow (5), at or below red (10) => bad
         #expect(vm.statusColor == .bad)
     }
 
-    @Test("ETE is nil when speed <= 0 or distance missing")
+    @Test("Timing pipeline clears to nil/unknown without speed or distance and recovers when both return")
     func eteNilWhenNoSpeedOrDistance() async throws {
-        let vm = makeVM(settings: makeSettings())
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(30)
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        timerScheduler: mockTimer,
+                        locationProvider: lp,
+                        now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(30)
 
-        // Case 1: speed <= 0
-        if let lp = vm.locationProvider as? MockLocationProvider {
-            lp.speed = Measurement(value: 0, unit: .metersPerSecond)
-            lp.currentLocation = CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude)
-        }
-        vm.distance = Measurement(value: 100, unit: .meters)
+        // Case 1: a fix with zero ground speed. updateInstruments() clears currentGroundSpeed,
+        // so the next tick must clear ETE/ETA/delta and report .unknown.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: Measurement(value: 0, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees))
         vm.onLocationUpdate()
-        #expect(vm.ete == nil)
+        mockTimer.fire()
 
-        // Case 2: distance missing
-        if let lp = vm.locationProvider as? MockLocationProvider {
-            lp.speed = Measurement(value: 10, unit: .metersPerSecond)
-        }
+        #expect(vm.currentGroundSpeed == nil)
+        #expect(vm.distance != nil, "a fix was provided, so distance is known even with no speed")
+        #expect(vm.ete == nil)
+        #expect(vm.eta == nil)
+        #expect(vm.delta == nil)
+        #expect(vm.statusColor == .unknown)
+
+        // Case 2: speed present but distance missing. updateInstruments() returns early when
+        // there is no fix (and leaves state untouched), so set the VM inputs directly.
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 100)
         vm.distance = nil
-        vm.onLocationUpdate()
+        mockTimer.fire()
+
         #expect(vm.ete == nil)
+        #expect(vm.eta == nil)
+        #expect(vm.delta == nil)
+        #expect(vm.statusColor == .unknown)
+
+        // Case 3: a valid fix with speed arrives via the provider delegate; the pipeline
+        // must compute again. ~1000 m at 10 m/s -> ETE ~100 s; delta ~ +70 s => reallyBad.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
+
+        let ete = try #require(vm.ete)
+        #expect(ete > 0)
+        #expect(vm.eta != nil)
+        let delta = try #require(vm.delta)
+        #expect(delta > 10, "delta is far outside the red tolerance by construction")
+        #expect(vm.statusColor == .reallyBad)
     }
 
-    @Test("Status remains unknown when ETA/ToT missing")
+    @Test("Status is unknown before any delta and returns to unknown when ToT is cleared")
     func statusUnknownWhenMissingInputs() async throws {
-        let s = makeSettings(yellow: 5, red: 10)
-        let vm = makeVM(settings: s)
-        vm.currentTime = Date()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10), timerScheduler: mockTimer, now: fixedClock)
 
-        // No ETE/ETA/ToT -> delta remains nil, status should not change from default .good unless mapping runs; ensure mapping does not set a value when delta is nil.
-        vm.ete = nil
-        vm.eta = nil
-        vm.tot = nil
-        vm.onLocationUpdate()
-        // Since statusColor initialized to .good and mapping only runs when delta != nil, it should remain .good here.
+        // B-11: a fresh VM has nothing to judge, so it must not claim .good.
+        #expect(vm.statusColor == .unknown)
+
+        // A tick with no inputs at all keeps everything nil and the status unknown.
+        mockTimer.fire()
+        #expect(vm.ete == nil)
+        #expect(vm.eta == nil)
+        #expect(vm.delta == nil)
+        #expect(vm.statusColor == .unknown)
+
+        // Provide ETE inputs but no ToT: ETE/ETA exist, delta does not, status stays unknown.
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 100)
+        mockTimer.fire()
+        #expect(vm.ete == 10.0)
+        #expect(vm.eta == Self.fixedNow.addingTimeInterval(10))
+        #expect(vm.delta == nil)
+        #expect(vm.statusColor == .unknown)
+
+        // Add a ToT: delta becomes computable and the status is judged.
+        vm.tot = Self.fixedNow.addingTimeInterval(10)
+        mockTimer.fire()
+        #expect(vm.delta == 0.0)
         #expect(vm.statusColor == .good)
+
+        // Clear ToT again: the status must fall back to unknown rather than keep the stale colour.
+        vm.tot = nil
+        mockTimer.fire()
+        #expect(vm.delta == nil)
+        #expect(vm.statusColor == .unknown)
+    }
+
+    // MARK: - Status boundaries (T-02 / B-29)
+    @Test("Status at exact tolerance boundaries", arguments: statusBoundaryCases)
+    func statusAtExactToleranceBoundary(delta: TimeInterval, expected: FlightViewModel.Status) async throws {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10), timerScheduler: mockTimer, now: fixedClock)
+
+        // 100 m at 10 m/s -> ETE exactly 10 s, so ETA = now + 10.
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 100)
+        // delta = ETA - ToT  =>  ToT = now + 10 - delta
+        vm.tot = Self.fixedNow.addingTimeInterval(10 - delta)
+
+        mockTimer.fire()
+
+        #expect(vm.ete == 10.0)
+        #expect(vm.delta == delta)
+        #expect(vm.statusColor == expected)
     }
 
     // MARK: - Instruments and required ground speed
-    @Test("Instrument updates and required ground speed when track≈bearing")
+    @Test("Instrument updates compute required ground speed from distance and time to ToT")
     func instrumentsAndRequiredGroundSpeed() async throws {
-        let settings = makeSettings()
+        let lp = MockLocationProvider()
         let target = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
-        let vm = makeVM(settings: settings, target: target)
+        let vm = makeVM(settings: makeSettings(), target: target, locationProvider: lp, now: fixedClock)
 
-        // Set current location near target and provide speed/course/bearing compatible values.
-        // We'll synthesize values by directly assigning to locationProvider's observable properties.
-        // Since MockLocationProvider inherits LocationProvider, we can set its stored properties.
-        guard let lp = vm.locationProvider as? MockLocationProvider else {
-            #expect(Bool(false), "locationProvider not available")
-            return
-        }
+        vm.tot = Self.fixedNow.addingTimeInterval(60) // 60 seconds to go
 
-        // Provide inputs
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(60) // 60 seconds to go
+        // Aircraft ~0.01 deg west of the target, tracking east toward it.
+        lp.setLocation(location: CLLocation(latitude: target.latitude, longitude: target.longitude - 0.01),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 90, unit: .degrees))
 
-        // Simulate provider values
-        lp.speed = Measurement(value: 10, unit: UnitSpeed.metersPerSecond)
-        lp.course = Measurement(value: 90, unit: UnitAngle.degrees)
-        // Set a location and target such that bearing ~ 90 degrees
-        let origin = CLLocation(latitude: target.latitude, longitude: target.longitude - 0.01)
-        lp.currentLocation = origin
-
-        // Kick pipeline
         vm.onLocationUpdate()
 
-        // Speed should be set
-        #expect(vm.currentGroundSpeed != nil)
+        #expect(vm.currentGroundSpeed == lp.speed)
+        #expect(vm.track == lp.course)
+        let distance = try #require(vm.distance)
+        let bearing = try #require(vm.bearing)
+        // Due east, allowing for meridian convergence over ~900 m.
+        #expect(abs(bearing.converted(to: .degrees).value - 90) < 0.5)
 
-        // Distance should be non-nil
-        #expect(vm.distance != nil)
-
-        // Bearing should be ~90 degrees and requiredGroundSpeed should be computed
-        #expect(vm.bearing != nil)
-        #expect(vm.requiredGroundSpeed != nil)
-
-        // Required ground speed in knots is positive
-        let rgs = vm.requiredGroundSpeed!.converted(to: .knots).value
-        #expect(rgs > 0)
+        // Required GS = distance / time remaining, with time remaining taken from the injected clock.
+        let rgs = try #require(vm.requiredGroundSpeed)
+        let expectedMps = distance.converted(to: .meters).value / 60
+        #expect(abs(rgs.converted(to: .metersPerSecond).value - expectedMps) < 1e-6)
+        #expect(rgs.converted(to: .knots).value > 0)
     }
 
-    @Test("Bearing wrap-around within tolerance computes required speed")
-    func bearingWrapAroundWithinTolerance() async throws {
-        let vm = makeVM(settings: makeSettings())
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(120)
+    @Test("Required ground speed is computed when approaching from the east")
+    func requiredSpeedComputedApproachingFromEast() async throws {
+        let lp = MockLocationProvider()
+        let vm = makeVM(settings: makeSettings(), locationProvider: lp, now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(120)
 
-        guard let lp = vm.locationProvider as? MockLocationProvider else {
-            #expect(Bool(false), "locationProvider not available")
-            return
-        }
-        // Set bearing ~ 270° by placing origin slightly east with small north/south delta, and track at 270°
-        // We'll simulate by directly setting bearing via location; approximate is fine as long as within 15°.
-        let origin = CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude + 0.01)
-        lp.currentLocation = origin
-        lp.course = Measurement(value: 270, unit: .degrees) // track 270°
-        lp.speed = Measurement(value: 30, unit: .metersPerSecond)
+        // Aircraft ~0.01 deg east of the target (bearing ~270), tracking west.
+        lp.setLocation(location: CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude + 0.01),
+                       speed: Measurement(value: 30, unit: .metersPerSecond),
+                       course: Measurement(value: 270, unit: .degrees))
 
         vm.onLocationUpdate()
-        #expect(vm.bearing != nil)
-        #expect(vm.requiredGroundSpeed != nil)
+
+        let bearing = try #require(vm.bearing)
+        #expect(abs(bearing.converted(to: .degrees).value - 270) < 0.5)
+        let distance = try #require(vm.distance)
+        let rgs = try #require(vm.requiredGroundSpeed)
+        let expectedMps = distance.converted(to: .meters).value / 120
+        #expect(abs(rgs.converted(to: .metersPerSecond).value - expectedMps) < 1e-6)
     }
 
     @Test("Required speed is nil when time remaining <= 0")
     func requiredSpeedNilWhenNoTimeRemaining() async throws {
-        let vm = makeVM(settings: makeSettings())
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(-1) // already past
+        let lp = MockLocationProvider()
+        let vm = makeVM(settings: makeSettings(), locationProvider: lp, now: fixedClock)
+        lp.setLocation(location: CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude - 0.01),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 90, unit: .degrees))
 
-        guard let lp = vm.locationProvider as? MockLocationProvider else {
-            #expect(Bool(false), "locationProvider not available")
-            return
-        }
-        lp.speed = Measurement(value: 10, unit: .metersPerSecond)
-        lp.course = Measurement(value: 90, unit: .degrees)
-        let origin = CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude - 0.01)
-        lp.currentLocation = origin
-
+        // ToT exactly now: zero time remaining.
+        vm.tot = Self.fixedNow
         vm.onLocationUpdate()
         #expect(vm.requiredGroundSpeed == nil)
+
+        // ToT already past.
+        vm.tot = Self.fixedNow.addingTimeInterval(-1)
+        vm.onLocationUpdate()
+        #expect(vm.requiredGroundSpeed == nil)
+
+        // ToT in the future: computable again.
+        vm.tot = Self.fixedNow.addingTimeInterval(1)
+        vm.onLocationUpdate()
+        #expect(vm.requiredGroundSpeed != nil)
     }
-    
-    // MARK: - .tot example and status boundaries
-    @Test(".tot mission initializes ToT and computes timing")
+
+    // MARK: - .tot mission
+    @Test(".tot mission initializes ToT from missionDate and computes exact timing")
     func totMissionInitializesToT() async throws {
-        let now = Date()
-        let missionDate = now.addingTimeInterval(20)
+        let missionDate = Self.fixedNow.addingTimeInterval(20)
         let mockTimer = MockTimerScheduler()
-        let vm = makeVM(settings: makeSettings(), missionType: .tot, missionDate: missionDate, timerScheduler: mockTimer)
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        missionType: .tot,
+                        missionDate: missionDate,
+                        timerScheduler: mockTimer,
+                        now: fixedClock)
         // ToT should be set from missionDate
         #expect(vm.tot == missionDate)
 
-        if let lp = vm.locationProvider as? MockLocationProvider {
-            lp.speed = Measurement(value: 10, unit: .metersPerSecond)
-            // ~51 m south of target so ETE ≈ 5.005s at 10 m/s (bias above 5 to avoid truncation)
-            lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -51)
-            lp.course = Measurement(value: 0, unit: .degrees)
-        }
-        vm.currentTime = now
-        vm.onLocationUpdate()
+        // 50 m at 10 m/s -> ETE exactly 5 s
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 50)
         mockTimer.fire()
 
-        let ete = try #require(vm.ete)
-        #expect(abs(ete - 5.0) < 0.3)
-        #expect(vm.eta != nil)
-        // Delta = now+5 - (now+20) = -15 -> |delta|=15, with default tolerances (5,10) => reallyBad
+        #expect(vm.ete == 5.0)
+        #expect(vm.eta == Self.fixedNow.addingTimeInterval(5))
+        // Delta = (now + 5) - (now + 20) = -15 -> |delta| = 15 > red (10) => reallyBad
+        #expect(vm.delta == -15.0)
         #expect(vm.statusColor == .reallyBad)
     }
 
-    @Test("Status mapping boundary cases: good, bad, reallyBad")
-    func statusMappingBoundaries() async throws {
-        // Tolerances: yellow=5, red=10
-        let s = makeSettings(yellow: 5, red: 10)
+    // MARK: - Location-driven integration
+    @Test("Location update drives distance, bearing and ETE through the full pipeline")
+    func locationUpdateDrivesDistanceAndETE() async throws {
+        let lp = MockLocationProvider()
         let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(100)
 
-        func assertStatus(forAbsDelta absDelta: TimeInterval, expected: FlightViewModel.Status) {
-            let vm = makeVM(settings: s, timerScheduler: mockTimer)
+        // 1000 m south (flat-earth) at 10 m/s, tracking north.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
 
-            vm.currentTime = Date()
-            vm.tot = vm.currentTime
+        // Geodesic tolerance, not clock slop: `locationOffsetFromTarget` uses 111_320 m/deg, while
+        // CoreLocation measures on WGS84 where a degree of latitude at 37.8 N is ~110_990 m
+        // (~0.3% shorter). A spherical-earth measurement (111_195 m/deg) would be ~0.1% shorter.
+        // 1% comfortably covers either model while still catching a unit or sign mistake.
+        let distance = try #require(vm.distance).converted(to: .meters).value
+        #expect(abs(distance - 1000) < 10)
 
-            if let lp = vm.locationProvider as? MockLocationProvider {
-                let speedMps = 10.0
-                lp.speed = Measurement(value: speedMps, unit: .metersPerSecond)
-                let distance = speedMps * absDelta
-                lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -distance)
-                lp.course = Measurement(value: 0, unit: .degrees)
-            }
+        let ete = try #require(vm.ete)
+        #expect(abs(ete - 100) < 1)
+        #expect(ete == distance / 10, "ETE must be derived from the reported distance and speed")
 
-            vm.onLocationUpdate()
-            mockTimer.fire()
+        let bearing = try #require(vm.bearing)
+        #expect(abs(bearing.converted(to: .degrees).value) < 0.001, "target is due north")
 
-            // Ensure delta is produced
-            #expect(vm.delta != nil)
-            guard let delta = vm.delta else { return }
-            let observed = abs(delta)
-
-            // Verify that the status matches the mapping for the observed value
-            if observed < Double(s.yellowTolerance) {
-                #expect(vm.statusColor == .good)
-            } else if observed < Double(s.redTolerance) {
-                #expect(vm.statusColor == .bad)
-            } else {
-                #expect(vm.statusColor == .reallyBad)
-            }
-        }
-
-        // Below yellow: absDelta = 4.6 -> good
-        assertStatus(forAbsDelta: 4.6, expected: .good)
-        // Slightly above yellow: absDelta = 5.2 -> bad
-        assertStatus(forAbsDelta: 5.2, expected: .bad)
-        // Between yellow and red: 7 -> bad
-        assertStatus(forAbsDelta: 7.0, expected: .bad)
-        // Slightly above red: 10.3 -> reallyBad
-        assertStatus(forAbsDelta: 10.3, expected: .reallyBad)
-        // Above red: 12 -> reallyBad
-        assertStatus(forAbsDelta: 12.0, expected: .reallyBad)
+        // ETA follows from the injected clock, so it is exactly now + ETE. Delta is
+        // (now + ete) - tot; adding a non-integral ETE to a date of magnitude 8e8 rounds at
+        // ~1e-7 s, so compare with a tolerance far below anything the pipeline could get wrong.
+        #expect(vm.eta == Self.fixedNow.addingTimeInterval(ete))
+        let delta = try #require(vm.delta)
+        #expect(abs(delta - (ete - 100)) < 1e-6)
     }
 
     // MARK: - Default tolerances (B-05)
-    /// Drives the timing pipeline so that |delta| ≈ `absDelta` seconds and returns the resulting status.
-    /// Uses speed 10 m/s, places the aircraft `speed * absDelta` metres south of the target, and sets ToT = now.
+    /// Drives the timing pipeline with the fixed clock so that `delta == absDelta` exactly
+    /// (speed 10 m/s, distance `10 * absDelta` m, ToT = now) and returns the resulting status.
     private func statusForAbsDelta(_ absDelta: TimeInterval, settings: Settings) -> FlightViewModel.Status {
         let mockTimer = MockTimerScheduler()
-        let vm = makeVM(settings: settings, timerScheduler: mockTimer)
+        let vm = makeVM(settings: settings, timerScheduler: mockTimer, now: fixedClock)
 
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime
+        vm.tot = Self.fixedNow
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 10 * absDelta)
 
-        if let lp = vm.locationProvider as? MockLocationProvider {
-            let speedMps = 10.0
-            lp.speed = Measurement(value: speedMps, unit: .metersPerSecond)
-            lp.currentLocation = locationOffsetFromTarget(vm.target, metersNorth: -(speedMps * absDelta))
-            lp.course = Measurement(value: 0, unit: .degrees)
-        }
-
-        vm.onLocationUpdate()
         mockTimer.fire()
 
-        #expect(vm.delta != nil)
+        #expect(vm.delta == absDelta)
         return vm.statusColor
     }
 
@@ -401,14 +465,13 @@ struct FlightViewModelTests {
                                      notify: false)
 
         let settings = makeSettings()
-        let vm = makeVM(settings: settings, timerScheduler: MockTimerScheduler(), locationProvider: injectedProvider)
+        let vm = makeVM(settings: settings, timerScheduler: MockTimerScheduler(), locationProvider: injectedProvider, now: fixedClock)
 
-        // updateDelegate should be set by the view model during configure()
+        // updateDelegate is installed by start(), which makeVM calls.
         #expect(injectedProvider.updateDelegate != nil, "updateDelegate should be set on the injected provider")
 
         // Provide inputs that cause a visible side-effect when onLocationUpdate() runs
-        vm.currentTime = Date()
-        vm.tot = vm.currentTime!.addingTimeInterval(30)
+        vm.tot = Self.fixedNow.addingTimeInterval(30)
 
         // Act: invoke the delegate to simulate a provider update
         injectedProvider.updateDelegate?()
@@ -422,6 +485,8 @@ struct FlightViewModelTests {
     // MARK: - Lifecycle (B-03)
 
     /// Builds a VM directly (no `start()`), so tests can observe init in isolation.
+    /// Uses the wall clock deliberately: `stopTearsDown` relies on a real clock to prove a
+    /// post-stop tick does not advance `currentTime`.
     private func makeUnstartedVM(provider: MockLocationProvider,
                                  timer: MockTimerScheduler,
                                  target: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)) -> FlightViewModel {
@@ -522,4 +587,3 @@ struct FlightViewModelTests {
         #expect(vm.currentTime != nil, "start must seed the clock so the UI shows a time before the first tick")
     }
 }
-
