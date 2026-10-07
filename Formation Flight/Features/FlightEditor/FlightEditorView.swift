@@ -61,8 +61,7 @@ struct FlightEditorView: View {
                             pinCoordinate: location,
                             onSave: { coordinate in
                                 viewModel.applyTargetSelection(coordinate: coordinate)
-                            },
-                            onCancel: { }
+                            }
                         )
                     } label: {
                         HStack(spacing: 8) {

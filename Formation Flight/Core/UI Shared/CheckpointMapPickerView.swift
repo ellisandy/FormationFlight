@@ -4,19 +4,15 @@ import CoreLocation
 
 struct CheckpointMapPickerView: View {
     var onSave: (_ coordinate: CLLocationCoordinate2D) -> Void
-    var onCancel: () -> Void
-    var locationProvider = CLLocationManager()
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var pinCoordinate: CLLocationCoordinate2D
-    
+
     init(
         pinCoordinate: CLLocationCoordinate2D,
-        onSave: @escaping (_ coordinate: CLLocationCoordinate2D) -> Void,
-        onCancel: @escaping () -> Void
+        onSave: @escaping (_ coordinate: CLLocationCoordinate2D) -> Void
     ) {
         self.onSave = onSave
-        self.onCancel = onCancel
         _pinCoordinate = State(initialValue: pinCoordinate)
     }
     
