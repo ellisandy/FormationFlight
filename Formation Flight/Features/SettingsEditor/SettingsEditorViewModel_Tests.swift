@@ -4,17 +4,31 @@ import Testing
 
 @Suite("SettingsEditorViewModel")
 struct SettingsEditorViewModelTests {
-    // Helper to create isolated UserDefaults
-    private func makeIsolatedDefaults() -> UserDefaults {
+    /// A throwaway `UserDefaults` suite plus the hook that deletes it again.
+    ///
+    /// `UserDefaults(suiteName:)` writes a real plist under the test host's Library, so every
+    /// suite a test creates must be removed afterwards or they accumulate across runs.
+    private struct IsolatedDefaults {
+        let defaults: UserDefaults
+        let suiteName: String
+
+        func cleanUp() {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+    }
+
+    private func makeIsolatedDefaults() throws -> IsolatedDefaults {
         let suiteName = "com.example.FormationFlight.tests.\(UUID().uuidString)"
-        // Force unwrap is acceptable in tests; if this fails, it's a test environment issue.
-        return UserDefaults(suiteName: suiteName)!
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        return IsolatedDefaults(defaults: defaults, suiteName: suiteName)
     }
 
     // MARK: - Persistence: reset
     @Test("reset() loads from UserDefaults")
     func reset_loadsFromUserDefaults() async throws {
-        let defaults = makeIsolatedDefaults()
+        let isolated = try makeIsolatedDefaults()
+        defer { isolated.cleanUp() }
+        let defaults = isolated.defaults
         // Prepare persisted settings
         var initial = Settings.empty()
         initial.speedUnit = .mph
@@ -33,7 +47,9 @@ struct SettingsEditorViewModelTests {
     // MARK: - Persistence: save
     @Test("save() writes to UserDefaults")
     func save_writesToUserDefaults() async throws {
-        let defaults = makeIsolatedDefaults()
+        let isolated = try makeIsolatedDefaults()
+        defer { isolated.cleanUp() }
+        let defaults = isolated.defaults
         var s = Settings.empty()
         s.speedUnit = .kts
         s.distanceUnit = .nm
@@ -48,7 +64,9 @@ struct SettingsEditorViewModelTests {
 
     @Test("save() normalizes yellow > red before persisting")
     func save_normalizesInvertedTolerances() async throws {
-        let defaults = makeIsolatedDefaults()
+        let isolated = try makeIsolatedDefaults()
+        defer { isolated.cleanUp() }
+        let defaults = isolated.defaults
         var s = Settings.empty()
         s.yellowTolerance = 45
         s.redTolerance = 20
@@ -69,7 +87,9 @@ struct SettingsEditorViewModelTests {
 
     @Test("save() clamps negative tolerances to 0 before persisting")
     func save_clampsNegativeTolerances() async throws {
-        let defaults = makeIsolatedDefaults()
+        let isolated = try makeIsolatedDefaults()
+        defer { isolated.cleanUp() }
+        let defaults = isolated.defaults
         var s = Settings.empty()
         s.yellowTolerance = -3
         s.redTolerance = -7
@@ -85,7 +105,9 @@ struct SettingsEditorViewModelTests {
     // MARK: - Factory
     @Test("from(userDefaults:) creates VM with persisted settings")
     func factory_fromUserDefaults() async throws {
-        let defaults = makeIsolatedDefaults()
+        let isolated = try makeIsolatedDefaults()
+        defer { isolated.cleanUp() }
+        let defaults = isolated.defaults
         var s = Settings.empty()
         s.speedUnit = .kph
         s.distanceUnit = .km
