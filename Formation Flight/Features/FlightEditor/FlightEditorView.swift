@@ -180,9 +180,10 @@ struct FlightEditorView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .confirmationDialog("Discard changes?",
-                            isPresented: $showsDiscardConfirmation,
-                            titleVisibility: .visible) {
+        // An alert rather than a confirmation dialog: anchored to a toolbar button the
+        // dialog becomes a popover, and popover action sheets drop their cancel-role
+        // button entirely, so "Keep Editing" would never be shown.
+        .alert("Discard changes?", isPresented: $showsDiscardConfirmation) {
             Button("Discard", role: .destructive) {
                 onCancel()
             }

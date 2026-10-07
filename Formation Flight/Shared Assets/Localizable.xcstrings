@@ -46,11 +46,20 @@
     "Delete Flight?" : {
 
     },
+    "Discard" : {
+
+    },
+    "Discard changes?" : {
+
+    },
     "Distance Unit" : {
 
     },
     "Done" : {
 
+    },
+    "EARLY" : {
+      "comment" : "Flight Δ row: ETA is before ToT"
     },
     "Edit Hack" : {
 
@@ -109,8 +118,14 @@
     "It is not a certified navigation or flight-management system and must not be used as your primary means of navigation, terrain avoidance, or traffic separation. GPS data can be delayed, degraded, or unavailable." : {
       "comment" : "Safety disclaimer, paragraph 2: what the app is not"
     },
+    "Keep Editing" : {
+
+    },
     "Lat: %@" : {
 
+    },
+    "LATE" : {
+      "comment" : "Flight Δ row: ETA is after ToT"
     },
     "Latitude" : {
 
@@ -148,34 +163,28 @@
     "OK" : {
 
     },
+    "ON TIME" : {
+      "comment" : "Flight Δ row: ETA equals ToT"
+    },
     "Open settings" : {
 
     },
     "Pick Checkpoint" : {
 
     },
-    "Please enter a date for the mission" : {
-      "comment" : "Flight validation: time-on-target mission has no date"
-    },
-    "Please enter a hack time" : {
-      "comment" : "Flight validation: hack-time mission has no hack time"
-    },
     "Please enter a hack time." : {
-      "comment" : "Validation message when a hack-time mission has a zero hack duration"
+      "comment" : "Validation message when a hack-time mission has no hack duration or a zero one"
+    },
+    "Please enter a mission date and time." : {
+      "comment" : "Validation message when a time-on-target mission has no date"
     },
     "Please enter a mission name." : {
       "comment" : "Validation message when a flight has no mission name"
     },
-    "Please enter a name for the mission" : {
-      "comment" : "Flight validation: mission name is empty"
-    },
-    "Please enter a target" : {
-      "comment" : "Flight validation: no target selected"
-    },
     "Please enter a valid target location." : {
       "comment" : "Validation message when a flight has no target selected"
     },
-    "Red Variance" : {
+    "Red ±%lld s" : {
 
     },
     "Safety" : {
@@ -194,6 +203,9 @@
 
     },
     "Second" : {
+
+    },
+    "Seconds early or late before the time-on-target readout turns yellow, then red. Red is never below yellow." : {
 
     },
     "Select Target" : {
@@ -216,6 +228,9 @@
     },
     "Target" : {
 
+    },
+    "The time on target is in the past." : {
+      "comment" : "Validation message when a time-on-target mission is scheduled more than a minute ago"
     },
     "This will stop tracking and close out the current mission." : {
 
@@ -241,18 +256,11 @@
     "Validation" : {
 
     },
-    "Yellow Variance" : {
+    "Yellow ±%lld s" : {
 
     },
-    "Yellow: +/-%lld seconds \nRed:     +/-%lld seconds" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Yellow: +/-%1$lld seconds \nRed:     +/-%2$lld seconds"
-          }
-        }
-      }
+    "Your changes to this flight will not be saved." : {
+
     }
   },
   "version" : "1.0"

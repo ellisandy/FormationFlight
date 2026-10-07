@@ -264,14 +264,12 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(cancelButton.waitForExistence(timeout: 5), "flightEditorCancelButton should be in the editor toolbar")
         cancelButton.tap()
 
-        // The confirmation dialog is a system action sheet; its buttons carry
-        // their titles only.
-        let dialog = app.sheets.firstMatch
-        XCTAssertTrue(dialog.waitForExistence(timeout: 5), "Cancelling a dirty editor should show the Discard changes? dialog")
-        let keepEditing = dialog.buttons["Keep Editing"]
-        XCTAssertTrue(keepEditing.exists, "The discard dialog should offer Keep Editing")
+        // The discard confirmation is a system alert; its buttons carry their titles only.
+        let dialog = app.alerts["Discard changes?"]
+        XCTAssertTrue(dialog.waitForExistence(timeout: 5), "Cancelling a dirty editor should show the Discard changes? alert")
+        XCTAssertTrue(dialog.buttons["Keep Editing"].exists, "The discard alert should offer Keep Editing")
         let discard = dialog.buttons["Discard"]
-        XCTAssertTrue(discard.exists, "The discard dialog should offer Discard")
+        XCTAssertTrue(discard.exists, "The discard alert should offer Discard")
         discard.tap()
 
         XCTAssertTrue(
@@ -293,8 +291,8 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(cancelButton.waitForExistence(timeout: 5), "flightEditorCancelButton should be in the editor toolbar")
         cancelButton.tap()
 
-        let dialog = app.sheets.firstMatch
-        XCTAssertTrue(dialog.waitForExistence(timeout: 5), "Cancelling a dirty editor should show the Discard changes? dialog")
+        let dialog = app.alerts["Discard changes?"]
+        XCTAssertTrue(dialog.waitForExistence(timeout: 5), "Cancelling a dirty editor should show the Discard changes? alert")
         dialog.buttons["Keep Editing"].tap()
 
         let missionField = app.textFields["missionNameField"]
