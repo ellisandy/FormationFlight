@@ -108,52 +108,56 @@ public enum Formatting {
         value.isFinite && abs(value) < Double(Int.max)
     }
 
-    /// Formats an angle measurement as whole degrees with a trailing degree symbol (e.g., `42°`).
+    /// Formats an angle measurement as a three-digit compass bearing (e.g., `042°`).
     ///
-    /// - Parameter angle: The angle as a `Measurement<UnitAngle>`. If `nil`, non-positive, or
-    ///   non-finite (NaN, ±inf, or beyond `Int` range), returns `--`.
-    /// - Returns: A rounded, integer degree string (e.g., `90°`) or `--` for invalid/unknown values.
+    /// - Parameter angle: The angle as a `Measurement<UnitAngle>`. If `nil`, negative (the
+    ///   CoreLocation "unknown" sentinel is `-1`), or non-finite (NaN, ±inf, or beyond `Int`
+    ///   range), returns `--`.
+    /// - Returns: A rounded, zero-padded degree string in `000°`...`359°`, or `--`.
     public static func angle(_ angle: Measurement<UnitAngle>?) -> String {
         guard let measurement = angle else { return "--" }
-        let degrees = measurement.converted(to: .degrees).value
-        let rounded = degrees.rounded()
-        // B-34: guard before Int(_:). `NaN <= 0` is false, so the sentinel check alone would
-        // let NaN through to a trap.
-        guard isIntRepresentable(rounded) else { return "--" }
-        if degrees <= 0 { return "--" }
-        return "\(Int(rounded).description.uppercased())°"
+        return formatDegrees(measurement.converted(to: .degrees).value)
     }
-    
-    /// Formats a degree value as whole degrees with a trailing degree symbol.
+
+    /// Formats a degree value as a three-digit compass bearing.
     ///
-    /// - Parameter degrees: Degrees as `Double`. `nil`, a sentinel value of `-1`, or a
+    /// - Parameter degrees: Degrees as `Double`. `nil`, a negative value (sentinel `-1`), or a
     ///   non-finite value (NaN, ±inf, or beyond `Int` range) yields `--`.
-    /// - Returns: A rounded, integer degree string (e.g., `270°`) or `--`.
+    /// - Returns: A rounded, zero-padded degree string (e.g., `270°`) or `--`.
     public static func angle(degrees: Double?) -> String {
         guard let value = degrees else { return "--" }
-        if value == -1 { return "--" }
-        let rounded = value.rounded()
-        // B-34: guard before Int(_:).
-        guard isIntRepresentable(rounded) else { return "--" }
-        return "\(Int(rounded).description.uppercased())°"
+        return formatDegrees(value)
     }
-    
+
     /// Convenience overload for degree input.
     ///
     /// - Parameter angle: Degrees as `Double`.
-    /// - Returns: A rounded, integer degree string (e.g., `15°`).
+    /// - Returns: A rounded, zero-padded degree string (e.g., `015°`).
     public static func angle(degrees angle: Double) -> String {
-        self.angle(Measurement(value: angle, unit: .degrees)).uppercased()
+        formatDegrees(angle)
     }
-    
+
     /// Convenience overload for integer degree input.
     ///
     /// - Parameter angle: Degrees as `Int`.
-    /// - Returns: A rounded, integer degree string (e.g., `180°`).
-    ///
-    /// - Note: Internally converts the integer value to a `Measurement` and returns uppercase output.
+    /// - Returns: A zero-padded degree string (e.g., `180°`).
     public static func angle(degrees angle: Int) -> String {
-        return self.angle(Measurement(value: Double(angle), unit: .radians)).uppercased()
+        // B-10: this used to build the Measurement in radians, so 90 printed as "5157°".
+        self.angle(Measurement(value: Double(angle), unit: .degrees))
+    }
+
+    /// Shared body of the `angle` family (B-10).
+    ///
+    /// - `< 0` is the only sentinel: 0° (due north) is a real bearing and must render.
+    /// - Non-finite or absurdly large input is rejected before any `Int(_:)` conversion (B-34).
+    /// - The value is rounded first and then normalised into `0..<360`, so 359.6° becomes
+    ///   `000°` rather than `360°`.
+    /// - Output is always three digits, as read off a compass card.
+    private static func formatDegrees(_ degrees: Double) -> String {
+        guard isIntRepresentable(degrees) else { return "--" }
+        if degrees < 0 { return "--" }
+        let normalised = degrees.rounded().truncatingRemainder(dividingBy: 360)
+        return String(format: "%03d°", Int(normalised))
     }
     
     /// Formats a coordinate as degrees and decimal minutes with hemisphere prefixes.
@@ -175,7 +179,10 @@ public enum Formatting {
             let absValue = abs(value)
             let degrees = Int(absValue)
             let minutesDecimal = (absValue - Double(degrees)) * 60
-            let minutes = String(format: "%02.2f", minutesDecimal)
+            // B-10: `%05.2f` is the whole field width (two integer digits, point, two decimals),
+            // so minutes below 10 are zero-padded ("05.00"). `%02.2f` only promised two
+            // characters in total and never padded.
+            let minutes = String(format: "%05.2f", minutesDecimal)
             return "\(hemisphere) \(degrees) \(minutes)"
         }
         let lat = format(value: target.latitude, positiveHemisphere: "N", negativeHemisphere: "S")

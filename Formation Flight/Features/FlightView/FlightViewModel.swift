@@ -26,6 +26,9 @@ final class FlightViewModel: ObservableObject {
     @Published var delta: TimeInterval?
     @Published var tot: Date?
     @Published var statusColor: Status = .unknown
+    /// Textual early/late indicator shown beside the Δ value (B-11): "EARLY", "LATE",
+    /// "ON TIME", or nil when there is no delta to judge.
+    @Published private(set) var deltaLabel: String?
     
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
@@ -39,16 +42,28 @@ final class FlightViewModel: ObservableObject {
     @Published var target: CLLocationCoordinate2D
     
     // MARK: - Dependencies / Model Objects
-    var settings: Settings
+    // B-18: the view reads `settings` (units, instrument layout) and `missionType`, and the
+    // in-flight hack wheel binds to `hackTime`, so all three must publish or the view can
+    // render a stale value after an edit.
+    @Published var settings: Settings
     var locationProvider: LocationProviding
-    var missionType: MissionType
+    @Published var missionType: MissionType
     var missionDate: Date?
-    var hackTime: TimeInterval?
+    @Published var hackTime: TimeInterval?
     
     // MARK: - UI State
     @Published var isEditingToT: Bool = false
     @Published var isEditingHackTime: Bool = false
     
+    // MARK: - Staleness (B-07)
+    /// A fix older than this is no longer trusted for speed-derived readouts. GPS normally
+    /// reports at 1 Hz, so 15 s of silence means the receiver has lost the sky or the app
+    /// has stopped receiving updates; showing the last speed as if it were live would let
+    /// ETE/ETA keep counting down on a frozen number.
+    static let staleFixThreshold: TimeInterval = 15
+    /// Clock reading at the most recent location callback; nil until the first fix.
+    private var lastLocationUpdate: Date?
+
     // MARK: - Private
     private let timerScheduler: TimerScheduling
     /// Source of the current wall-clock time. Defaults to `Date()`; tests inject a
@@ -76,9 +91,14 @@ final class FlightViewModel: ObservableObject {
         self.missionName = flight.missionName
         self.target = CLLocationCoordinate2D(latitude: flight.target?.latitude ?? 0.0, longitude: flight.target?.longitude ?? 0.0)
         self.missionType = flight.missionType
-        
-        if let missionDate = flight.missionDate {
-            self.tot = missionDate
+        self.missionDate = flight.missionDate
+        self.hackTime = flight.hackTime
+
+        // B-23: only a ToT mission starts with a ToT. A hack mission's ToT is set by
+        // startHack(); the editor may still have written a missionDate (B-14), and that
+        // must not show up as a ToT before Hack! is pressed.
+        if self.missionType == .tot {
+            self.tot = flight.missionDate
         }
     }
     
@@ -99,15 +119,11 @@ final class FlightViewModel: ObservableObject {
         self.missionName = missionName
         self.target = target
         self.missionType = missionType
-        
+        self.missionDate = missionDate
+        self.hackTime = hackTime
+
         if self.missionType == .tot {
-            if let missionDate {
-                self.tot = missionDate
-            }
-        }
-        
-        if let hackTime {
-            self.hackTime = hackTime
+            self.tot = missionDate
         }
     }
 
@@ -161,14 +177,21 @@ final class FlightViewModel: ObservableObject {
         isEditingToT = false
     }
     
+    /// Anchors the ToT to the moment "Hack!" is pressed. Reads the clock directly rather than
+    /// the timer-sampled `currentTime` (B-09): that sample is nil before the first tick and up
+    /// to a second stale afterwards, in an app whose tolerances are whole seconds. The press
+    /// is truncated to the second so the ToT sits on the same whole-second basis as the
+    /// Time / ETE / ETA readouts (B-40).
     func startHack() {
-        guard let _hackTime = hackTime, let now = currentTime else { return }
-        tot = now.addingTimeInterval(_hackTime)
+        guard let _hackTime = hackTime else { return }
+        let pressed = Self.floorToSecond(now())
+        tot = pressed.addingTimeInterval(_hackTime)
     }
     
     // MARK: - Location Updates
     func onLocationUpdate() {
         AppLogger.viewModel.debug("Location update received from LocationProvider")
+        lastLocationUpdate = now()
         updateInstruments()
     }
     
@@ -181,8 +204,19 @@ final class FlightViewModel: ObservableObject {
     /// and ETA is derived from those two floored values. Delta then inherits the same basis.
     private func updateTimings() {
         let wallClock = now()
-        let flooredClock = Date(timeIntervalSinceReferenceDate: wallClock.timeIntervalSinceReferenceDate.rounded(.down))
+        let flooredClock = Self.floorToSecond(wallClock)
         self.currentTime = flooredClock
+
+        // Stale fix (B-07): once the newest fix is older than the threshold, the speed and
+        // course it carried are no longer live. Clearing them here makes ETE, ETA, delta and
+        // the status fall through to their "nothing to judge" branches below, so the pilot
+        // sees placeholders instead of numbers counting down on a frozen speed. Distance and
+        // bearing are kept: the last known position is still the best position estimate.
+        if let lastFix = lastLocationUpdate,
+           wallClock.timeIntervalSince(lastFix) > Self.staleFixThreshold {
+            self.currentGroundSpeed = nil
+            self.track = nil
+        }
 
         // Set ETE, truncated to a whole second so that it matches what durationHMS displays.
         if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
@@ -200,7 +234,18 @@ final class FlightViewModel: ObservableObject {
         } else {
             self.eta = nil
         }
-        
+
+        // Set Required Ground Speed (B-24). Distance only changes with a fix, but the time
+        // left to ToT shrinks every second, so the value is recomputed here on every tick
+        // from the cached distance rather than only inside the location callback. Uses the
+        // floored clock so the time remaining is on the same whole-second basis as ToT.
+        if let dist = self.distance, let tot = self.tot,
+           let rgs = computeRequiredGroundSpeed(distance: dist, arrivalTime: tot, now: flooredClock) {
+            self.requiredGroundSpeed = rgs.converted(to: .knots)
+        } else {
+            self.requiredGroundSpeed = nil
+        }
+
         // Set Delta
         if let eta = self.eta, let tot = self.tot {
             // Positive delta means ETA is after TOT (late). Negative means early.
@@ -208,7 +253,21 @@ final class FlightViewModel: ObservableObject {
         } else {
             self.delta = nil
         }
-        
+
+        // Spell out the sign of the delta (B-11). The tint alone is not a dependable cue in a
+        // cockpit, and "+00:00:07" still needs the reader to remember which way the sign runs.
+        if let _delta = delta {
+            if _delta < 0 {
+                deltaLabel = String(localized: "EARLY", comment: "Flight Δ row: ETA is before ToT")
+            } else if _delta > 0 {
+                deltaLabel = String(localized: "LATE", comment: "Flight Δ row: ETA is after ToT")
+            } else {
+                deltaLabel = String(localized: "ON TIME", comment: "Flight Δ row: ETA equals ToT")
+            }
+        } else {
+            deltaLabel = nil
+        }
+
         // Map absolute delta (seconds) to status using settings tolerances: <= yellow = good, <= red = bad, > red = reallyBad.
         // With no delta (no fix, no speed, or no ToT) there is nothing to judge, so fall back to .unknown
         // rather than leaving a stale colour on screen.
@@ -249,28 +308,18 @@ final class FlightViewModel: ObservableObject {
         
         // Set Historical Track
         self.track = locationProvider.course
-        
-        // If track is within tolerance of bearing, calculate the required ground speed.
-        if let _track = self.track, let _bearing = self.bearing, let _tot = self.tot {
-            
-            if let _distance = self.distance {
-                if let rgs = computeRequiredGroundSpeed(distance: _distance, arrivalTime: _tot, now: now()) {
-                    // Convert to your preferred display unit (knots)
-                    self.requiredGroundSpeed = rgs.converted(to: .knots)
-                } else {
-                    self.requiredGroundSpeed = nil
-                }
-            } else {
-                // Missing inputs; you can choose to clear or keep the previous value
-                self.requiredGroundSpeed = nil
-            }
-        } else {
-            self.currentGroundSpeed = nil
-            self.requiredGroundSpeed = nil
-        }
+
+        // Required ground speed is not computed here (B-24): it depends on the time left to
+        // ToT, which changes every second, so `updateTimings()` derives it from the cached
+        // distance on each tick. This callback only refreshes what the fix itself provides.
     }
     
     // MARK: - Helpers
+    /// Drops the sub-second part of `date` (B-40 whole-second policy).
+    private static func floorToSecond(_ date: Date) -> Date {
+        Date(timeIntervalSinceReferenceDate: date.timeIntervalSinceReferenceDate.rounded(.down))
+    }
+
     private func computeRequiredGroundSpeed(distance: Measurement<UnitLength>,
                                             arrivalTime: Date,
                                             now: Date) -> Measurement<UnitSpeed>? {

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CoreLocation
 import Testing
 @testable import Formation_Flight
@@ -54,6 +55,16 @@ final class MockLocationProvider: LocationProviding {
         if let course { self.course = course }
         if notify { self.updateDelegate?() }
     }
+}
+
+/// A clock the test can move between ticks. Injected as `{ clock.now }` so tests can prove
+/// that a value tracks the wall clock (B-09, B-24, B-07) rather than a stale sample of it.
+/// MainActor because the view model only ever reads it from MainActor-isolated code.
+@MainActor
+final class MutableClock {
+    var now: Date
+    init(_ now: Date) { self.now = now }
+    func advance(by seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
 }
 
 /// Exact tolerance boundaries for `makeSettings(yellow: 5, red: 10)` with ETE fixed at 10 s.
@@ -184,6 +195,49 @@ struct FlightViewModelTests {
         #expect(tot == Self.fixedNow.addingTimeInterval(120))
     }
 
+    @Test("startHack anchors to the clock at the button press, even before the first tick")
+    func startHackBeforeFirstTickUsesClock() async throws {
+        // Built directly, never started: `currentTime` is nil because no tick has sampled it.
+        let vm = FlightViewModel(missionName: "HACK",
+                                 missionType: .hackTime,
+                                 hackTime: 90,
+                                 settings: makeSettings(),
+                                 locationProvider: MockLocationProvider(),
+                                 timerScheduler: MockTimerScheduler(),
+                                 now: fixedClock)
+        #expect(vm.currentTime == nil)
+
+        vm.startHack()
+
+        // B-09: the press itself is the hack instant. It must not silently no-op because the
+        // timer has not fired yet.
+        let tot = try #require(vm.tot, "startHack must set ToT even before the first timer tick")
+        #expect(tot == Self.fixedNow.addingTimeInterval(90))
+    }
+
+    @Test("startHack uses the current clock, not the last timer sample")
+    func startHackUsesCurrentClockNotStaleSample() async throws {
+        let clock = MutableClock(Self.fixedNow)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 90,
+                        timerScheduler: mockTimer, now: { clock.now })
+        mockTimer.fire()
+        #expect(vm.currentTime == Self.fixedNow)
+
+        // The pilot presses "Hack!" 0.9 s after the last tick. In an app whose tolerances are
+        // whole seconds the anchor must be the press, truncated to the second it falls in.
+        clock.advance(by: 0.9)
+        vm.startHack()
+        let tot = try #require(vm.tot)
+        #expect(tot == Self.fixedNow.addingTimeInterval(90), "0.9 s truncates to the same second")
+
+        // A full second later the anchor must move with the clock, not stay on the stale sample.
+        clock.advance(by: 1.1)
+        vm.startHack()
+        let laterTot = try #require(vm.tot)
+        #expect(laterTot == Self.fixedNow.addingTimeInterval(92))
+    }
+
     // MARK: - Timing pipeline and status mapping
     @Test("ETE/ETA/Delta are exact with an injected clock and map to status")
     func timingAndStatus() async throws {
@@ -309,14 +363,54 @@ struct FlightViewModelTests {
         #expect(vm.ete == 10.0)
         #expect(vm.delta == delta)
         #expect(vm.statusColor == expected)
+        // B-11: colour alone is not enough; the sign must be spelled out next to the value.
+        #expect(vm.deltaLabel == (delta < 0 ? "EARLY" : "LATE"))
+    }
+
+    // MARK: - Early/late label (B-11)
+    @Test("Delta label reads EARLY, LATE or ON TIME and is nil without a delta")
+    func deltaLabelFollowsSignOfDelta() async throws {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10), timerScheduler: mockTimer, now: fixedClock)
+
+        // No inputs: nothing to judge.
+        mockTimer.fire()
+        #expect(vm.delta == nil)
+        #expect(vm.deltaLabel == nil)
+
+        // 100 m at 10 m/s -> ETA = now + 10. ToT = now + 13 -> delta = -3 (early).
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 100)
+        vm.tot = Self.fixedNow.addingTimeInterval(13)
+        mockTimer.fire()
+        #expect(vm.delta == -3)
+        #expect(vm.deltaLabel == "EARLY")
+
+        // ToT = now + 7 -> delta = +3 (late).
+        vm.tot = Self.fixedNow.addingTimeInterval(7)
+        mockTimer.fire()
+        #expect(vm.delta == 3)
+        #expect(vm.deltaLabel == "LATE")
+
+        // ToT = now + 10 -> delta = 0 exactly.
+        vm.tot = Self.fixedNow.addingTimeInterval(10)
+        mockTimer.fire()
+        #expect(vm.delta == 0)
+        #expect(vm.deltaLabel == "ON TIME")
+
+        // Losing the ToT loses the delta, and the label must go with it.
+        vm.tot = nil
+        mockTimer.fire()
+        #expect(vm.delta == nil)
+        #expect(vm.deltaLabel == nil)
     }
 
     // MARK: - Instruments and required ground speed
     @Test("Instrument updates compute required ground speed from distance and time to ToT")
     func instrumentsAndRequiredGroundSpeed() async throws {
         let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
         let target = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
-        let vm = makeVM(settings: makeSettings(), target: target, locationProvider: lp, now: fixedClock)
+        let vm = makeVM(settings: makeSettings(), target: target, timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
 
         vm.tot = Self.fixedNow.addingTimeInterval(60) // 60 seconds to go
 
@@ -326,6 +420,8 @@ struct FlightViewModelTests {
                        course: Measurement(value: 90, unit: .degrees))
 
         vm.onLocationUpdate()
+        // Required GS is a timing readout (B-24): it is refreshed on the 1 Hz tick.
+        mockTimer.fire()
 
         #expect(vm.currentGroundSpeed == lp.speed)
         #expect(vm.track == lp.course)
@@ -344,7 +440,8 @@ struct FlightViewModelTests {
     @Test("Required ground speed is computed when approaching from the east")
     func requiredSpeedComputedApproachingFromEast() async throws {
         let lp = MockLocationProvider()
-        let vm = makeVM(settings: makeSettings(), locationProvider: lp, now: fixedClock)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
         vm.tot = Self.fixedNow.addingTimeInterval(120)
 
         // Aircraft ~0.01 deg east of the target (bearing ~270), tracking west.
@@ -353,6 +450,7 @@ struct FlightViewModelTests {
                        course: Measurement(value: 270, unit: .degrees))
 
         vm.onLocationUpdate()
+        mockTimer.fire()
 
         let bearing = try #require(vm.bearing)
         #expect(abs(bearing.converted(to: .degrees).value - 270) < 0.5)
@@ -365,7 +463,8 @@ struct FlightViewModelTests {
     @Test("Required speed is nil when time remaining <= 0")
     func requiredSpeedNilWhenNoTimeRemaining() async throws {
         let lp = MockLocationProvider()
-        let vm = makeVM(settings: makeSettings(), locationProvider: lp, now: fixedClock)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
         lp.setLocation(location: CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude - 0.01),
                        speed: Measurement(value: 10, unit: .metersPerSecond),
                        course: Measurement(value: 90, unit: .degrees))
@@ -373,17 +472,49 @@ struct FlightViewModelTests {
         // ToT exactly now: zero time remaining.
         vm.tot = Self.fixedNow
         vm.onLocationUpdate()
+        mockTimer.fire()
         #expect(vm.requiredGroundSpeed == nil)
 
         // ToT already past.
         vm.tot = Self.fixedNow.addingTimeInterval(-1)
         vm.onLocationUpdate()
+        mockTimer.fire()
         #expect(vm.requiredGroundSpeed == nil)
 
         // ToT in the future: computable again.
         vm.tot = Self.fixedNow.addingTimeInterval(1)
         vm.onLocationUpdate()
+        mockTimer.fire()
         #expect(vm.requiredGroundSpeed != nil)
+    }
+
+    @Test("Required ground speed tracks the clock between location callbacks")
+    func requiredSpeedTracksClockWithoutLocationCallback() async throws {
+        let clock = MutableClock(Self.fixedNow)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, now: { clock.now })
+
+        // 1000 m to run with 100 s to go -> exactly 10 m/s. Set directly so the geodesic
+        // distance does not enter into it; only the time-remaining arithmetic is under test.
+        vm.distance = Measurement(value: 1000, unit: .meters)
+        vm.tot = Self.fixedNow.addingTimeInterval(100)
+        mockTimer.fire()
+
+        let first = try #require(vm.requiredGroundSpeed, "B-24: Req GS must be computed on the tick")
+        #expect(first.converted(to: .metersPerSecond).value == 10)
+
+        // 50 s later with no new fix: half the time left, so twice the speed required. Before
+        // B-24 this value was frozen at whatever the last location callback computed.
+        clock.advance(by: 50)
+        mockTimer.fire()
+
+        let second = try #require(vm.requiredGroundSpeed)
+        #expect(second.converted(to: .metersPerSecond).value == 20)
+
+        // At and past ToT there is no positive speed that gets there in time.
+        clock.advance(by: 50)
+        mockTimer.fire()
+        #expect(vm.requiredGroundSpeed == nil)
     }
 
     // MARK: - .tot mission
@@ -697,5 +828,232 @@ struct FlightViewModelTests {
         #expect(provider.startMonitoringCallCount == 1, "a second start must not restart monitoring")
         #expect(provider.updateDelegate != nil)
         #expect(vm.currentTime != nil, "start must seed the clock so the UI shows a time before the first tick")
+    }
+
+    // MARK: - init(flight:) (B-23)
+    /// Builds a VM from a persisted `Flight` the way `Go Fly` does. Constructing a `Flight`
+    /// without a container is fine for a read-only model, as `FlightTests` already relies on.
+    private func makeVM(from flight: Flight) -> FlightViewModel {
+        FlightViewModel(flight: flight,
+                        settings: makeSettings(),
+                        locationProvider: MockLocationProvider(),
+                        timerScheduler: MockTimerScheduler(),
+                        now: fixedClock)
+    }
+
+    @Test("init(flight:) copies hackTime for a hack mission and leaves ToT nil")
+    func initFromHackFlightCopiesHackTime() async throws {
+        // A saved hack mission. `missionDate` is populated too, as the editor currently writes
+        // both fields regardless of type (B-14); it must not leak into `tot` for a hack mission.
+        let flight = Flight(missionName: "Hack Sortie",
+                            missionType: .hackTime,
+                            missionDate: Self.fixedNow.addingTimeInterval(600),
+                            target: Target(longitude: -122.4194, latitude: 37.7749),
+                            hackTime: 90)
+
+        let vm = makeVM(from: flight)
+
+        #expect(vm.missionType == .hackTime)
+        #expect(vm.hackTime == 90, "the hack wheel and startHack() both read hackTime")
+        #expect(vm.tot == nil, "a hack mission has no ToT until Hack! is pressed")
+        #expect(vm.missionDate == Self.fixedNow.addingTimeInterval(600))
+        #expect(vm.missionName == "Hack Sortie")
+        #expect(vm.target.latitude == 37.7749)
+        #expect(vm.target.longitude == -122.4194)
+    }
+
+    @Test("init(flight:) seeds ToT and missionDate from a .tot flight")
+    func initFromTOTFlightSeedsToT() async throws {
+        let missionDate = Self.fixedNow.addingTimeInterval(300)
+        let flight = Flight(missionName: "TOT Sortie",
+                            missionType: .tot,
+                            missionDate: missionDate,
+                            target: Target(longitude: -122.4194, latitude: 37.7749),
+                            hackTime: nil)
+
+        let vm = makeVM(from: flight)
+
+        #expect(vm.missionType == .tot)
+        #expect(vm.tot == missionDate)
+        #expect(vm.missionDate == missionDate)
+        #expect(vm.hackTime == nil)
+    }
+
+    // MARK: - Stale fix (B-07)
+    @Test("Speed-derived readouts blank out once the newest fix is older than the stale threshold")
+    func staleFixBlanksSpeedDerivedReadouts() async throws {
+        #expect(FlightViewModel.staleFixThreshold == 15)
+
+        let clock = MutableClock(Self.fixedNow)
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        timerScheduler: mockTimer,
+                        locationProvider: lp,
+                        now: { clock.now })
+        vm.tot = Self.fixedNow.addingTimeInterval(1000)
+
+        let tenMps = Measurement(value: 10, unit: UnitSpeed.metersPerSecond)
+        let north = Measurement(value: 0, unit: UnitAngle.degrees)
+
+        // Fix at t0: everything computes.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: tenMps, course: north, notify: true)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == tenMps)
+        #expect(vm.statusColor != .unknown)
+
+        // t0 + 14 s with no new fix: still inside the threshold, readouts intact.
+        clock.now = Self.fixedNow.addingTimeInterval(FlightViewModel.staleFixThreshold - 1)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == tenMps)
+        #expect(vm.track == north)
+        #expect(vm.ete != nil)
+        #expect(vm.statusColor != .unknown)
+
+        // t0 + 16 s: the fix is stale. Speed and everything derived from it must blank so the
+        // pilot sees placeholders rather than an ETE counting down on a frozen number. Position
+        // is still the last known, so distance and bearing stay.
+        clock.now = Self.fixedNow.addingTimeInterval(FlightViewModel.staleFixThreshold + 1)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == nil)
+        #expect(vm.track == nil)
+        #expect(vm.ete == nil)
+        #expect(vm.eta == nil)
+        #expect(vm.delta == nil)
+        #expect(vm.deltaLabel == nil)
+        #expect(vm.statusColor == .unknown)
+        #expect(vm.distance != nil, "last known position is still meaningful")
+        #expect(vm.bearing != nil, "last known position is still meaningful")
+
+        // A fresh fix brings the readouts back.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -900),
+                       speed: tenMps, course: north, notify: true)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == tenMps)
+        #expect(vm.track == north)
+        #expect(vm.ete != nil)
+        #expect(vm.statusColor != .unknown)
+    }
+
+    // MARK: - Published mutable state (B-18)
+    @Test("Assigning hackTime, missionType and settings publishes a change")
+    func mutableModelStateIsPublished() async throws {
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 60, now: fixedClock)
+
+        var emissions = 0
+        let subscription = vm.objectWillChange.sink { _ in emissions += 1 }
+        defer { subscription.cancel() }
+
+        // B-18: the in-flight hack wheel binds to `hackTime`; without `@Published` the view is
+        // never told the value changed and the wheel can snap back to the old value.
+        vm.hackTime = 45
+        #expect(emissions == 1, "hackTime assignment must emit objectWillChange")
+
+        vm.missionType = .tot
+        #expect(emissions == 2, "missionType assignment must emit objectWillChange")
+
+        vm.settings = makeSettings(yellow: 1, red: 2)
+        #expect(emissions == 3, "settings assignment must emit objectWillChange")
+    }
+
+    // MARK: - Hack mission before "Hack!" (B-08)
+    @Test("Hack mission before Hack! keeps current ground speed and only blanks required speed")
+    func hackMissionBeforeHackKeepsCurrentGroundSpeed() async throws {
+        let lp = MockLocationProvider()
+        let vm = makeVM(settings: makeSettings(), missionType: .hackTime, hackTime: 120, locationProvider: lp, now: fixedClock)
+        // No "Hack!" yet, so there is no ToT to compute a required speed against.
+        #expect(vm.tot == nil)
+
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+
+        // B-08: the GPS just reported 10 m/s; the pilot must see it even though the clock has
+        // not been hacked. Only the required speed depends on ToT.
+        #expect(vm.currentGroundSpeed == Measurement(value: 10, unit: .metersPerSecond))
+        #expect(vm.requiredGroundSpeed == nil)
+        #expect(vm.distance != nil)
+        #expect(vm.track != nil)
+    }
+}
+
+// MARK: - InstrumentLayout (B-12)
+
+/// `InstrumentLayout` is the pure half of B-12: the Instruments section was hard-wired to five
+/// cards and ignored `settings.instrumentSettings` entirely, so disabling or reordering an
+/// instrument in Settings had no effect in flight.
+@Suite("InstrumentLayout")
+struct InstrumentLayoutTests {
+    private func setting(_ type: InFlightInfo, enabled: Bool = true) -> InstrumentSetting {
+        InstrumentSetting(type: type, isEnabled: enabled)
+    }
+
+    @Test("Disabled instruments are filtered out")
+    func disabledInstrumentsAreHidden() throws {
+        let settings = [
+            setting(.currentGroundSpeed),
+            setting(.requiredGroundSpeed, enabled: false),
+            setting(.distance),
+            setting(.bearing),
+            setting(.track, enabled: false),
+        ]
+        #expect(InstrumentLayout.visibleInstruments(from: settings) == [.currentGroundSpeed, .distance, .bearing])
+    }
+
+    @Test("Saved order is preserved")
+    func savedOrderIsPreserved() throws {
+        let settings = [
+            setting(.track),
+            setting(.bearing),
+            setting(.distance),
+            setting(.requiredGroundSpeed),
+            setting(.currentGroundSpeed),
+        ]
+        #expect(InstrumentLayout.visibleInstruments(from: settings)
+                == [.track, .bearing, .distance, .requiredGroundSpeed, .currentGroundSpeed])
+    }
+
+    @Test("Cases without an instrument card are dropped even when enabled")
+    func unsupportedCasesAreDropped() throws {
+        let settings = [
+            setting(.tot),
+            setting(.totDrift),
+            setting(.expectedWindsDirection),
+            setting(.distance),
+            setting(.expectedWindsVelocity),
+        ]
+        #expect(InstrumentLayout.visibleInstruments(from: settings) == [.distance])
+    }
+
+    @Test("No settings means no instruments")
+    func emptySettingsShowNothing() throws {
+        #expect(InstrumentLayout.visibleInstruments(from: []) == [])
+        let allOff = InstrumentLayout.supported.map { setting($0, enabled: false) }
+        #expect(InstrumentLayout.visibleInstruments(from: allOff) == [])
+    }
+
+    @Test("Defaults show all five cards in the shipped order")
+    func defaultSettingsShowAllSupported() throws {
+        #expect(InstrumentLayout.visibleInstruments(from: Settings.empty().instrumentSettings)
+                == [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track])
+    }
+
+    @Test("Rows are chunked three then the remainder, in order")
+    func rowsChunkThreeThenRemainder() throws {
+        let five: [InFlightInfo] = [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track]
+        #expect(InstrumentLayout.rows(for: five) == [[.currentGroundSpeed, .requiredGroundSpeed, .distance], [.bearing, .track]])
+
+        let four: [InFlightInfo] = [.track, .bearing, .distance, .currentGroundSpeed]
+        #expect(InstrumentLayout.rows(for: four) == [[.track, .bearing, .distance], [.currentGroundSpeed]])
+
+        let three: [InFlightInfo] = [.distance, .bearing, .track]
+        #expect(InstrumentLayout.rows(for: three) == [[.distance, .bearing, .track]])
+
+        let two: [InFlightInfo] = [.bearing, .track]
+        #expect(InstrumentLayout.rows(for: two) == [[.bearing, .track]])
+
+        #expect(InstrumentLayout.rows(for: []).isEmpty)
     }
 }
