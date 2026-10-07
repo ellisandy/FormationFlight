@@ -61,6 +61,8 @@ final class FlightViewModel: ObservableObject {
     /// has stopped receiving updates; showing the last speed as if it were live would let
     /// ETE/ETA keep counting down on a frozen number.
     static let staleFixThreshold: TimeInterval = 15
+    /// Clock reading at the most recent location callback; nil until the first fix.
+    private var lastLocationUpdate: Date?
 
     // MARK: - Private
     private let timerScheduler: TimerScheduling
@@ -189,6 +191,7 @@ final class FlightViewModel: ObservableObject {
     // MARK: - Location Updates
     func onLocationUpdate() {
         AppLogger.viewModel.debug("Location update received from LocationProvider")
+        lastLocationUpdate = now()
         updateInstruments()
     }
     
@@ -203,6 +206,17 @@ final class FlightViewModel: ObservableObject {
         let wallClock = now()
         let flooredClock = Self.floorToSecond(wallClock)
         self.currentTime = flooredClock
+
+        // Stale fix (B-07): once the newest fix is older than the threshold, the speed and
+        // course it carried are no longer live. Clearing them here makes ETE, ETA, delta and
+        // the status fall through to their "nothing to judge" branches below, so the pilot
+        // sees placeholders instead of numbers counting down on a frozen speed. Distance and
+        // bearing are kept: the last known position is still the best position estimate.
+        if let lastFix = lastLocationUpdate,
+           wallClock.timeIntervalSince(lastFix) > Self.staleFixThreshold {
+            self.currentGroundSpeed = nil
+            self.track = nil
+        }
 
         // Set ETE, truncated to a whole second so that it matches what durationHMS displays.
         if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
