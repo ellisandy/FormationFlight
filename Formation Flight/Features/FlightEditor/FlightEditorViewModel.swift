@@ -16,7 +16,11 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     
     // MARK: - Location
     private let locationManager = CLLocationManager()
-    
+    /// The app-wide location source (B-16). Placeholder: not yet consulted.
+    let locationProvider: LocationProviding
+    /// What the user has granted, as the editor last observed it (B-16).
+    @Published private(set) var locationAccess: LocationAccess = .notDetermined
+
     // MARK: Flight
     var flight: Flight?
     var isEditing: Bool { flight != nil }
@@ -123,8 +127,10 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
         baseline = currentSnapshot
     }
 
-    public init(flight selectedFlight: Flight? = nil) {
+    public init(flight selectedFlight: Flight? = nil,
+                locationProvider: LocationProviding = LocationProvider.shared) {
         self.flight = selectedFlight
+        self.locationProvider = locationProvider
         super.init()
         locationManager.delegate = self
 
@@ -141,7 +147,11 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
             currentLocation = coord
         }
     }
-    
+
+    /// Re-reads the provider's authorization into `locationAccess`. Placeholder: no-op.
+    func refreshLocationAccess() {
+    }
+
     // MARK: - Time Helpers
     var hourComponent: Int {
         get { timeEntry.hour }
@@ -177,5 +187,18 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     func dismissFlightView() {
         isFlightViewPresented = false
     }
+}
+
+/// The editor's view of Core Location permission, collapsed to what the UI needs to show (B-16).
+///
+/// - `notDetermined`: the system prompt has not been answered; nothing to show yet.
+/// - `authorized`: When-In-Use or Always with precise location; nothing to show.
+/// - `reducedAccuracy`: granted, but Precise Location is off, so distance and timing are coarse.
+/// - `denied`: `.denied` or `.restricted`; the app cannot obtain a fix at all.
+enum LocationAccess: Equatable {
+    case notDetermined
+    case authorized
+    case reducedAccuracy
+    case denied
 }
 
