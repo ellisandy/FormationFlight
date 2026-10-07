@@ -6,185 +6,214 @@
 
 import XCTest
 
+/// UI tests for the Flights list: empty state, creating a flight through the
+/// editor, swipe-to-delete, and the validation alert.
+///
+/// Every test launches against a fresh in-memory store (`-uiTestsResetStore`),
+/// so the starting screen is always the empty state unless the test also asks
+/// for seed data (`-uiTestsSeedFlights`, which inserts `UI F1` and `UI F2`).
+/// Elements are located by accessibility identifier only; display strings are
+/// used solely for system alerts, which have no identifiers.
 final class FlightsListViewUITests: XCTestCase {
 
-    var app: XCUIApplication!
+    private var app: XCUIApplication!
+
+    /// Matches the list row container of every flight (`flightRow_<uuid>`).
+    private let flightRowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
+    /// Matches the swipe-action delete button of every flight (`flightRowDelete_<uuid>`).
+    private let flightRowDeletePredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        // Ensure deterministic, isolated store for UI tests
-        app.launchArguments += ["-uiTestsResetStore", "1"]
-        app.launch()
+
+        // The editor requests location authorization when it appears. On a
+        // fresh simulator that raises a system alert, which would otherwise
+        // block the first interaction with the editor.
+        addUIInterruptionMonitor(withDescription: "Location permission alert") { alert in
+            let allow = alert.buttons["Allow While Using App"]
+            guard allow.exists else { return false }
+            allow.tap()
+            return true
+        }
     }
 
     override func tearDownWithError() throws {
         app = nil
     }
 
-    // MARK: - Helpers
-    private func createFlightUI(name: String = "UI Test Flight") {
-        // Tap add button to present editor
+    // MARK: - Launch
+
+    /// Launches the app against an in-memory store and waits for the Flights list.
+    /// - Parameter seeded: When `true`, the store starts with the two seed flights
+    ///   `UI F1` and `UI F2`; otherwise it starts empty.
+    private func launch(seeded: Bool = false) {
+        app.launchArguments += ["-uiTestsResetStore"]
+        if seeded {
+            app.launchArguments += ["-uiTestsSeedFlights"]
+        }
+        app.launch()
+
+        XCTAssertTrue(
+            app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 5),
+            "FlightsListViewRoot should be on screen after launch"
+        )
+    }
+
+    // MARK: - Queries
+
+    /// All flight rows currently in the list, regardless of element type.
+    private var flightRows: XCUIElementQuery {
+        app.descendants(matching: .any).matching(flightRowPredicate)
+    }
+
+    /// Waits until `query` matches exactly `count` elements.
+    private func waitForCount(_ count: Int, of query: XCUIElementQuery, timeout: TimeInterval = 5, _ message: String) {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count == %d", count), object: query)
+        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, "\(message) (expected \(count) match(es), found \(query.count))")
+    }
+
+    // MARK: - Editor flow
+
+    /// Taps the toolbar add button and waits for the editor's mission name field.
+    private func openEditorFromToolbar() {
         let addButton = app.buttons["addFlightButton"]
-        XCTAssertTrue(addButton.waitForExistence(timeout: 2), "Add button should exist")
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5), "addFlightButton should be in the Flights toolbar")
         addButton.tap()
 
-        // Enter mission name – assumes a text field labeled or placeholder "Mission Name"
-        // Update the identifier/label if your editor uses a different one.
-        let nameField = app.textFields["Mission Name"]
-        var usedField: XCUIElement
-        if nameField.waitForExistence(timeout: 2) {
-            usedField = nameField
-        } else {
-            // Try a generic first text field fallback
-            let anyTextField = app.textFields.element(boundBy: 0)
-            XCTAssertTrue(anyTextField.exists, "A text field for mission name should exist")
-            usedField = anyTextField
-        }
-        usedField.tap()
-        usedField.typeText(name)
-        // Attempt to dismiss the keyboard to allow scrolling
-        let returnKey = app.keyboards.buttons["Return"].firstMatch
-        if returnKey.exists {
-            returnKey.tap()
-        } else {
-            // Try tapping the navigation bar or root to resign first responder
-            if app.navigationBars.element.exists {
-                app.navigationBars.element.tap()
-            } else {
-                app.otherElements.element(boundBy: 0).tap()
-            }
-        }
+        XCTAssertTrue(
+            app.textFields["missionNameField"].waitForExistence(timeout: 5),
+            "missionNameField should appear once the editor is pushed"
+        )
+    }
 
-        // Select a target – attempts to find button, scrolling if necessary
-        var selectTargetButton = app.buttons["Select Target"]
-        if !selectTargetButton.waitForExistence(timeout: 2) {
-            // Try up to 3 times: swipe up and re-query the button
-            let window = app.windows.element(boundBy: 0)
-            for _ in 0..<3 {
-                if selectTargetButton.exists { break }
-                let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
-                let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1))
-                start.press(forDuration: 0.02, thenDragTo: end)
-                // Re-query after swiping
-                selectTargetButton = app.buttons["Select Target"]
-                _ = selectTargetButton.waitForExistence(timeout: 1)
-            }
-            // If still not found, fail the test early with a clear message
-            XCTAssertTrue(selectTargetButton.exists, "'Select Target' button should be visible after scrolling attempts")
+    /// Scrolls the editor form until `element` exists. Rows of a SwiftUI `Form`
+    /// are only in the accessibility tree once laid out, so on short screens the
+    /// Target row is not queryable until the form is scrolled. The drag starts
+    /// near the bottom of the window so it never lands on the time-entry wheels,
+    /// which would spin instead of scrolling the form.
+    private func revealInEditorForm(_ element: XCUIElement, _ description: String, maxSwipes: Int = 3) {
+        let window = app.windows.firstMatch
+        var swipes = 0
+        while !element.exists, swipes < maxSwipes {
+            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
+            let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+            start.press(forDuration: 0.05, thenDragTo: end)
+            swipes += 1
         }
-        if selectTargetButton.waitForExistence(timeout: 2) {
-            selectTargetButton.tap()
-            // For simplicity, tap the first selectable coordinate or confirm selection
-            // If your UI shows a map, you might need to tap a default pin or use a canned coordinate button.
-            // Try a generic "Done" or "Use This Location" button.
-            let window = app.windows.element(boundBy: 0)
-            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
-            let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1))
-            start.press(forDuration: 0.02, thenDragTo: end)
-            
-            let done = app.buttons["Save"].firstMatch
-            if done.waitForExistence(timeout: 2) {
-                done.tap()
-            }
-            let useLocation = app.buttons["Use This Location"].firstMatch
-            if useLocation.exists { useLocation.tap() }
-        }
+        XCTAssertTrue(element.waitForExistence(timeout: 2), "\(description) should be reachable in the editor form")
+    }
 
-        // Tap Save or Add
-        let saveButton = app.buttons["Save"].firstMatch.exists ? app.buttons["Save"] : app.buttons["Add"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 2), "Save/Add button should exist")
+    /// Fills in the already-open editor with `name`, picks the map's current pin
+    /// as the target, and saves. Ends back on the Flights list.
+    private func completeEditor(name: String) {
+        let nameField = app.textFields["missionNameField"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "missionNameField should exist in the editor")
+        nameField.tap()
+        // Return dismisses the keyboard so the rows below the field are reachable.
+        nameField.typeText(name + "\n")
+
+        let targetRow = app.buttons["targetRow"]
+        revealInEditorForm(targetRow, "targetRow")
+        targetRow.tap()
+
+        let mapSave = app.buttons["checkpointSaveButton"]
+        XCTAssertTrue(mapSave.waitForExistence(timeout: 10), "checkpointSaveButton should appear in the map picker toolbar")
+        mapSave.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["targetLatitudeLabel"].waitForExistence(timeout: 5),
+            "targetLatitudeLabel should appear in the editor after the map picker saves"
+        )
+
+        let saveButton = app.buttons["flightEditorSaveButton"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5), "flightEditorSaveButton should be in the editor toolbar")
         saveButton.tap()
     }
 
-    func testEmptyStateAndCreateFirstFlightButtonPresentsEditor() throws {
-        let root = app.otherElements["FlightsListViewRoot"]
-        XCTAssertTrue(root.waitForExistence(timeout: 5), "FlightsListView should appear")
+    /// Opens the editor from the toolbar and creates a flight named `name`.
+    private func createFlightUI(name: String) {
+        openEditorFromToolbar()
+        completeEditor(name: name)
+    }
 
-        // If empty, create via empty state button; otherwise, just ensure editor can present
+    // MARK: - Tests
+
+    func testEmptyStateAndCreateFirstFlightButtonPresentsEditor() throws {
+        launch()
+
         let emptyState = app.otherElements["emptyStateView"]
-        if emptyState.waitForExistence(timeout: 1) {
-            let createBtn = app.buttons["emptyStateCreateFirstFlightButton"]
-            XCTAssertTrue(createBtn.exists)
-            createBtn.tap()
-            XCTAssertTrue(app.navigationBars.element.waitForExistence(timeout: 2))
-            // Dismiss editor by cancelling if available, else save a minimal flight
-            if app.buttons["Cancel"].exists {
-                app.buttons["Cancel"].tap()
-            } else if app.buttons["Save"].exists {
-                // Attempt helper to save properly
-                app.navigationBars.buttons.element(boundBy: 0).tap() // navigate back if needed
-            }
-        } else {
-            // Not empty; ensure add button presents the editor
-            let addButton = app.buttons["addFlightButton"]
-            XCTAssertTrue(addButton.exists)
-            addButton.tap()
-            XCTAssertTrue(app.navigationBars.element.waitForExistence(timeout: 2))
-        }
+        XCTAssertTrue(emptyState.waitForExistence(timeout: 5), "A reset store must show emptyStateView")
+
+        let createButton = app.buttons["emptyStateCreateFirstFlightButton"]
+        XCTAssertTrue(createButton.exists, "emptyStateCreateFirstFlightButton should be inside the empty state")
+        createButton.tap()
+
+        let nameField = app.textFields["missionNameField"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "Tapping the empty-state button should push the editor (missionNameField)")
+
+        // The editor has no Cancel button (B-21); the navigation back button is
+        // the only way out, and it is the leading button of the editor's bar.
+        let backButton = app.navigationBars.firstMatch.buttons.firstMatch
+        XCTAssertTrue(backButton.waitForExistence(timeout: 2), "The editor's navigation bar should have a back button")
+        backButton.tap()
+
+        XCTAssertTrue(
+            app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 5),
+            "FlightsListViewRoot should be back after navigating back from the editor"
+        )
+        XCTAssertTrue(emptyState.waitForExistence(timeout: 5), "emptyStateView should be shown again; nothing was saved")
+        XCTAssertFalse(nameField.exists, "missionNameField should be gone once the editor is popped")
     }
 
     func testAddFlightButtonPresentsEditor() throws {
-        let root = app.otherElements["FlightsListViewRoot"]
-        XCTAssertTrue(root.waitForExistence(timeout: 5))
+        launch()
 
-        createFlightUI(name: "Created Via Toolbar")
+        openEditorFromToolbar()
+        completeEditor(name: "Created Via Toolbar")
 
-        // Verify at least one row exists
-        let cell = app.otherElements.containing(NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")).element(boundBy: 0)
-        XCTAssertTrue(cell.waitForExistence(timeout: 2))
+        waitForCount(1, of: flightRows, "Saving one flight should produce exactly one flightRow_ element")
+        XCTAssertFalse(app.otherElements["emptyStateView"].exists, "emptyStateView should be gone once a flight exists")
     }
 
     func testSwipeToDeleteShowsConfirmationAndDeletes() throws {
-        let root = app.otherElements["FlightsListViewRoot"]
-        XCTAssertTrue(root.waitForExistence(timeout: 5))
+        launch(seeded: true)
 
-        // Create a new row named "To Delete"
-        let flightName = "To Delete"
-        createFlightUI(name: flightName)
+        waitForCount(2, of: flightRows, "The seeded store should show both UI F1 and UI F2 rows")
 
-        // Find any element on screen that matches the created flight name
-        // Prefer a button with that label, otherwise fall back to any static text with that label
-        var targetElement: XCUIElement = app.buttons[flightName]
-        if !targetElement.waitForExistence(timeout: 2) {
-            targetElement = app.staticTexts[flightName]
-        }
-        XCTAssertTrue(targetElement.waitForExistence(timeout: 2), "Expected to find an element labeled \(flightName)")
+        let firstRow = flightRows.element(boundBy: 0)
+        firstRow.swipeLeft()
 
-        // Swipe left on the located element to reveal delete action
-        targetElement.swipeLeft()
-
-        let deleteButton = app.buttons.containing(NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")).element(boundBy: 0)
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 2), "Swipe delete button should exist")
-        XCTAssertEqual(app.buttons.containing(NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")).count, 1, "There should be exactly one delete button visible")
+        let deleteButtons = app.buttons.matching(flightRowDeletePredicate)
+        let deleteButton = deleteButtons.element(boundBy: 0)
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5), "Swiping a row left should reveal its flightRowDelete_ button")
+        XCTAssertEqual(deleteButtons.count, 1, "Only the swiped row should expose a flightRowDelete_ button")
         deleteButton.tap()
 
-        // Confirm deletion
         let confirmAlert = app.alerts["Delete Flight?"]
-        XCTAssertTrue(confirmAlert.waitForExistence(timeout: 2))
+        XCTAssertTrue(confirmAlert.waitForExistence(timeout: 5), "Tapping the swipe delete should show the Delete Flight? alert")
         confirmAlert.buttons["Delete"].tap()
 
-        // Verify the element no longer exists
-        XCTAssertFalse(targetElement.waitForExistence(timeout: 2), "Row should disappear after deletion")
+        XCTAssertFalse(confirmAlert.waitForExistence(timeout: 1), "Delete Flight? alert should be dismissed after confirming")
+        waitForCount(1, of: flightRows, "Confirming the delete should drop the flightRow_ count from 2 to 1")
     }
 
     func testValidationAlertAppearsOnSaveWithoutTarget() throws {
-        let root = app.otherElements["FlightsListViewRoot"]
-        XCTAssertTrue(root.waitForExistence(timeout: 5))
+        launch()
 
-        let addButton = app.buttons["addFlightButton"]
-        XCTAssertTrue(addButton.exists)
-        addButton.tap()
+        openEditorFromToolbar()
 
-        let saveOrAdd = app.buttons["Save"].firstMatch.exists ? app.buttons["Save"] : app.buttons["Add"]
-        if !saveOrAdd.waitForExistence(timeout: 2) {
-            throw XCTSkip("Save/Add button not found in editor; update test to match editor UI identifiers.")
-        }
-        saveOrAdd.tap()
+        let saveButton = app.buttons["flightEditorSaveButton"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5), "flightEditorSaveButton should be in the editor toolbar")
+        saveButton.tap()
 
         let validationAlert = app.alerts["Validation"]
-        XCTAssertTrue(validationAlert.waitForExistence(timeout: 2))
+        XCTAssertTrue(validationAlert.waitForExistence(timeout: 5), "Saving with no name and no target should show the Validation alert")
         validationAlert.buttons["OK"].tap()
+
+        XCTAssertFalse(validationAlert.waitForExistence(timeout: 1), "Validation alert should be dismissed after tapping OK")
+        XCTAssertTrue(app.textFields["missionNameField"].exists, "The editor should remain on screen after dismissing the alert")
+        XCTAssertEqual(flightRows.count, 0, "No flightRow_ element should be created by a rejected save")
     }
 }
-
