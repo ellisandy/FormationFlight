@@ -32,9 +32,6 @@
             reference = "container:Formation Flight.xctestplan"
             default = "YES">
          </TestPlanReference>
-         <TestPlanReference
-            reference = "container:Formation FlightTests/FormationFlightUnitTests.xctestplan">
-         </TestPlanReference>
       </TestPlans>
       <Testables>
          <TestableReference
