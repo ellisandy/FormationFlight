@@ -28,21 +28,25 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     /// User-facing message set when `presentFlightView()` is refused because the mission is invalid.
     @Published var validationMessage: String?
 
+    /// The mission type the segmented control currently selects.
+    var missionType: MissionType { useTOT ? .tot : .hackTime }
+
+    /// `missionDate` as it should be persisted: only a TOT mission carries one (B-14).
+    var missionDateToSave: Date? { useTOT ? timeEntry : nil }
+
+    /// `hackTime` as it should be persisted: only a hack mission carries one (B-14).
+    var hackTimeToSave: TimeInterval? { useTOT ? nil : TimeInterval(hackDurationSeconds) }
+
     /// The first failing Go Fly rule as a user-facing message, or `nil` when the mission can be flown.
+    ///
+    /// Delegates to `FlightValidation`, the same rules `Flight.validFlight()` applies on save, so
+    /// Go Fly and Save can never disagree about what is flyable.
     var goFlyValidationMessage: String? {
-        if missionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return String(localized: "Please enter a mission name.",
-                          comment: "Validation message when a flight has no mission name")
-        }
-        if selectedTargetLocation == nil {
-            return String(localized: "Please enter a valid target location.",
-                          comment: "Validation message when a flight has no target selected")
-        }
-        if !useTOT && hackDurationSeconds <= 0 {
-            return String(localized: "Please enter a hack time.",
-                          comment: "Validation message when a hack-time mission has a zero hack duration")
-        }
-        return nil
+        FlightValidation.message(missionName: missionName,
+                                 missionType: missionType,
+                                 missionDate: missionDateToSave,
+                                 hackTime: hackTimeToSave,
+                                 hasTarget: selectedTargetLocation != nil)
     }
 
     /// `true` when all Go Fly validation rules pass.
@@ -88,9 +92,9 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
         self.flight = selectedFlight
         super.init()
         locationManager.delegate = self
-        
-        if flight != nil {
-            mapToValues(flight: flight!)
+
+        if let selectedFlight {
+            mapToValues(flight: selectedFlight)
         }
     }
     

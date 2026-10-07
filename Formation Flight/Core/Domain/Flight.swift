@@ -81,41 +81,95 @@ extension Flight {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+/// The single set of rules that decide whether a mission can be saved or flown (B-14).
+///
+/// Both `Flight.validFlight()` (persistence) and `FlightEditorViewModel.goFlyValidationMessage`
+/// (Go Fly) call `message(...)`, so each rule has exactly one wording and the string catalog
+/// carries it once. The function takes plain values rather than a `Flight` so the editor can
+/// validate its draft before a model exists.
+enum FlightValidation {
+    /// How far in the past a time on target may be and still be accepted, in seconds.
+    ///
+    /// A pilot who sets the TOT to "now" and then takes a moment to press Save or Go Fly must
+    /// not be refused, so there is a short grace period rather than a hard `>= now` check.
+    static let pastTOTGrace: TimeInterval = 60
+
+    /// Returns the user-facing message for the first failing rule, or `nil` when the values
+    /// describe a flyable mission.
+    ///
+    /// Rules are checked in the order the editor lays the fields out: name, target, then the
+    /// time entry for the selected mission type.
+    static func message(missionName: String,
+                        missionType: MissionType,
+                        missionDate: Date?,
+                        hackTime: TimeInterval?,
+                        hasTarget: Bool,
+                        now: Date = Date()) -> String? {
+        if missionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return missingNameMessage
+        }
+        if !hasTarget {
+            return missingTargetMessage
+        }
+        switch missionType {
+        case .hackTime:
+            guard let hackTime, hackTime.isFinite, hackTime > 0 else {
+                return missingHackTimeMessage
+            }
+        case .tot:
+            guard let missionDate else {
+                return missingMissionDateMessage
+            }
+            if missionDate < now.addingTimeInterval(-pastTOTGrace) {
+                return pastTOTMessage
+            }
+        }
+        return nil
+    }
+
+    static var missingNameMessage: String {
+        String(localized: "Please enter a mission name.",
+               comment: "Validation message when a flight has no mission name")
+    }
+
+    static var missingTargetMessage: String {
+        String(localized: "Please enter a valid target location.",
+               comment: "Validation message when a flight has no target selected")
+    }
+
+    static var missingHackTimeMessage: String {
+        String(localized: "Please enter a hack time.",
+               comment: "Validation message when a hack-time mission has no hack duration or a zero one")
+    }
+
+    static var missingMissionDateMessage: String {
+        String(localized: "Please enter a mission date and time.",
+               comment: "Validation message when a time-on-target mission has no date")
+    }
+
+    static var pastTOTMessage: String {
+        String(localized: "The time on target is in the past.",
+               comment: "Validation message when a time-on-target mission is scheduled more than a minute ago")
+    }
+}
+
 /// Validation helpers.
 extension Flight {
     /// Validates the flight based on mission type and required fields.
     ///
-    /// - Parameter now: The current time, injectable for tests. Not yet consulted (B-14 placeholder).
+    /// Delegates to `FlightValidation.message(...)`, the single source of truth shared with the
+    /// editor's Go Fly gate.
+    ///
+    /// - Parameter now: The current time, injectable for tests of the past-TOT rule.
     /// - Returns: A tuple `(valid, message)` where `valid` indicates overall validity and
-    ///   `message` provides a user-facing prompt for the first missing requirement, if any.
-    func validFlight(now: Date = Date()) -> (valid: Bool, message: String?)  {
-        var validStatus = true
-        var message: String?
-
-        if missionName.isEmpty {
-            validStatus = false
-            message = String(localized: "Please enter a name for the mission",
-                             comment: "Flight validation: mission name is empty")
-        }
-
-        if missionType == .hackTime && hackTime == nil {
-            validStatus = false
-            message = String(localized: "Please enter a hack time",
-                             comment: "Flight validation: hack-time mission has no hack time")
-        }
-
-        if missionType == .tot && missionDate == nil {
-            validStatus = false
-            message = String(localized: "Please enter a date for the mission",
-                             comment: "Flight validation: time-on-target mission has no date")
-        }
-
-        if target == nil {
-            validStatus = false
-            message = String(localized: "Please enter a target",
-                             comment: "Flight validation: no target selected")
-        }
-
-        return (validStatus, message)
+    ///   `message` provides a user-facing prompt for the first failing rule, if any.
+    func validFlight(now: Date = Date()) -> (valid: Bool, message: String?) {
+        let message = FlightValidation.message(missionName: missionName,
+                                               missionType: missionType,
+                                               missionDate: missionDate,
+                                               hackTime: hackTime,
+                                               hasTarget: target != nil,
+                                               now: now)
+        return (message == nil, message)
     }
 }

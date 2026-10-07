@@ -194,9 +194,7 @@ struct FlightEditorView: View {
             } else {
                 // Safety net: the cover must never be empty and undismissable.
                 VStack(spacing: 16) {
-                    Text(viewModel.goFlyValidationMessage
-                         ?? String(localized: "Please enter a valid target location.",
-                                   comment: "Validation message when a flight has no target selected"))
+                    Text(viewModel.goFlyValidationMessage ?? FlightValidation.missingTargetMessage)
                         .multilineTextAlignment(.center)
                         .accessibilityIdentifier("flightViewFallbackMessage")
                     Button("Close") {
