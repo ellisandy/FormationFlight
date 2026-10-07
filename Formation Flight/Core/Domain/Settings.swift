@@ -39,12 +39,22 @@ public struct Settings: Codable, Equatable {
         public var id: Self { self }
     }
     
+    /// Default ToT drift tolerances, in seconds. A fresh install must not treat every
+    /// non-zero delta as red, so these are deliberately non-zero with yellow <= red.
+    public static let defaultYellowTolerance = 10
+    public static let defaultRedTolerance = 30
+
+    /// The settings a fresh install starts with. Alias for `empty()`.
+    public static func defaults() -> Settings {
+        return empty()
+    }
+
     public static func empty() -> Settings {
         return Settings(
             speedUnit: .kts,
             distanceUnit: .nm,
-            yellowTolerance: 0,
-            redTolerance: 0,
+            yellowTolerance: defaultYellowTolerance,
+            redTolerance: defaultRedTolerance,
             instrumentSettings: [
                 InstrumentSetting(type: .currentGroundSpeed, isEnabled: true),
                 InstrumentSetting(type: .requiredGroundSpeed, isEnabled: true),
@@ -55,6 +65,18 @@ public struct Settings: Codable, Equatable {
         )
     }
     
+    /// Returns a copy with the tolerance pair made self-consistent: negative values are
+    /// clamped to 0 and, if yellow exceeds red, red is raised to match yellow.
+    public func validated() -> Settings {
+        var copy = self
+        copy.yellowTolerance = max(0, copy.yellowTolerance)
+        copy.redTolerance = max(0, copy.redTolerance)
+        if copy.yellowTolerance > copy.redTolerance {
+            copy.redTolerance = copy.yellowTolerance
+        }
+        return copy
+    }
+
     // Explicit CodingKeys to ensure stable Codable synthesis
     private enum CodingKeys: String, CodingKey {
         case speedUnit
@@ -123,9 +145,16 @@ extension Settings {
         let distanceUnitString = userDefaults.string(forKey: distanceUnitUDK) ?? DistanceUnit.nm.rawValue
         let distanceUnit = DistanceUnit(rawValue: distanceUnitString) ?? .nm
         
-        let yellowTolerance = userDefaults.integer(forKey: yellowToleranceUDK)
-        let redTolerance = userDefaults.integer(forKey: redToleranceUDK)
-        
+        // integer(forKey:) returns 0 for a never-set key, which would make every non-zero
+        // delta red on a fresh install. Only trust the stored value when the key exists;
+        // an explicitly saved 0 is still honoured.
+        let yellowTolerance = userDefaults.object(forKey: yellowToleranceUDK) != nil
+            ? userDefaults.integer(forKey: yellowToleranceUDK)
+            : defaultYellowTolerance
+        let redTolerance = userDefaults.object(forKey: redToleranceUDK) != nil
+            ? userDefaults.integer(forKey: redToleranceUDK)
+            : defaultRedTolerance
+
         let instrumentSettings: [InstrumentSetting] = {
             guard
                 let data = userDefaults.data(forKey: instrumentSettingsUDK),
@@ -150,7 +179,7 @@ extension Settings {
             yellowTolerance: yellowTolerance,
             redTolerance: redTolerance,
             instrumentSettings: instrumentSettings
-        )
+        ).validated()
     }
     
     public func save(to userDefaults: UserDefaults) {

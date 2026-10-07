@@ -166,6 +166,68 @@ struct SettingsTests {
         #expect(loaded.redTolerance == 0)
     }
 
+    // MARK: - Tolerance validation
+    @Test("validated() raises red to yellow when yellow > red")
+    func testValidatedFixesInvertedTolerances() {
+        var s = Settings.empty()
+        s.yellowTolerance = 40
+        s.redTolerance = 15
+
+        let v = s.validated()
+        #expect(v.yellowTolerance == 40)
+        #expect(v.redTolerance == 40)
+        #expect(v.yellowTolerance <= v.redTolerance)
+        // Non-tolerance fields are untouched
+        #expect(v.speedUnit == s.speedUnit)
+        #expect(v.distanceUnit == s.distanceUnit)
+        #expect(v.instrumentSettings == s.instrumentSettings)
+    }
+
+    @Test("validated() clamps negative tolerances to 0")
+    func testValidatedClampsNegatives() {
+        var s = Settings.empty()
+        s.yellowTolerance = -5
+        s.redTolerance = -1
+
+        let v = s.validated()
+        #expect(v.yellowTolerance == 0)
+        #expect(v.redTolerance == 0)
+    }
+
+    @Test("validated() leaves an already-valid pair unchanged")
+    func testValidatedIsIdentityForValidPair() {
+        var s = Settings.empty()
+        s.yellowTolerance = 5
+        s.redTolerance = 10
+        #expect(s.validated() == s)
+        #expect(Settings.empty().validated() == Settings.empty())
+    }
+
+    @Test("defaults() matches empty()")
+    func testDefaultsMatchesEmpty() {
+        #expect(Settings.defaults() == Settings.empty())
+        #expect(Settings.defaults().yellowTolerance == Settings.defaultYellowTolerance)
+        #expect(Settings.defaults().redTolerance == Settings.defaultRedTolerance)
+    }
+
+    @Test("load(from:) normalizes a persisted inverted tolerance pair")
+    func testLoadNormalizesInvertedTolerances() throws {
+        let suiteName = "SettingsTests.testLoadNormalizesInvertedTolerances"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // Write a corrupted/legacy pair straight through the dumb writer.
+        var saved = Settings.empty()
+        saved.yellowTolerance = 50
+        saved.redTolerance = 20
+        saved.save(to: defaults)
+
+        let loaded = Settings.load(from: defaults)
+        #expect(loaded.yellowTolerance == 50)
+        #expect(loaded.redTolerance == 50)
+    }
+
     // MARK: - Decoding ignores unknown CodingKeys (minSpeed/maxSpeed/proximityToNextPoint)
     @Test("Decoding ignores removed keys and still succeeds")
     func testDecodingIgnoresRemovedKeys() throws {
