@@ -117,35 +117,33 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
                 previousLocations = Array(previousLocations.suffix(Self.maxBufferedFixes))
             }
             
-            if _lastLocation.speed > 0 {
-                speed = Measurement(value: _lastLocation.speed, unit: UnitSpeed.metersPerSecond)
-            }
-            
             // Core Location reports "no altitude" with a negative verticalAccuracy; the
             // altitude value itself may legitimately be negative (below sea level).
             if _lastLocation.verticalAccuracy >= 0 {
                 altitude = Measurement(value: _lastLocation.altitude, unit: UnitLength.meters)
             }
-            
-            if _lastLocation.course > 0 {
-                course = Measurement(value: _lastLocation.course, unit: UnitAngle.degrees)
-            }
-            
-            if _lastLocation.speed == -1.0 {
-                
-                
-                if let computed = computeManualSpeedAndCourse() {
-                    speed = computed.speed
-                    
-                    if _lastLocation.course == -1.0 {
-                        course = computed.course
-                    }
-                    
-                    computedSpeedAndCourse = true
-                }
+
+            // Speed and course are valid when >= 0 (0 is "stopped" / "due north") and the
+            // sentinel when < 0 (B-07). An invalid value falls back to the manual estimate
+            // from the buffer; if that is unavailable too, the published value is reset to
+            // the -1 sentinel so a stopped aircraft or a lost fix never shows a stale reading.
+            let hasValidSpeed = _lastLocation.speed >= 0
+            let hasValidCourse = _lastLocation.course >= 0
+            let estimate = (hasValidSpeed && hasValidCourse) ? nil : computeManualSpeedAndCourse()
+
+            if hasValidSpeed {
+                speed = Measurement(value: _lastLocation.speed, unit: UnitSpeed.metersPerSecond)
             } else {
-                computedSpeedAndCourse = false
+                speed = estimate?.speed ?? Measurement(value: -1, unit: UnitSpeed.metersPerSecond)
             }
+
+            if hasValidCourse {
+                course = Measurement(value: _lastLocation.course, unit: UnitAngle.degrees)
+            } else {
+                course = estimate?.course ?? Measurement(value: -1, unit: UnitAngle.degrees)
+            }
+
+            computedSpeedAndCourse = estimate != nil
         }
         
         (updateDelegate ?? { AppLogger.location.debug("LocationProvider: No update delegate") })()
