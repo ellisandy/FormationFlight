@@ -1,5 +1,7 @@
 import Foundation
+import SwiftUI
 import Testing
+@testable import Formation_Flight
 
 @Suite("Date+TimeComponents Tests")
 struct DateTimeComponentsTests {
@@ -111,4 +113,130 @@ struct DateTimeComponentsTests {
     #expect(updatedSecond.component(.month, calendar: calendar) == 11)
     #expect(updatedSecond.component(.day, calendar: calendar) == 20)
   }
+}
+
+// MARK: - TOT editing: picker wheel ranges and Binding<Date> component glue
+
+/// Covers BACKLOG B-04: the TOT picker wheels must offer exactly the values the `Date`
+/// model can hold (hour 0...23, minute/second 0...59), and every TOT editor must go
+/// through the same clamped setters so an out-of-range hour never rolls the date.
+@Suite("TOT time component editing")
+@MainActor
+struct TOTTimeComponentEditingTests {
+    /// Mutable backing store for a `Binding<Date>` under test.
+    @MainActor
+    final class DateBox {
+        var date: Date
+        init(_ date: Date) { self.date = date }
+    }
+
+    // The production helpers default to `Calendar.current`, so assertions use it too.
+    let calendar = Calendar.current
+
+    /// A mid-month date well away from any DST transition.
+    func makeDate(hour: Int, minute: Int = 20, second: Int = 30) throws -> Date {
+        try #require(calendar.date(from:
+            DateComponents(year: 2025, month: 6, day: 15, hour: hour, minute: minute, second: second)))
+    }
+
+    func makeBinding(_ box: DateBox) -> Binding<Date> {
+        Binding(get: { box.date }, set: { box.date = $0 })
+    }
+
+    func day(of date: Date) -> Int {
+        calendar.component(.day, from: date)
+    }
+
+    // MARK: Picker wheel ranges
+
+    @Test("hour wheel offers 00 through 23, matching Date.hour")
+    func pickerHourRangeCoversMidnightThroughTwentyThree() {
+        #expect(TOTTimePickerView.hourRange == 0..<24)
+        #expect(TOTTimePickerView.hourRange.contains(0))
+        #expect(!TOTTimePickerView.hourRange.contains(24))
+    }
+
+    @Test("every hour the model can produce is selectable on the hour wheel")
+    func pickerHourRangeContainsEveryModelHour() throws {
+        let base = try makeDate(hour: 12)
+        for hour in 0...23 {
+            let modelHour = base.updatingHour(to: hour).hour
+            #expect(TOTTimePickerView.hourRange.contains(modelHour),
+                    "model hour \(modelHour) is not selectable on the hour wheel")
+        }
+    }
+
+    @Test("minute and second wheels offer 00 through 59")
+    func pickerMinuteAndSecondRangesMatchDateModel() {
+        #expect(TOTTimePickerView.minuteRange == 0..<60)
+        #expect(TOTTimePickerView.secondRange == 0..<60)
+    }
+
+    // MARK: Date.updatingHour at the boundaries
+
+    @Test("updatingHour accepts 0 and 23 and clamps 24 without rolling the day")
+    func updatingHourBoundariesDoNotRollDay() throws {
+        let base = try makeDate(hour: 12)
+
+        let midnight = base.updatingHour(to: 0)
+        #expect(midnight.hour == 0)
+        #expect(day(of: midnight) == 15)
+
+        let lastHour = base.updatingHour(to: 23)
+        #expect(lastHour.hour == 23)
+        #expect(day(of: lastHour) == 15)
+
+        let overflow = base.updatingHour(to: 24)
+        #expect(overflow.hour == 23)
+        #expect(day(of: overflow) == 15)
+    }
+
+    // MARK: Binding<Date> component glue (used by the in-flight TOT editor)
+
+    @Test("Binding<Date>.hourComponent reads the hour and clamps writes to 0...23")
+    func bindingHourComponentClampsAndNeverRollsDay() throws {
+        let box = DateBox(try makeDate(hour: 12))
+        let hour = makeBinding(box).hourComponent
+
+        #expect(hour.wrappedValue == 12)
+
+        hour.wrappedValue = 24
+        #expect(box.date.hour == 23)
+        #expect(day(of: box.date) == 15)
+        #expect(hour.wrappedValue == 23)
+
+        hour.wrappedValue = 0
+        #expect(box.date.hour == 0)
+        #expect(day(of: box.date) == 15)
+
+        hour.wrappedValue = -1
+        #expect(box.date.hour == 0)
+        #expect(day(of: box.date) == 15)
+
+        // Other components are preserved.
+        #expect(box.date.minute == 20)
+        #expect(box.date.second == 30)
+    }
+
+    @Test("Binding<Date>.minuteComponent and .secondComponent clamp writes to 0...59")
+    func bindingMinuteAndSecondComponentsClamp() throws {
+        let box = DateBox(try makeDate(hour: 12))
+        let binding = makeBinding(box)
+
+        binding.minuteComponent.wrappedValue = 60
+        #expect(box.date.minute == 59)
+        #expect(box.date.hour == 12)
+
+        binding.minuteComponent.wrappedValue = -1
+        #expect(box.date.minute == 0)
+
+        binding.secondComponent.wrappedValue = 60
+        #expect(box.date.second == 59)
+        #expect(box.date.minute == 0)
+
+        binding.secondComponent.wrappedValue = -1
+        #expect(box.date.second == 0)
+
+        #expect(day(of: box.date) == 15)
+    }
 }

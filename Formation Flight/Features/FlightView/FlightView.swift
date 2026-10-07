@@ -55,51 +55,6 @@ private struct InstrumentCard: View {
     }
 }
 
-// MARK: - Date Component Accessors
-private extension Date {
-    private var calendar: Calendar {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = .current
-        return cal
-    }
-    
-    var hourSetter: Int {
-        get { calendar.component(.hour, from: self) }
-        set {
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: self)
-            var newComps = comps
-            newComps.hour = newValue
-            if let newDate = calendar.date(from: newComps) {
-                self = newDate
-            }
-        }
-    }
-    
-    var minuteSetter: Int {
-        get { calendar.component(.minute, from: self) }
-        set {
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: self)
-            var newComps = comps
-            newComps.minute = newValue
-            if let newDate = calendar.date(from: newComps) {
-                self = newDate
-            }
-        }
-    }
-    
-    var secondSetter: Int {
-        get { calendar.component(.second, from: self) }
-        set {
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: self)
-            var newComps = comps
-            newComps.second = newValue
-            if let newDate = calendar.date(from: newComps) {
-                self = newDate
-            }
-        }
-    }
-}
-
 // MARK: - Private Subviews
 
 private struct TimingSection: View {
@@ -308,7 +263,7 @@ struct FlightView: View {
                 }
                 
                 VStack {
-                    TOTTimePickerView(date: _date, hour: _date.hourSetter, minute: _date.minuteSetter, second: _date.secondSetter)
+                    TOTTimePickerView(date: _date, hour: _date.hourComponent, minute: _date.minuteComponent, second: _date.secondComponent)
                     Button {
                         viewModel.cancelEditToT()
                     } label: {
