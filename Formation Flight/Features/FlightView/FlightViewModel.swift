@@ -236,7 +236,7 @@ final class FlightViewModel: ObservableObject {
         self.distance = _currentLocation.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Bearing to Final
-        AppLogger.viewModel.debug("Calculating bearing to target: \(_currentLocation.coordinate.latitude.description)")
+        AppLogger.viewModel.debug("Calculating bearing from current location to target")
         self.bearing = _currentLocation.getBearing(to: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Historical Track
