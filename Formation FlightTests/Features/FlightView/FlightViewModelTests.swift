@@ -965,3 +965,82 @@ struct FlightViewModelTests {
         #expect(vm.track != nil)
     }
 }
+
+// MARK: - InstrumentLayout (B-12)
+
+/// `InstrumentLayout` is the pure half of B-12: the Instruments section was hard-wired to five
+/// cards and ignored `settings.instrumentSettings` entirely, so disabling or reordering an
+/// instrument in Settings had no effect in flight.
+@Suite("InstrumentLayout")
+struct InstrumentLayoutTests {
+    private func setting(_ type: InFlightInfo, enabled: Bool = true) -> InstrumentSetting {
+        InstrumentSetting(type: type, isEnabled: enabled)
+    }
+
+    @Test("Disabled instruments are filtered out")
+    func disabledInstrumentsAreHidden() throws {
+        let settings = [
+            setting(.currentGroundSpeed),
+            setting(.requiredGroundSpeed, enabled: false),
+            setting(.distance),
+            setting(.bearing),
+            setting(.track, enabled: false),
+        ]
+        #expect(InstrumentLayout.visibleInstruments(from: settings) == [.currentGroundSpeed, .distance, .bearing])
+    }
+
+    @Test("Saved order is preserved")
+    func savedOrderIsPreserved() throws {
+        let settings = [
+            setting(.track),
+            setting(.bearing),
+            setting(.distance),
+            setting(.requiredGroundSpeed),
+            setting(.currentGroundSpeed),
+        ]
+        #expect(InstrumentLayout.visibleInstruments(from: settings)
+                == [.track, .bearing, .distance, .requiredGroundSpeed, .currentGroundSpeed])
+    }
+
+    @Test("Cases without an instrument card are dropped even when enabled")
+    func unsupportedCasesAreDropped() throws {
+        let settings = [
+            setting(.tot),
+            setting(.totDrift),
+            setting(.expectedWindsDirection),
+            setting(.distance),
+            setting(.expectedWindsVelocity),
+        ]
+        #expect(InstrumentLayout.visibleInstruments(from: settings) == [.distance])
+    }
+
+    @Test("No settings means no instruments")
+    func emptySettingsShowNothing() throws {
+        #expect(InstrumentLayout.visibleInstruments(from: []) == [])
+        let allOff = InstrumentLayout.supported.map { setting($0, enabled: false) }
+        #expect(InstrumentLayout.visibleInstruments(from: allOff) == [])
+    }
+
+    @Test("Defaults show all five cards in the shipped order")
+    func defaultSettingsShowAllSupported() throws {
+        #expect(InstrumentLayout.visibleInstruments(from: Settings.empty().instrumentSettings)
+                == [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track])
+    }
+
+    @Test("Rows are chunked three then the remainder, in order")
+    func rowsChunkThreeThenRemainder() throws {
+        let five: [InFlightInfo] = [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track]
+        #expect(InstrumentLayout.rows(for: five) == [[.currentGroundSpeed, .requiredGroundSpeed, .distance], [.bearing, .track]])
+
+        let four: [InFlightInfo] = [.track, .bearing, .distance, .currentGroundSpeed]
+        #expect(InstrumentLayout.rows(for: four) == [[.track, .bearing, .distance], [.currentGroundSpeed]])
+
+        let three: [InFlightInfo] = [.distance, .bearing, .track]
+        #expect(InstrumentLayout.rows(for: three) == [[.distance, .bearing, .track]])
+
+        let two: [InFlightInfo] = [.bearing, .track]
+        #expect(InstrumentLayout.rows(for: two) == [[.bearing, .track]])
+
+        #expect(InstrumentLayout.rows(for: []).isEmpty)
+    }
+}

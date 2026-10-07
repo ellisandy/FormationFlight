@@ -84,6 +84,34 @@ private struct InstrumentCard: View {
     }
 }
 
+// MARK: - Instrument layout (B-12)
+
+/// Pure mapping from the saved instrument settings to the cards the Instruments section shows.
+/// Kept free of SwiftUI so it can be unit-tested directly.
+enum InstrumentLayout {
+    /// The `InFlightInfo` cases that have an instrument card. ToT and drift live in the timing
+    /// section, and the wind cases no longer correspond to any data the app computes.
+    /// Computed rather than stored: `InFlightInfo` is a public enum without an explicit
+    /// `Sendable` conformance, so a stored static array is rejected under strict concurrency.
+    static var supported: [InFlightInfo] {
+        [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track]
+    }
+
+    /// Enabled, supported instruments in the order the pilot saved them.
+    static func visibleInstruments(from settings: [InstrumentSetting]) -> [InFlightInfo] {
+        // Placeholder: the fixed card order the view has always shown. Replaced by the
+        // settings-driven mapping in the B-12 fix.
+        supported
+    }
+
+    /// Splits the visible list into display rows: three cards on the first row, the rest on
+    /// the second, preserving order.
+    static func rows(for instruments: [InFlightInfo]) -> [[InFlightInfo]] {
+        // Placeholder: single row. Replaced by the chunked layout in the B-12 fix.
+        instruments.isEmpty ? [] : [instruments]
+    }
+}
+
 // MARK: - Private Subviews
 
 private struct TimingSection: View {
