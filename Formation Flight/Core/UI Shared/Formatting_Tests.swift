@@ -32,7 +32,27 @@ final class FormattingTests {
         #expect(Formatting.durationHMS(61.2) == "00:01:01")
         #expect(Formatting.durationHMS(nil) == "--:--:--")
     }
-    
+
+    /// B-01: negative durations must render as a leading `-` followed by the
+    /// zero-padded magnitude, not as per-component negative numbers (`00:-1:-5`).
+    /// The sign follows the sign of the input, so a sub-second negative value
+    /// such as `-0.5` renders as `-00:00:00` (magnitude truncates to zero).
+    @Test
+    func test_durationHMS_negativeValues() {
+        #expect(Formatting.durationHMS(-65) == "-00:01:05")
+        #expect(Formatting.durationHMS(-3661) == "-01:01:01")
+        #expect(Formatting.durationHMS(-0.5) == "-00:00:00")
+    }
+
+    /// B-01: non-finite input must not trap in `Int(_:)`; it should fall back to
+    /// the same placeholder used for `nil`.
+    @Test
+    func test_durationHMS_nonFinite() {
+        #expect(Formatting.durationHMS(.nan) == "--:--:--")
+        #expect(Formatting.durationHMS(.infinity) == "--:--:--")
+        #expect(Formatting.durationHMS(-.infinity) == "--:--:--")
+    }
+
     @Test
     func test_angle() {
         #expect(Formatting.angle(degrees: 12.6) == "13°")
