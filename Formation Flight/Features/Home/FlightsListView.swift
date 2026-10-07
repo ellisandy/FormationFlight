@@ -141,9 +141,16 @@ struct FlightsListView: View {
         }
         .alert(
             "Validation",
-            isPresented: .constant(viewModel.validationMessage != nil)
+            isPresented: Binding(
+                get: { viewModel.validationMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.validationMessage = nil
+                    }
+                }
+            )
         ) {
-            Button("OK") { viewModel.validationMessage = nil }
+            Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.validationMessage ?? "")
         }
