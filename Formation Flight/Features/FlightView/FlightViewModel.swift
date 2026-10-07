@@ -25,7 +25,7 @@ final class FlightViewModel: ObservableObject {
     @Published var eta: Date?
     @Published var delta: TimeInterval?
     @Published var tot: Date?
-    @Published var statusColor: Status = .good
+    @Published var statusColor: Status = .unknown
     
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
@@ -51,6 +51,10 @@ final class FlightViewModel: ObservableObject {
     
     // MARK: - Private
     private let timerScheduler: TimerScheduling
+    /// Source of the current wall-clock time. Defaults to `Date()`; tests inject a
+    /// fixed clock so ETA/delta arithmetic is exact and status boundaries can be
+    /// asserted without tolerances (B-29).
+    private let now: () -> Date
     /// Marked `nonisolated(unsafe)` solely so `deinit` (which is nonisolated under
     /// Swift 6) can cancel a still-live timer as a safety net. All other access is
     /// from MainActor-isolated methods, and the view's `.onDisappear` -> `stop()`
@@ -61,11 +65,13 @@ final class FlightViewModel: ObservableObject {
     init(flight: Flight,
          settings: Settings,
          locationProvider: LocationProviding = LocationProvider.shared,
-         timerScheduler: TimerScheduling = DefaultTimerScheduler()) {
+         timerScheduler: TimerScheduling = DefaultTimerScheduler(),
+         now: @escaping () -> Date = { Date() }) {
         self.settings = settings
         self.locationProvider = locationProvider
         self.timerScheduler = timerScheduler
-        
+        self.now = now
+
         // Derived Data
         self.missionName = flight.missionName
         self.target = CLLocationCoordinate2D(latitude: flight.target?.latitude ?? 0.0, longitude: flight.target?.longitude ?? 0.0)
@@ -83,11 +89,13 @@ final class FlightViewModel: ObservableObject {
          hackTime: TimeInterval? = nil,
          settings: Settings = Settings.empty(),
          locationProvider: LocationProviding = LocationProvider.shared,
-         timerScheduler: TimerScheduling = DefaultTimerScheduler()) {
+         timerScheduler: TimerScheduling = DefaultTimerScheduler(),
+         now: @escaping () -> Date = { Date() }) {
         self.settings = settings
         self.locationProvider = locationProvider
         self.timerScheduler = timerScheduler
-        
+        self.now = now
+
         self.missionName = missionName
         self.target = target
         self.missionType = missionType
@@ -120,7 +128,7 @@ final class FlightViewModel: ObservableObject {
             self?.onLocationUpdate()
         }
         locationProvider.startMonitoring()
-        currentTime = Date()
+        currentTime = now()
         timerToken = timerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
             self?.updateTimings()
         }
@@ -166,7 +174,7 @@ final class FlightViewModel: ObservableObject {
     
     // MARK: - Update Pipelines
     private func updateTimings() {
-        self.currentTime = Date()
+        self.currentTime = now()
 
         // Set ETE
         if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
@@ -179,8 +187,8 @@ final class FlightViewModel: ObservableObject {
         
         // Set ETA
         if let ete = self.ete {
-            let now = self.currentTime ?? Date()
-            self.eta = now.addingTimeInterval(ete)
+            let reference = self.currentTime ?? now()
+            self.eta = reference.addingTimeInterval(ete)
         } else {
             self.eta = nil
         }
@@ -194,6 +202,8 @@ final class FlightViewModel: ObservableObject {
         }
         
         // Map absolute delta (seconds) to status using settings tolerances: <= yellow = good, <= red = bad, > red = reallyBad.
+        // With no delta (no fix, no speed, or no ToT) there is nothing to judge, so fall back to .unknown
+        // rather than leaving a stale colour on screen.
         if let _delta = delta {
             let absDelta = abs(_delta)
 
@@ -204,6 +214,8 @@ final class FlightViewModel: ObservableObject {
             } else {
                 statusColor = .reallyBad
             }
+        } else {
+            statusColor = .unknown
         }
     }
     
@@ -224,7 +236,7 @@ final class FlightViewModel: ObservableObject {
         self.distance = _currentLocation.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Bearing to Final
-        AppLogger.viewModel.debug("Calculating bearing to target: \(_currentLocation.coordinate.latitude.description)")
+        AppLogger.viewModel.debug("Calculating bearing from current location to target")
         self.bearing = _currentLocation.getBearing(to: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Historical Track
@@ -234,7 +246,7 @@ final class FlightViewModel: ObservableObject {
         if let _track = self.track, let _bearing = self.bearing, let _tot = self.tot {
             
             if let _distance = self.distance {
-                if let rgs = computeRequiredGroundSpeed(distance: _distance, arrivalTime: _tot, now: .now) {
+                if let rgs = computeRequiredGroundSpeed(distance: _distance, arrivalTime: _tot, now: now()) {
                     // Convert to your preferred display unit (knots)
                     self.requiredGroundSpeed = rgs.converted(to: .knots)
                 } else {
