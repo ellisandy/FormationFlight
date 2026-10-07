@@ -8,15 +8,29 @@ final class MockTimerScheduler: TimerScheduling {
     }
 
     private var callback: (() -> Void)?
-    private let token = Token()
+    /// Token for the most recent `scheduleRepeating` call. A fresh token is issued per
+    /// call so that one scheduler can be shared across several view models: cancelling
+    /// (or deallocating) an earlier VM must not silence the timer for a later one.
+    private var currentToken: Token?
+
+    /// Number of times `scheduleRepeating` has been called.
+    private(set) var scheduleCallCount = 0
+
+    /// Whether the token from the most recent `scheduleRepeating` call has been cancelled.
+    /// `false` if nothing has been scheduled yet.
+    var isCancelled: Bool { currentToken?.isCancelled ?? false }
 
     func scheduleRepeating(interval: TimeInterval, onFire: @escaping () -> Void) -> AnyCancellableLike {
+        scheduleCallCount += 1
+        let token = Token()
+        self.currentToken = token
         self.callback = onFire
         return token
     }
 
+    /// Invokes the most recently scheduled callback, unless its token was cancelled.
     func fire() {
-        guard token.isCancelled == false else { return }
+        guard let currentToken, currentToken.isCancelled == false else { return }
         callback?()
     }
 }

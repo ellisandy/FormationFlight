@@ -145,8 +145,12 @@ struct FlightView: View {
     @State private var showEndFlightConfirm = false
     @Environment(\.dismiss) private var dismiss
     
-    init(viewModel: FlightViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModel)
+    /// Takes the view model as an autoclosure so construction is deferred into
+    /// `StateObject(wrappedValue:)`, which SwiftUI evaluates exactly once for the
+    /// lifetime of the view. Without this, every re-evaluation of the presenting
+    /// `fullScreenCover` closure would build a throwaway `FlightViewModel`.
+    init(viewModel: @autoclosure @escaping () -> FlightViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel())
     }
     var body: some View {
         ZStack {
@@ -308,11 +312,17 @@ struct FlightView: View {
         // timing and instrument readouts visible without touching the device, so
         // the system idle timer must not dim or lock the display while this view
         // is on screen. Re-enabled on disappear so the rest of the app behaves normally.
+        //
+        // The view model's live updates (location delegate, GPS, 1 Hz timer) are
+        // bracketed by the same appear/disappear pair so End Flight actually stops
+        // tracking and releases the view model.
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
+            viewModel.start()
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
+            viewModel.stop()
         }
     }
 }

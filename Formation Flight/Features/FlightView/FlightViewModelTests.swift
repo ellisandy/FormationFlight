@@ -10,19 +10,22 @@ final class MockLocationProvider: LocationProviding {
     var altitude: Measurement<UnitLength> = Measurement(value: 0, unit: .meters)
     
     var computedSpeedAndCourse: Bool = false
-    
+
+    private(set) var startMonitoringCallCount = 0
+    private(set) var stopMonitoringCallCount = 0
+
     func stopMonitoring() {
-        // no-op for tests
+        stopMonitoringCallCount += 1
     }
-    
+
     var updateDelegate: (() -> Void)?
     var speed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .metersPerSecond)
     var currentLocation: CLLocation?
     var course: Measurement<UnitAngle> = Measurement(value: 0, unit: .degrees)
 
     func startMonitoring() {
-        // no-op for tests
-    } 
+        startMonitoringCallCount += 1
+    }
     
     /// Convenience to set location-related fields and optionally notify the delegate.
     func setLocation(location: CLLocation?,
@@ -67,7 +70,11 @@ struct FlightViewModelTests {
                         timerScheduler: any TimerScheduling = MockTimerScheduler(),
                         locationProvider: LocationProviding? = nil) -> FlightViewModel {
         let lp = locationProvider ?? MockLocationProvider()
-        return FlightViewModel(missionName: "TEST", target: target, missionType: missionType, missionDate: missionDate, hackTime: hackTime, settings: settings, locationProvider: lp, timerScheduler: timerScheduler)
+        let vm = FlightViewModel(missionName: "TEST", target: target, missionType: missionType, missionDate: missionDate, hackTime: hackTime, settings: settings, locationProvider: lp, timerScheduler: timerScheduler)
+        // Lifecycle (B-03): side effects live in start(), not init. Tests built on
+        // this helper expect a running VM (delegate wired, timer scheduled).
+        vm.start()
+        return vm
     }
 
     // MARK: - UI Intents
@@ -410,6 +417,109 @@ struct FlightViewModelTests {
         #expect(vm.currentGroundSpeed != nil, "Invoking updateDelegate should update instruments")
         #expect(vm.distance != nil)
         #expect(vm.bearing != nil)
+    }
+
+    // MARK: - Lifecycle (B-03)
+
+    /// Builds a VM directly (no `start()`), so tests can observe init in isolation.
+    private func makeUnstartedVM(provider: MockLocationProvider,
+                                 timer: MockTimerScheduler,
+                                 target: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)) -> FlightViewModel {
+        FlightViewModel(missionName: "LIFECYCLE",
+                        target: target,
+                        missionType: .tot,
+                        missionDate: Date().addingTimeInterval(60),
+                        settings: makeSettings(),
+                        locationProvider: provider,
+                        timerScheduler: timer)
+    }
+
+    @Test("init has no side effects")
+    func initHasNoSideEffects() async throws {
+        let provider = MockLocationProvider()
+        let timer = MockTimerScheduler()
+
+        let vm = makeUnstartedVM(provider: provider, timer: timer)
+        _ = vm
+
+        #expect(provider.updateDelegate == nil, "init must not install itself as the provider delegate")
+        #expect(provider.startMonitoringCallCount == 0, "init must not start GPS monitoring")
+        #expect(timer.scheduleCallCount == 0, "init must not schedule the 1 Hz timer")
+    }
+
+    @Test("second VM does not hijack the provider delegate before start")
+    func secondVMDoesNotHijackDelegate() async throws {
+        let provider = MockLocationProvider()
+        let target = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+
+        let vmA = makeUnstartedVM(provider: provider, timer: MockTimerScheduler(), target: target)
+        vmA.start()
+
+        // A throwaway instance, as happens when the fullScreenCover closure re-evaluates.
+        let vmB = makeUnstartedVM(provider: provider, timer: MockTimerScheduler(), target: target)
+
+        provider.setLocation(location: locationOffsetFromTarget(target, metersNorth: -500),
+                             speed: Measurement(value: 10, unit: .metersPerSecond),
+                             course: Measurement(value: 0, unit: .degrees),
+                             notify: false)
+        provider.updateDelegate?()
+
+        #expect(vmA.distance != nil, "the started VM must still receive location updates")
+        #expect(vmB.distance == nil, "an unstarted VM must not receive location updates")
+    }
+
+    @Test("stop tears down timer, delegate, and monitoring")
+    func stopTearsDown() async throws {
+        let provider = MockLocationProvider()
+        let timer = MockTimerScheduler()
+        let vm = makeUnstartedVM(provider: provider, timer: timer)
+
+        vm.start()
+        vm.stop()
+
+        #expect(timer.isCancelled, "stop must cancel the timer token")
+        #expect(provider.updateDelegate == nil, "stop must clear the provider delegate")
+        #expect(provider.stopMonitoringCallCount == 1, "stop must stop GPS monitoring exactly once")
+
+        // A timer tick after stop must not drive the clock.
+        let frozen = vm.currentTime
+        timer.fire()
+        #expect(vm.currentTime == frozen, "timer must be inert after stop")
+    }
+
+    @Test("VM deallocates after stop")
+    func viewModelDeallocatesAfterStop() async throws {
+        let provider = MockLocationProvider()
+        let timer = MockTimerScheduler()
+
+        func makeStartStopAndRelease() -> FlightViewModel? {
+            weak var weakVM: FlightViewModel?
+            autoreleasepool {
+                let vm = makeUnstartedVM(provider: provider, timer: timer)
+                vm.start()
+                vm.stop()
+                weakVM = vm
+            }
+            return weakVM
+        }
+
+        let survivor = makeStartStopAndRelease()
+        #expect(survivor == nil, "nothing may retain the VM once it has been stopped and released")
+    }
+
+    @Test("start is idempotent")
+    func startIsIdempotent() async throws {
+        let provider = MockLocationProvider()
+        let timer = MockTimerScheduler()
+        let vm = makeUnstartedVM(provider: provider, timer: timer)
+
+        vm.start()
+        vm.start()
+
+        #expect(timer.scheduleCallCount == 1, "a second start must not schedule a second timer")
+        #expect(provider.startMonitoringCallCount == 1, "a second start must not restart monitoring")
+        #expect(provider.updateDelegate != nil)
+        #expect(vm.currentTime != nil, "start must seed the clock so the UI shows a time before the first tick")
     }
 }
 
