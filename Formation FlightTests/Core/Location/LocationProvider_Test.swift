@@ -29,6 +29,13 @@ class MockCLLocationManager: CLLocationManager {
         authorizationStatusOverride ?? .notDetermined
     }
 
+    /// Set before `simulateAuthorization` to model a Precise Location: Off user.
+    var accuracyAuthorizationOverride: CLAccuracyAuthorization = .fullAccuracy
+
+    override var accuracyAuthorization: CLAccuracyAuthorization {
+        accuracyAuthorizationOverride
+    }
+
     func simulateAuthorization(_ status: CLAuthorizationStatus) {
         authorizationStatusOverride = status
         testDelegate?.locationManagerDidChangeAuthorization?(self)
@@ -99,7 +106,10 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(provider.speed.value, -1)
         XCTAssertEqual(provider.altitude.value, -1)
         XCTAssertEqual(provider.course.value, -1)
-        XCTAssertNil(provider.authroizationStatus)
+        XCTAssertEqual(provider.authorizationStatus, .notDetermined)
+        XCTAssertEqual(provider.accuracyAuthorization, .fullAccuracy)
+        XCTAssertFalse(provider.isLocationDenied)
+        XCTAssertNil(provider.lastFixTimestamp)
         XCTAssertNil(provider.currentLocation)
         XCTAssertFalse(provider.computedSpeedAndCourse)
         // Construction alone must not start the location service.
@@ -111,12 +121,67 @@ final class LocationProvider_Test: XCTestCase {
         let (provider, mockManager) = makeProvider()
 
         mockManager.simulateAuthorization(.notDetermined)
-        XCTAssertNil(provider.authroizationStatus)
+        XCTAssertEqual(provider.authorizationStatus, .notDetermined)
         XCTAssertTrue(mockManager.didRequestWhenInUseAuthorization)
 
         mockManager.simulateAuthorization(.authorizedWhenInUse)
-        XCTAssertEqual(provider.authroizationStatus, .authorizedWhenInUse)
+        XCTAssertEqual(provider.authorizationStatus, .authorizedWhenInUse)
+        XCTAssertFalse(provider.isLocationDenied)
         XCTAssertTrue(mockManager.didRequestLocation)
+    }
+
+    // MARK: - Authorization state (B-16)
+
+    /// Every status is published, not just `.authorizedWhenInUse`; a denied user must be
+    /// visible to the UI so it can offer a route to Settings.
+    func testAuthorizationDeniedIsPublishedAndFlaggedAsDenied() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateAuthorization(.denied)
+
+        XCTAssertEqual(provider.authorizationStatus, .denied)
+        XCTAssertTrue(provider.isLocationDenied)
+        XCTAssertFalse(mockManager.didRequestLocation, "No fix is requested when denied")
+    }
+
+    func testAuthorizationRestrictedIsFlaggedAsDenied() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateAuthorization(.restricted)
+
+        XCTAssertEqual(provider.authorizationStatus, .restricted)
+        XCTAssertTrue(provider.isLocationDenied)
+    }
+
+    func testAuthorizationAlwaysIsPublishedAndRequestsLocation() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateAuthorization(.authorizedAlways)
+
+        XCTAssertEqual(provider.authorizationStatus, .authorizedAlways)
+        XCTAssertFalse(provider.isLocationDenied)
+        XCTAssertTrue(mockManager.didRequestLocation)
+    }
+
+    /// Precise Location: Off is a distinct state from denied; the provider publishes it so the
+    /// UI can warn that a reduced-accuracy fix is useless for formation timing.
+    func testReducedAccuracyAuthorizationIsPublished() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.accuracyAuthorizationOverride = .reducedAccuracy
+        mockManager.simulateAuthorization(.authorizedWhenInUse)
+
+        XCTAssertEqual(provider.accuracyAuthorization, .reducedAccuracy)
+        XCTAssertFalse(provider.isLocationDenied)
+    }
+
+    func testRequestWhenInUseAuthorizationForwardsToManager() {
+        let (provider, mockManager) = makeProvider()
+        XCTAssertFalse(mockManager.didRequestWhenInUseAuthorization)
+
+        provider.requestWhenInUseAuthorization()
+
+        XCTAssertTrue(mockManager.didRequestWhenInUseAuthorization)
     }
 
     func testStartAndStopMonitoring() {
@@ -152,6 +217,24 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(provider.altitude.value, 123)
         XCTAssertEqual(provider.course.value, 45)
         XCTAssertEqual(updateCount, 1)
+    }
+
+    // MARK: - Fix freshness
+
+    /// `lastFixTimestamp` is the newest fix's own Core Location `timestamp`, not the time the
+    /// batch was delivered, so consumers can judge how stale the published readings are.
+    func testLastFixTimestampIsNewestFixTimestamp() {
+        let (provider, mockManager) = makeProvider()
+        XCTAssertNil(provider.lastFixTimestamp, "No fix yet means no timestamp")
+
+        let measuredAt = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        let older = CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 0, speed: 10,
+                                    timestamp: measuredAt.addingTimeInterval(-1))
+        let newest = CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 0, speed: 10,
+                                     timestamp: measuredAt)
+        mockManager.simulateLocations([older, newest])
+
+        XCTAssertEqual(provider.lastFixTimestamp, newest.timestamp)
     }
 
     // MARK: - Altitude validity (B-39)
@@ -198,6 +281,108 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(provider.altitude.value, 300, "Altitude must not change when verticalAccuracy < 0")
     }
 
+    // MARK: - Manual speed/course estimate (B-22)
+
+    /// Two fixes in one batch, both without a Core Location speed, 10 s and 200 m apart due
+    /// north. The estimate must use each fix's own `timestamp` (dt = 10 s) rather than the
+    /// receipt time, which is identical for every fix in a batch and makes dt = 0.
+    func testManualEstimateUsesFixTimestampsForBatchedLocations() {
+        let (provider, mockManager) = makeProvider()
+
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        let first = CLLocation.make(
+            latitude: 0, longitude: 0,
+            altitude: 100,
+            course: -1, speed: -1,
+            timestamp: start
+        )
+        let second = CLLocation.make(
+            latitude: 200 / CLLocation.metresPerDegreeLatitude, longitude: 0,
+            altitude: 100,
+            course: -1, speed: -1,
+            timestamp: start.addingTimeInterval(10)
+        )
+        mockManager.simulateLocations([first, second])
+
+        XCTAssertEqual(provider.speed.value, 20, accuracy: 0.5, "200 m in 10 s is 20 m/s")
+        XCTAssertEqual(provider.course.value, 0, accuracy: 1, "Due north along a meridian")
+        XCTAssertTrue(provider.computedSpeedAndCourse)
+    }
+
+    // MARK: - Speed/course validity and clearing (B-07)
+
+    /// A speed of exactly 0 is a valid Core Location value (the aircraft has stopped) and must
+    /// replace the previous reading rather than being treated like the -1 sentinel.
+    func testDidUpdateLocationsAcceptsSpeedOfZero() {
+        let (provider, mockManager) = makeProvider()
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 20, timestamp: start)
+        ])
+        XCTAssertEqual(provider.speed.value, 20)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 0,
+                            timestamp: start.addingTimeInterval(1))
+        ])
+        XCTAssertEqual(provider.speed.value, 0, "A stopped aircraft must read 0, not its last speed")
+        XCTAssertFalse(provider.computedSpeedAndCourse)
+    }
+
+    /// Due north is course 0, which is valid; only negative values are the sentinel.
+    func testDidUpdateLocationsAcceptsCourseOfZero() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 0, speed: 20)
+        ])
+
+        XCTAssertEqual(provider.course.value, 0, "Due north must be published, not dropped as invalid")
+    }
+
+    /// When Core Location stops reporting speed and the buffer cannot supply an estimate
+    /// (the only other fix is beyond the segment window), the stale value must be cleared to
+    /// the -1 sentinel so the instruments blank instead of showing the last speed forever.
+    func testDidUpdateLocationsResetsSpeedToSentinelWhenInvalidAndNoEstimateAvailable() {
+        let (provider, mockManager) = makeProvider()
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 20, timestamp: start)
+        ])
+        XCTAssertEqual(provider.speed.value, 20)
+
+        // Same position 60 s later: the segment is outside the estimate window, so there is
+        // no usable history.
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: -1,
+                            timestamp: start.addingTimeInterval(60))
+        ])
+
+        XCTAssertEqual(provider.speed.value, -1, "Stale speed must be cleared when no estimate is possible")
+        XCTAssertFalse(provider.computedSpeedAndCourse)
+    }
+
+    /// Same rule for course: an invalid course with no usable estimate clears the old value.
+    func testDidUpdateLocationsResetsCourseToSentinelWhenInvalidAndNoEstimateAvailable() {
+        let (provider, mockManager) = makeProvider()
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 20, timestamp: start)
+        ])
+        XCTAssertEqual(provider.course.value, 90)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: -1, speed: 20,
+                            timestamp: start.addingTimeInterval(60))
+        ])
+
+        XCTAssertEqual(provider.course.value, -1, "Stale course must be cleared when no estimate is possible")
+        XCTAssertFalse(provider.computedSpeedAndCourse)
+    }
+
     func testDidFailWithErrorLeavesStateUntouchedAndDoesNotNotify() {
         let (provider, mockManager) = makeProvider()
 
@@ -227,13 +412,19 @@ private extension CLLocation {
                      horizontalAccuracy: CLLocationAccuracy = 5,
                      verticalAccuracy: CLLocationAccuracy = 5,
                      course: CLLocationDirection,
-                     speed: CLLocationSpeed) -> CLLocation {
+                     speed: CLLocationSpeed,
+                     timestamp: Date = Date()) -> CLLocation {
         CLLocation(coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
                    altitude: altitude,
                    horizontalAccuracy: horizontalAccuracy,
                    verticalAccuracy: verticalAccuracy,
                    course: course,
                    speed: speed,
-                   timestamp: Date())
+                   timestamp: timestamp)
     }
+
+    /// One degree of latitude along a meridian, in metres, for the spherical Earth radius
+    /// (6 371 000 m) that `LocationProvider`'s haversine uses. Lets tests express a
+    /// north-south displacement in metres and get the matching speed back exactly.
+    static let metresPerDegreeLatitude = 6_371_000.0 * .pi / 180
 }
