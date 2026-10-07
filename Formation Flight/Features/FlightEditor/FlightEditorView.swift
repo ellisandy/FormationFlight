@@ -160,13 +160,11 @@ struct FlightEditorView: View {
             viewModel.dismissFlightView()
         },
                          content: {
-            //            onSave(viewModel)
-            if let _target = viewModel.selectedTargetLocation,
-               let _missionType: MissionType = viewModel.useTOT ? .tot : .hackTime
-            {
+            let missionType: MissionType = viewModel.useTOT ? .tot : .hackTime
+            if let target = viewModel.selectedTargetLocation {
                 FlightView(viewModel: FlightViewModel(missionName: viewModel.missionName,
-                                                      target: _target,
-                                                      missionType: _missionType,
+                                                      target: target,
+                                                      missionType: missionType,
                                                       missionDate: viewModel.timeEntry,
                                                       hackTime: Double(viewModel.hackDurationSeconds),
                                                       settings: Settings.load(from: UserDefaults.standard)
