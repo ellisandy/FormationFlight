@@ -32,4 +32,26 @@ struct DoubleExtensionsTests {
         let expected = angle * .pi / 180.0
         assertAlmostEqual(angle.degreesToRadians, expected)
     }
+
+    // MARK: - radiansToDegrees (B-36)
+
+    @Test("Convert standard angles from radians to degrees")
+    func testRadiansToDegreesStandardAngles() {
+        assertAlmostEqual(0.0.radiansToDegrees, 0.0)
+        assertAlmostEqual(Double.pi.radiansToDegrees, 180.0)
+        assertAlmostEqual((Double.pi / 2).radiansToDegrees, 90.0)
+        assertAlmostEqual((3 * Double.pi / 2).radiansToDegrees, 270.0)
+        assertAlmostEqual((2 * Double.pi).radiansToDegrees, 360.0)
+    }
+
+    @Test("Convert negative radians to degrees")
+    func testRadiansToDegreesNegativeAngles() {
+        assertAlmostEqual((-(Double.pi / 4)).radiansToDegrees, -45.0)
+        assertAlmostEqual((-(Double.pi / 2)).radiansToDegrees, -90.0)
+    }
+
+    @Test("degreesToRadians and radiansToDegrees round-trip", arguments: [0.0, 33.3, 90.0, 123.456, 270.0, 359.999, -17.5])
+    func testDegreesRadiansRoundTrip(degrees: Double) {
+        assertAlmostEqual(degrees.degreesToRadians.radiansToDegrees, degrees)
+    }
 }

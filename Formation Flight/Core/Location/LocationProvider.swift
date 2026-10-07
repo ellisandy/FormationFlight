@@ -8,6 +8,10 @@
 import SwiftUI
 import CoreLocation
 
+/// Every consumer (`FlightViewModel`, `FlightsListViewModel`) is MainActor-isolated and the
+/// `updateDelegate` callback drives UI state, so the protocol itself is MainActor. Conforming
+/// mocks in the test target inherit that isolation.
+@MainActor
 public protocol LocationProviding: AnyObject {
     // State
     var updateDelegate: (() -> Void)? { get set }
@@ -28,9 +32,19 @@ private struct TimedLocation {
     let timestamp: Date
 }
 
+/// MainActor-isolated location source (B-27).
+///
+/// `CLLocationManagerDelegate` is a nonisolated Objective-C protocol, so the conformance is
+/// declared `@preconcurrency`. That lets the delegate methods below stay MainActor-isolated
+/// (they mutate observed state) while satisfying the protocol; Swift inserts a runtime
+/// isolation check in each Objective-C thunk instead of a compile-time error. The check holds
+/// because Core Location delivers delegate callbacks on the run loop of the thread that
+/// created the `CLLocationManager`, and every manager handed to this class is created on the
+/// main thread (`shared`, SwiftUI view models, and the unit tests).
 @Observable
-final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObject, LocationProviding {
-    @MainActor static let shared = LocationProvider()
+@MainActor
+final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegate, LocationProviding {
+    static let shared = LocationProvider()
     var updateDelegate: (() -> Void)?
     var authroizationStatus: CLAuthorizationStatus?
     var speed: Measurement<UnitSpeed> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
@@ -38,13 +52,14 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
     var course: Measurement<UnitAngle> = Measurement(value: -1.0, unit: UnitAngle.degrees)
     var currentLocation: CLLocation?
     var computedSpeedAndCourse: Bool = false
-    
+
     private var previousLocations: [TimedLocation] = []
-    private var locationManager: CLLocationManager = CLLocationManager()
+    /// Assigned once in `init`; no second manager is allocated when one is injected (T-07).
+    private let locationManager: CLLocationManager
 
     init(clManager: CLLocationManager = CLLocationManager()) {
-        super.init()
         self.locationManager = clManager
+        super.init()
         self.locationManager.delegate = self
     }
     
@@ -105,7 +120,9 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
                 speed = Measurement(value: _lastLocation.speed, unit: UnitSpeed.metersPerSecond)
             }
             
-            if _lastLocation.altitude > 0 {
+            // Core Location reports "no altitude" with a negative verticalAccuracy; the
+            // altitude value itself may legitimately be negative (below sea level).
+            if _lastLocation.verticalAccuracy >= 0 {
                 altitude = Measurement(value: _lastLocation.altitude, unit: UnitLength.meters)
             }
             
@@ -159,21 +176,24 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
             
             let dMeters = haversineDistanceMeters(from: a.location.coordinate, to: b.location.coordinate)
             let segSpeed = dMeters / dt // m/s
-            
-            let bearingDeg = initialBearingDegrees(from: a.location.coordinate, to: b.location.coordinate)
-            let bearingRad = bearingDeg * .pi / 180
-            
+
             speedSumMps += segSpeed
-            sumSin += sin(bearingRad)
-            sumCos += cos(bearingRad)
             validSegmentCount += 1
+
+            // A stationary segment has no defined bearing; it still counts toward the speed
+            // average but contributes nothing to the circular mean of the course.
+            if let bearing = a.location.coordinate.initialBearing(to: b.location.coordinate) {
+                let bearingRad = bearing.value.degreesToRadians
+                sumSin += sin(bearingRad)
+                sumCos += cos(bearingRad)
+            }
         }
-        
+
         guard validSegmentCount > 0 else { return nil }
-        
+
         let avgSpeedMps = speedSumMps / Double(validSegmentCount)
         let avgBearingRad = atan2(sumSin / Double(validSegmentCount), sumCos / Double(validSegmentCount))
-        var avgBearingDeg = avgBearingRad * 180 / .pi
+        var avgBearingDeg = avgBearingRad.radiansToDegrees
         if avgBearingDeg < 0 { avgBearingDeg += 360 }
         
         let speed = Measurement(value: avgSpeedMps, unit: UnitSpeed.metersPerSecond)
@@ -193,19 +213,5 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
         let a = sin(Δφ/2) * sin(Δφ/2) + cos(φ1) * cos(φ2) * sin(Δλ/2) * sin(Δλ/2)
         let c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return R * c
-    }
-    
-    /// Initial bearing (forward azimuth) from point A to B in degrees [0, 360)
-    private func initialBearingDegrees(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
-        let φ1 = from.latitude * .pi / 180
-        let φ2 = to.latitude * .pi / 180
-        let λ1 = from.longitude * .pi / 180
-        let λ2 = to.longitude * .pi / 180
-        
-        let y = sin(λ2 - λ1) * cos(φ2)
-        let x = cos(φ1) * sin(φ2) - sin(φ1) * cos(φ2) * cos(λ2 - λ1)
-        var θ = atan2(y, x) * 180 / .pi
-        if θ < 0 { θ += 360 }
-        return θ
     }
 }
