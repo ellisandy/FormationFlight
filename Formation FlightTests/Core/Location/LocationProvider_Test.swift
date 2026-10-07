@@ -29,6 +29,13 @@ class MockCLLocationManager: CLLocationManager {
         authorizationStatusOverride ?? .notDetermined
     }
 
+    /// Set before `simulateAuthorization` to model a Precise Location: Off user.
+    var accuracyAuthorizationOverride: CLAccuracyAuthorization = .fullAccuracy
+
+    override var accuracyAuthorization: CLAccuracyAuthorization {
+        accuracyAuthorizationOverride
+    }
+
     func simulateAuthorization(_ status: CLAuthorizationStatus) {
         authorizationStatusOverride = status
         testDelegate?.locationManagerDidChangeAuthorization?(self)
@@ -99,7 +106,10 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(provider.speed.value, -1)
         XCTAssertEqual(provider.altitude.value, -1)
         XCTAssertEqual(provider.course.value, -1)
-        XCTAssertNil(provider.authroizationStatus)
+        XCTAssertEqual(provider.authorizationStatus, .notDetermined)
+        XCTAssertEqual(provider.accuracyAuthorization, .fullAccuracy)
+        XCTAssertFalse(provider.isLocationDenied)
+        XCTAssertNil(provider.lastFixTimestamp)
         XCTAssertNil(provider.currentLocation)
         XCTAssertFalse(provider.computedSpeedAndCourse)
         // Construction alone must not start the location service.
@@ -111,12 +121,67 @@ final class LocationProvider_Test: XCTestCase {
         let (provider, mockManager) = makeProvider()
 
         mockManager.simulateAuthorization(.notDetermined)
-        XCTAssertNil(provider.authroizationStatus)
+        XCTAssertEqual(provider.authorizationStatus, .notDetermined)
         XCTAssertTrue(mockManager.didRequestWhenInUseAuthorization)
 
         mockManager.simulateAuthorization(.authorizedWhenInUse)
-        XCTAssertEqual(provider.authroizationStatus, .authorizedWhenInUse)
+        XCTAssertEqual(provider.authorizationStatus, .authorizedWhenInUse)
+        XCTAssertFalse(provider.isLocationDenied)
         XCTAssertTrue(mockManager.didRequestLocation)
+    }
+
+    // MARK: - Authorization state (B-16)
+
+    /// Every status is published, not just `.authorizedWhenInUse`; a denied user must be
+    /// visible to the UI so it can offer a route to Settings.
+    func testAuthorizationDeniedIsPublishedAndFlaggedAsDenied() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateAuthorization(.denied)
+
+        XCTAssertEqual(provider.authorizationStatus, .denied)
+        XCTAssertTrue(provider.isLocationDenied)
+        XCTAssertFalse(mockManager.didRequestLocation, "No fix is requested when denied")
+    }
+
+    func testAuthorizationRestrictedIsFlaggedAsDenied() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateAuthorization(.restricted)
+
+        XCTAssertEqual(provider.authorizationStatus, .restricted)
+        XCTAssertTrue(provider.isLocationDenied)
+    }
+
+    func testAuthorizationAlwaysIsPublishedAndRequestsLocation() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateAuthorization(.authorizedAlways)
+
+        XCTAssertEqual(provider.authorizationStatus, .authorizedAlways)
+        XCTAssertFalse(provider.isLocationDenied)
+        XCTAssertTrue(mockManager.didRequestLocation)
+    }
+
+    /// Precise Location: Off is a distinct state from denied; the provider publishes it so the
+    /// UI can warn that a reduced-accuracy fix is useless for formation timing.
+    func testReducedAccuracyAuthorizationIsPublished() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.accuracyAuthorizationOverride = .reducedAccuracy
+        mockManager.simulateAuthorization(.authorizedWhenInUse)
+
+        XCTAssertEqual(provider.accuracyAuthorization, .reducedAccuracy)
+        XCTAssertFalse(provider.isLocationDenied)
+    }
+
+    func testRequestWhenInUseAuthorizationForwardsToManager() {
+        let (provider, mockManager) = makeProvider()
+        XCTAssertFalse(mockManager.didRequestWhenInUseAuthorization)
+
+        provider.requestWhenInUseAuthorization()
+
+        XCTAssertTrue(mockManager.didRequestWhenInUseAuthorization)
     }
 
     func testStartAndStopMonitoring() {
