@@ -64,6 +64,9 @@ private struct FlightsEmptyStateView: View {
             .accessibilityIdentifier("emptyStateCreateFirstFlightButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // A plain VStack is not an accessibility element, so its identifier is
+        // invisible to UI tests unless it is made a container.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("emptyStateView")
     }
 }

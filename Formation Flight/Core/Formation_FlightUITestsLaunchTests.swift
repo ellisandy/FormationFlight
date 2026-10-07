@@ -15,6 +15,8 @@ final class Formation_FlightUITestsLaunchTests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // Keep the launch screenshot deterministic across runs.
+        XCUIDevice.shared.orientation = .portrait
     }
 
     func testLaunch() throws {

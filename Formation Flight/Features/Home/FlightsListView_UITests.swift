@@ -25,6 +25,9 @@ final class FlightsListViewUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // The simulator keeps its last orientation between runs; the editor's
+        // Form only fits without scrolling in portrait.
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
 
         // The editor requests location authorization when it appears. On a

@@ -328,6 +328,9 @@ struct FlightView: View {
                 Text("This will stop tracking and close out the current mission.")
             }
         }
+        // A plain ZStack is not an accessibility element, so its identifier is
+        // invisible to UI tests unless it is made a container.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("flightViewRoot")
         // Keep the screen awake for the duration of the flight. Pilots need the
         // timing and instrument readouts visible without touching the device, so

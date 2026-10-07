@@ -16,11 +16,12 @@ final class FlightEditorViewUITests: XCTestCase {
 
     /// Matches the list row container of every flight (`flightRow_<uuid>`).
     private let flightRowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
-    /// Matches the tappable row button of every flight (`flightRowButton_<uuid>`).
-    private let flightRowButtonPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRowButton_")
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // The simulator keeps its last orientation between runs; the editor's
+        // Form only fits without scrolling in portrait.
+        XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
 
         // The editor requests location authorization when it appears. On a
@@ -63,13 +64,18 @@ final class FlightEditorViewUITests: XCTestCase {
         app.descendants(matching: .any).matching(flightRowPredicate)
     }
 
-    /// The row button of the flight named `name`, located by identifier prefix and label.
+    /// The tappable row of the flight named `name`: the `flightRow_` container whose
+    /// own label, or any descendant's label, carries the mission name.
+    ///
+    /// In a SwiftUI `List` the row's `Button` is folded into the cell element, so
+    /// a separate `.button` carrying `flightRowButton_<uuid>` is not reliably
+    /// exposed; matching the row container and tapping its centre hits the button.
     private func flightRowButton(named name: String) -> XCUIElement {
-        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
-            flightRowButtonPredicate,
-            NSPredicate(format: "label == %@", name)
-        ])
-        return app.buttons.matching(predicate).firstMatch
+        // Exact match: "UI F1 Renamed" must not satisfy a lookup for "UI F1".
+        let byLabel = NSPredicate(format: "label == %@", name)
+        let rows = flightRows
+        let direct = rows.matching(byLabel)
+        return direct.count > 0 ? direct.firstMatch : rows.containing(byLabel).firstMatch
     }
 
     /// Waits until `query` matches exactly `count` elements.
@@ -225,8 +231,10 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(confirm.exists, "The confirmation dialog should offer an End Flight button")
         confirm.tap()
 
+        // The editor's Form may still be scrolled to the Go Fly row, which puts the
+        // mission-name cell out of the virtualized list, so check the navigation bar.
         XCTAssertTrue(
-            app.textFields["missionNameField"].waitForExistence(timeout: 5),
+            app.navigationBars["Flight Editor"].waitForExistence(timeout: 5),
             "Confirming End Flight should dismiss FlightView and return to the editor"
         )
         XCTAssertFalse(flightRoot.exists, "flightViewRoot should be gone after ending the flight")
