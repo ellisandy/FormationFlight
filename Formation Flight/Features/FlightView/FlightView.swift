@@ -97,18 +97,25 @@ enum InstrumentLayout {
         [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track]
     }
 
+    /// Cards per row. Five supported instruments fall into rows of three and two, matching
+    /// the layout the view has always used.
+    static let cardsPerRow = 3
+
     /// Enabled, supported instruments in the order the pilot saved them.
     static func visibleInstruments(from settings: [InstrumentSetting]) -> [InFlightInfo] {
-        // Placeholder: the fixed card order the view has always shown. Replaced by the
-        // settings-driven mapping in the B-12 fix.
-        supported
+        let supported = self.supported
+        return settings
+            .filter(\.isEnabled)
+            .map(\.type)
+            .filter { supported.contains($0) }
     }
 
-    /// Splits the visible list into display rows: three cards on the first row, the rest on
-    /// the second, preserving order.
+    /// Splits the visible list into display rows of `cardsPerRow`, preserving order: with
+    /// five cards that is three on the first row and two on the second.
     static func rows(for instruments: [InFlightInfo]) -> [[InFlightInfo]] {
-        // Placeholder: single row. Replaced by the chunked layout in the B-12 fix.
-        instruments.isEmpty ? [] : [instruments]
+        stride(from: 0, to: instruments.count, by: cardsPerRow).map { start in
+            Array(instruments[start..<min(start + cardsPerRow, instruments.count)])
+        }
     }
 }
 
@@ -141,31 +148,52 @@ private struct TimingSection: View {
 }
 
 private struct InstrumentsSection: View {
+    /// Which cards to show, in order (B-12): the enabled entries of
+    /// `settings.instrumentSettings`, mapped through `InstrumentLayout`.
+    let instruments: [InFlightInfo]
     let curGS: String
     let reqGS: String
     let dist: String
     let emphasisColor: Color
-    
+
     // Inputs for bearing/track
     let curBrg: String
     let curTrk: String
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 5) {
-                InstrumentCard(title: "Cur GS", value: curGS, valueColor: emphasisColor, identifier: "instrumentCurGS")
-                InstrumentCard(title: "Req GS", value: reqGS, valueColor: emphasisColor, identifier: "instrumentReqGS")
-                InstrumentCard(title: "Dist", value: dist, identifier: "instrumentDist")
+            // Rows are identified by their first instrument: each `InFlightInfo` appears at
+            // most once in the list, so that is unique per row.
+            ForEach(InstrumentLayout.rows(for: instruments), id: \.first) { row in
+                HStack(spacing: 5) {
+                    ForEach(row, id: \.self) { instrument in
+                        card(for: instrument)
+                    }
+                }
+                .padding(.horizontal, Design.Padding.horizontal)
+                .padding(.vertical, 5)
             }
-            .padding(.horizontal, Design.Padding.horizontal)
-            .padding(.vertical, 5)
+        }
+    }
 
-            HStack(spacing: 5) {
-                InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentBrg")
-                InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentTrk")
-            }
-            .padding(.horizontal, Design.Padding.horizontal)
-            .padding(.vertical, 5)
+    /// The card for one instrument. Identifiers are stable regardless of position so UI
+    /// tests can find a card wherever the pilot has placed it.
+    @ViewBuilder
+    private func card(for instrument: InFlightInfo) -> some View {
+        switch instrument {
+        case .currentGroundSpeed:
+            InstrumentCard(title: "Cur GS", value: curGS, valueColor: emphasisColor, identifier: "instrumentCurGS")
+        case .requiredGroundSpeed:
+            InstrumentCard(title: "Req GS", value: reqGS, valueColor: emphasisColor, identifier: "instrumentReqGS")
+        case .distance:
+            InstrumentCard(title: "Dist", value: dist, identifier: "instrumentDist")
+        case .bearing:
+            InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentBrg")
+        case .track:
+            InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentTrk")
+        case .tot, .totDrift, .expectedWindsDirection, .expectedWindsVelocity:
+            // Filtered out by `InstrumentLayout.visibleInstruments`; nothing to draw.
+            EmptyView()
         }
     }
 }
@@ -248,6 +276,7 @@ struct FlightView: View {
                     }
                     
                     InstrumentsSection(
+                        instruments: InstrumentLayout.visibleInstruments(from: viewModel.settings.instrumentSettings),
                         curGS: speedStr(viewModel.currentGroundSpeed),
                         reqGS: speedStr(viewModel.requiredGroundSpeed),
                         dist: distanceStr(viewModel.distance),
@@ -403,7 +432,7 @@ struct FlightView: View {
         missionName: "Training Hack",
         target: CLLocationCoordinate2D(latitude: 34.2000, longitude: -118.3500),
         missionType: .hackTime,
-        settings: Settings(speedUnit: .mph, distanceUnit: .mi, yellowTolerance: 80, redTolerance: 100, instrumentSettings: [])
+        settings: Settings(speedUnit: .mph, distanceUnit: .mi, yellowTolerance: 80, redTolerance: 100, instrumentSettings: Settings.empty().instrumentSettings)
     )
     vm.currentTime = Date()
     vm.hackTime = 90 // 1m30s
@@ -425,7 +454,7 @@ struct FlightView: View {
         missionName: "Night Sortie",
         target: CLLocationCoordinate2D(latitude: 36.0800, longitude: -115.1522),
         missionType: .tot,
-        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 20, redTolerance: 600, instrumentSettings: [])
+        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 20, redTolerance: 600, instrumentSettings: Settings.empty().instrumentSettings)
     )
     vm.currentTime = Date()
     vm.ete = 600
@@ -446,7 +475,7 @@ struct FlightView: View {
         missionName: "High Winds",
         target: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060),
         missionType: .tot,
-        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 80, redTolerance: 100, instrumentSettings: [])
+        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 80, redTolerance: 100, instrumentSettings: Settings.empty().instrumentSettings)
     )
     vm.currentTime = Date()
     vm.ete = 300
