@@ -97,6 +97,9 @@
     "Formation Flight is a supplemental timing aid. It helps you track time on target, distance, bearing, and required groundspeed using your device's GPS." : {
       "comment" : "Safety disclaimer, paragraph 1: what the app does"
     },
+    "Formation Flight needs your location to show distance, bearing, and groundspeed in flight." : {
+
+    },
     "Go Fly" : {
 
     },
@@ -131,6 +134,9 @@
 
     },
     "Latitude: %@" : {
+
+    },
+    "Location access is off" : {
 
     },
     "Lon: %@" : {
@@ -169,6 +175,9 @@
     "Open settings" : {
 
     },
+    "Open Settings" : {
+
+    },
     "Pick Checkpoint" : {
 
     },
@@ -183,6 +192,9 @@
     },
     "Please enter a valid target location." : {
       "comment" : "Validation message when a flight has no target selected"
+    },
+    "Precise location is off" : {
+
     },
     "Red ±%lld s" : {
 
@@ -248,6 +260,9 @@
 
     },
     "TOT" : {
+
+    },
+    "Turn on Precise Location in Settings for accurate distance and timing." : {
 
     },
     "Units" : {
