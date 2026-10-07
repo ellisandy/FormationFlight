@@ -226,6 +226,80 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertTrue(provider.computedSpeedAndCourse)
     }
 
+    // MARK: - Speed/course validity and clearing (B-07)
+
+    /// A speed of exactly 0 is a valid Core Location value (the aircraft has stopped) and must
+    /// replace the previous reading rather than being treated like the -1 sentinel.
+    func testDidUpdateLocationsAcceptsSpeedOfZero() {
+        let (provider, mockManager) = makeProvider()
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 20, timestamp: start)
+        ])
+        XCTAssertEqual(provider.speed.value, 20)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 0,
+                            timestamp: start.addingTimeInterval(1))
+        ])
+        XCTAssertEqual(provider.speed.value, 0, "A stopped aircraft must read 0, not its last speed")
+        XCTAssertFalse(provider.computedSpeedAndCourse)
+    }
+
+    /// Due north is course 0, which is valid; only negative values are the sentinel.
+    func testDidUpdateLocationsAcceptsCourseOfZero() {
+        let (provider, mockManager) = makeProvider()
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 0, speed: 20)
+        ])
+
+        XCTAssertEqual(provider.course.value, 0, "Due north must be published, not dropped as invalid")
+    }
+
+    /// When Core Location stops reporting speed and the buffer cannot supply an estimate
+    /// (the only other fix is beyond the segment window), the stale value must be cleared to
+    /// the -1 sentinel so the instruments blank instead of showing the last speed forever.
+    func testDidUpdateLocationsResetsSpeedToSentinelWhenInvalidAndNoEstimateAvailable() {
+        let (provider, mockManager) = makeProvider()
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 20, timestamp: start)
+        ])
+        XCTAssertEqual(provider.speed.value, 20)
+
+        // Same position 60 s later: the segment is outside the estimate window, so there is
+        // no usable history.
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: -1,
+                            timestamp: start.addingTimeInterval(60))
+        ])
+
+        XCTAssertEqual(provider.speed.value, -1, "Stale speed must be cleared when no estimate is possible")
+        XCTAssertFalse(provider.computedSpeedAndCourse)
+    }
+
+    /// Same rule for course: an invalid course with no usable estimate clears the old value.
+    func testDidUpdateLocationsResetsCourseToSentinelWhenInvalidAndNoEstimateAvailable() {
+        let (provider, mockManager) = makeProvider()
+        let start = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 90, speed: 20, timestamp: start)
+        ])
+        XCTAssertEqual(provider.course.value, 90)
+
+        mockManager.simulateLocations([
+            CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: -1, speed: 20,
+                            timestamp: start.addingTimeInterval(60))
+        ])
+
+        XCTAssertEqual(provider.course.value, -1, "Stale course must be cleared when no estimate is possible")
+        XCTAssertFalse(provider.computedSpeedAndCourse)
+    }
+
     func testDidFailWithErrorLeavesStateUntouchedAndDoesNotNotify() {
         let (provider, mockManager) = makeProvider()
 
