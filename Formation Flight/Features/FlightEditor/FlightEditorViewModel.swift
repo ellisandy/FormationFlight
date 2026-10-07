@@ -23,7 +23,28 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     
     // MARK: Flight View
     @Published var isFlightViewPresented: Bool = false
-    
+
+    // MARK: Validation
+    /// User-facing message set when `presentFlightView()` is refused because the mission is invalid.
+    @Published var validationMessage: String?
+
+    /// The first failing Go Fly rule as a user-facing message, or `nil` when the mission can be flown.
+    var goFlyValidationMessage: String? {
+        if missionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Please enter a mission name."
+        }
+        if selectedTargetLocation == nil {
+            return "Please enter a valid target location."
+        }
+        if !useTOT && hackDurationSeconds <= 0 {
+            return "Please enter a hack time."
+        }
+        return nil
+    }
+
+    /// `true` when all Go Fly validation rules pass.
+    var canGoFly: Bool { goFlyValidationMessage == nil }
+
     func mapToValues(flight: Flight) {
         if flight.missionType == .tot {
             useTOT = true
@@ -84,7 +105,12 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
         selectedTargetLocation = coordinate
     }
     
-    func presentFlightView() {        
+    func presentFlightView() {
+        if let message = goFlyValidationMessage {
+            validationMessage = message
+            return
+        }
+        validationMessage = nil
         isFlightViewPresented = true
     }
     

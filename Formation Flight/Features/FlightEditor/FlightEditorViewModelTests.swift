@@ -77,6 +77,8 @@ final class FlightEditorViewModelTests {
     @Test
     func testPresentAndDismissFlightViewToggleIsFlightViewPresented() {
         let vm = FlightEditorViewModel()
+        vm.missionName = "Valid Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
         #expect(vm.isFlightViewPresented == false)
 
         vm.presentFlightView()
@@ -84,6 +86,143 @@ final class FlightEditorViewModelTests {
 
         vm.dismissFlightView()
         #expect(vm.isFlightViewPresented == false)
+    }
+
+    // MARK: - Go Fly validation (B-02)
+
+    @Test
+    func testPresentFlightViewWithDefaultState_DoesNotPresentAndSetsValidationMessage() {
+        let vm = FlightEditorViewModel()
+        #expect(vm.canGoFly == false)
+        #expect(vm.goFlyValidationMessage != nil)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        #expect(vm.validationMessage != nil)
+    }
+
+    @Test
+    func testPresentFlightViewWithNameButNoTarget_DoesNotPresentAndMentionsTarget() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Named Mission"
+        #expect(vm.canGoFly == false)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        let message = try #require(vm.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("target"))
+    }
+
+    @Test
+    func testPresentFlightViewWithTargetButEmptyName_DoesNotPresent() throws {
+        let vm = FlightEditorViewModel()
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        #expect(vm.canGoFly == false)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        let message = try #require(vm.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("name"))
+    }
+
+    @Test
+    func testPresentFlightViewWithWhitespaceOnlyName_DoesNotPresent() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "   "
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        #expect(vm.canGoFly == false)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        #expect(vm.validationMessage != nil)
+    }
+
+    @Test
+    func testPresentFlightViewHackMissionWithZeroHackDuration_DoesNotPresent() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Hack Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = false
+        vm.hackDurationSeconds = 0
+        #expect(vm.canGoFly == false)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        let message = try #require(vm.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("hack"))
+    }
+
+    @Test
+    func testPresentFlightViewValidTOTMission_PresentsAndClearsValidationMessage() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "TOT Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = true
+        // A TOT mission with a zero hack duration is still valid; timeEntry is always set.
+        vm.hackDurationSeconds = 0
+        #expect(vm.canGoFly == true)
+        #expect(vm.goFlyValidationMessage == nil)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == true)
+        #expect(vm.validationMessage == nil)
+    }
+
+    @Test
+    func testPresentFlightViewValidHackMission_Presents() {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Hack Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = false
+        vm.hackDurationSeconds = 90
+        #expect(vm.canGoFly == true)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == true)
+        #expect(vm.validationMessage == nil)
+    }
+
+    @Test
+    func testCanGoFlyTracksStateChanges() {
+        let vm = FlightEditorViewModel()
+        #expect(vm.canGoFly == false)
+
+        vm.missionName = "Mission"
+        #expect(vm.canGoFly == false)
+
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 1.0, longitude: 2.0))
+        #expect(vm.canGoFly == true)
+
+        vm.useTOT = false
+        #expect(vm.canGoFly == false)
+
+        vm.hackDurationSeconds = 30
+        #expect(vm.canGoFly == true)
+
+        vm.applyTargetSelection(coordinate: nil)
+        #expect(vm.canGoFly == false)
+    }
+
+    @Test
+    func testValidationFailureDoesNotPresentButLaterValidAttemptDoes() {
+        let vm = FlightEditorViewModel()
+        vm.presentFlightView()
+        #expect(vm.isFlightViewPresented == false)
+        #expect(vm.validationMessage != nil)
+
+        vm.missionName = "Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 1.0, longitude: 2.0))
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == true)
+        #expect(vm.validationMessage == nil)
     }
 
     @Test
