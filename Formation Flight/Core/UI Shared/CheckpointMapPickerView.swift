@@ -2,6 +2,15 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
+/// Parses a typed coordinate component (B-15).
+enum CoordinateParsing {
+    /// Placeholder matching the picker's current behaviour: `Double(_:)` plus a range check.
+    static func parse(_ text: String, range: ClosedRange<Double>) -> Double? {
+        guard let value = Double(text), range.contains(value) else { return nil }
+        return value
+    }
+}
+
 struct CheckpointMapPickerView: View {
     var onSave: (_ coordinate: CLLocationCoordinate2D) -> Void
     @Environment(\.dismiss) private var dismiss
