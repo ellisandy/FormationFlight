@@ -532,4 +532,96 @@ final class FlightEditorViewModelTests {
         #expect(vm.minuteComponent == 4)
         #expect(vm.secondComponent == 5)
     }
+
+    // MARK: - Location access (B-16)
+    //
+    // The editor reads authorization and the current fix from the shared `LocationProviding`
+    // instead of owning a second `CLLocationManager`, and collapses the Core Location status
+    // pair into `LocationAccess` so the view can show a banner for denied / imprecise access.
+
+    private func makeProvider(status: CLAuthorizationStatus,
+                              accuracy: CLAccuracyAuthorization = .fullAccuracy,
+                              location: CLLocation? = nil) -> MockLocationProvider {
+        let provider = MockLocationProvider()
+        provider.authorizationStatus = status
+        provider.accuracyAuthorization = accuracy
+        provider.currentLocation = location
+        return provider
+    }
+
+    @Test
+    func testRequestLocationWhenNotDetermined_AsksProviderOnceAndStaysNotDetermined() {
+        let provider = makeProvider(status: .notDetermined)
+        let vm = FlightEditorViewModel(locationProvider: provider)
+
+        vm.requestLocationIfNeeded()
+
+        #expect(provider.requestWhenInUseAuthorizationCallCount == 1)
+        #expect(vm.locationAccess == .notDetermined)
+        #expect(vm.currentLocation == nil)
+    }
+
+    @Test
+    func testRequestLocationWhenAuthorizedWithPreciseFix_CopiesCoordinateWithoutAsking() throws {
+        let fix = CLLocation(latitude: 51.5, longitude: -0.12)
+        let provider = makeProvider(status: .authorizedWhenInUse, accuracy: .fullAccuracy, location: fix)
+        let vm = FlightEditorViewModel(locationProvider: provider)
+
+        vm.requestLocationIfNeeded()
+
+        #expect(provider.requestWhenInUseAuthorizationCallCount == 0)
+        #expect(vm.locationAccess == .authorized)
+        let coordinate = try #require(vm.currentLocation)
+        #expect(coordinate.latitude == 51.5)
+        #expect(coordinate.longitude == -0.12)
+    }
+
+    @Test
+    func testRequestLocationWhenDenied_ReportsDeniedWithoutAsking() {
+        let provider = makeProvider(status: .denied)
+        let vm = FlightEditorViewModel(locationProvider: provider)
+
+        vm.requestLocationIfNeeded()
+
+        #expect(provider.requestWhenInUseAuthorizationCallCount == 0)
+        #expect(vm.locationAccess == .denied)
+    }
+
+    @Test
+    func testRequestLocationWhenRestricted_ReportsDenied() {
+        let provider = makeProvider(status: .restricted)
+        let vm = FlightEditorViewModel(locationProvider: provider)
+
+        vm.requestLocationIfNeeded()
+
+        #expect(provider.requestWhenInUseAuthorizationCallCount == 0)
+        #expect(vm.locationAccess == .denied)
+    }
+
+    @Test
+    func testRequestLocationWhenAuthorizedButImprecise_ReportsReducedAccuracy() {
+        let provider = makeProvider(status: .authorizedWhenInUse, accuracy: .reducedAccuracy)
+        let vm = FlightEditorViewModel(locationProvider: provider)
+
+        vm.requestLocationIfNeeded()
+
+        #expect(provider.requestWhenInUseAuthorizationCallCount == 0)
+        #expect(vm.locationAccess == .reducedAccuracy)
+    }
+
+    /// The user may flip the switch in Settings and come back; the view calls this when the
+    /// scene becomes active again, so it must pick up the new status without a fresh request.
+    @Test
+    func testRefreshLocationAccessTracksProviderChanges() {
+        let provider = makeProvider(status: .denied)
+        let vm = FlightEditorViewModel(locationProvider: provider)
+        vm.requestLocationIfNeeded()
+        #expect(vm.locationAccess == .denied)
+
+        provider.authorizationStatus = .authorizedWhenInUse
+        vm.refreshLocationAccess()
+
+        #expect(vm.locationAccess == .authorized)
+        #expect(provider.requestWhenInUseAuthorizationCallCount == 0)
+    }
 }
