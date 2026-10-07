@@ -355,8 +355,9 @@ struct FlightViewModelTests {
     @Test("Instrument updates compute required ground speed from distance and time to ToT")
     func instrumentsAndRequiredGroundSpeed() async throws {
         let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
         let target = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
-        let vm = makeVM(settings: makeSettings(), target: target, locationProvider: lp, now: fixedClock)
+        let vm = makeVM(settings: makeSettings(), target: target, timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
 
         vm.tot = Self.fixedNow.addingTimeInterval(60) // 60 seconds to go
 
@@ -366,6 +367,8 @@ struct FlightViewModelTests {
                        course: Measurement(value: 90, unit: .degrees))
 
         vm.onLocationUpdate()
+        // Required GS is a timing readout (B-24): it is refreshed on the 1 Hz tick.
+        mockTimer.fire()
 
         #expect(vm.currentGroundSpeed == lp.speed)
         #expect(vm.track == lp.course)
@@ -384,7 +387,8 @@ struct FlightViewModelTests {
     @Test("Required ground speed is computed when approaching from the east")
     func requiredSpeedComputedApproachingFromEast() async throws {
         let lp = MockLocationProvider()
-        let vm = makeVM(settings: makeSettings(), locationProvider: lp, now: fixedClock)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
         vm.tot = Self.fixedNow.addingTimeInterval(120)
 
         // Aircraft ~0.01 deg east of the target (bearing ~270), tracking west.
@@ -393,6 +397,7 @@ struct FlightViewModelTests {
                        course: Measurement(value: 270, unit: .degrees))
 
         vm.onLocationUpdate()
+        mockTimer.fire()
 
         let bearing = try #require(vm.bearing)
         #expect(abs(bearing.converted(to: .degrees).value - 270) < 0.5)
@@ -405,7 +410,8 @@ struct FlightViewModelTests {
     @Test("Required speed is nil when time remaining <= 0")
     func requiredSpeedNilWhenNoTimeRemaining() async throws {
         let lp = MockLocationProvider()
-        let vm = makeVM(settings: makeSettings(), locationProvider: lp, now: fixedClock)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
         lp.setLocation(location: CLLocation(latitude: vm.target.latitude, longitude: vm.target.longitude - 0.01),
                        speed: Measurement(value: 10, unit: .metersPerSecond),
                        course: Measurement(value: 90, unit: .degrees))
@@ -413,17 +419,49 @@ struct FlightViewModelTests {
         // ToT exactly now: zero time remaining.
         vm.tot = Self.fixedNow
         vm.onLocationUpdate()
+        mockTimer.fire()
         #expect(vm.requiredGroundSpeed == nil)
 
         // ToT already past.
         vm.tot = Self.fixedNow.addingTimeInterval(-1)
         vm.onLocationUpdate()
+        mockTimer.fire()
         #expect(vm.requiredGroundSpeed == nil)
 
         // ToT in the future: computable again.
         vm.tot = Self.fixedNow.addingTimeInterval(1)
         vm.onLocationUpdate()
+        mockTimer.fire()
         #expect(vm.requiredGroundSpeed != nil)
+    }
+
+    @Test("Required ground speed tracks the clock between location callbacks")
+    func requiredSpeedTracksClockWithoutLocationCallback() async throws {
+        let clock = MutableClock(Self.fixedNow)
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, now: { clock.now })
+
+        // 1000 m to run with 100 s to go -> exactly 10 m/s. Set directly so the geodesic
+        // distance does not enter into it; only the time-remaining arithmetic is under test.
+        vm.distance = Measurement(value: 1000, unit: .meters)
+        vm.tot = Self.fixedNow.addingTimeInterval(100)
+        mockTimer.fire()
+
+        let first = try #require(vm.requiredGroundSpeed, "B-24: Req GS must be computed on the tick")
+        #expect(first.converted(to: .metersPerSecond).value == 10)
+
+        // 50 s later with no new fix: half the time left, so twice the speed required. Before
+        // B-24 this value was frozen at whatever the last location callback computed.
+        clock.advance(by: 50)
+        mockTimer.fire()
+
+        let second = try #require(vm.requiredGroundSpeed)
+        #expect(second.converted(to: .metersPerSecond).value == 20)
+
+        // At and past ToT there is no positive speed that gets there in time.
+        clock.advance(by: 50)
+        mockTimer.fire()
+        #expect(vm.requiredGroundSpeed == nil)
     }
 
     // MARK: - .tot mission
