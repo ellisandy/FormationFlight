@@ -210,7 +210,7 @@ struct FlightView: View {
                         time: Formatting.timeHHmmss(viewModel.currentTime),
                         ete: Formatting.durationHMS(viewModel.ete),
                         eta: Formatting.timeHHmmss(viewModel.eta),
-                        delta: Formatting.durationHMS(viewModel.delta),
+                        delta: Formatting.signedDurationHMS(viewModel.delta),
                         tot: Formatting.timeHHmmss(viewModel.tot),
                         emphasisColor: viewModel.statusColor.color
                     )

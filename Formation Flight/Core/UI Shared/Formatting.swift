@@ -56,17 +56,48 @@ public enum Formatting {
     
     /// Formats a duration in seconds as `HH:mm:ss`.
     ///
-    /// - Parameter seconds: The duration in seconds. If `nil`, returns `--:--:--`.
-    /// - Returns: A zero-padded `HH:mm:ss` string.
+    /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
+    ///   returns `--:--:--`.
+    /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude. Negative durations are
+    ///   prefixed with `-` (e.g. `-00:01:05`); non-negative durations carry no sign.
     ///
-    /// Note: This implementation performs simple integer division and modulo operations and
-    /// does not round to the nearest second. Fractional seconds are truncated.
+    /// Note: Fractional seconds are truncated, not rounded. The sign follows the sign of the
+    /// input, so `-0.5` renders as `-00:00:00`.
     public static func durationHMS(_ seconds: TimeInterval?) -> String {
-        guard let seconds else { return "--:--:--".uppercased() }
-        let hours = Int(seconds / 3600)
-        let minutes = Int(seconds) % 3600 / 60
-        let secs = Int(seconds) % 60
-        
+        guard let seconds, let components = hmsComponents(seconds) else {
+            return "--:--:--".uppercased()
+        }
+        let sign = seconds < 0 ? "-" : ""
+        return sign + components
+    }
+
+    /// Formats a duration in seconds as `HH:mm:ss` with an explicit leading sign.
+    ///
+    /// Intended for early/late (Δ) readouts where the direction of the offset matters and
+    /// an unsigned value would be ambiguous.
+    ///
+    /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
+    ///   returns `--:--:--`.
+    /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude prefixed with `+` or `-`
+    ///   (e.g. `+00:00:07`, `-00:01:05`). Zero renders as `+00:00:00`.
+    public static func signedDurationHMS(_ seconds: TimeInterval?) -> String {
+        guard let seconds, let components = hmsComponents(seconds) else {
+            return "--:--:--".uppercased()
+        }
+        let sign = seconds < 0 ? "-" : "+"
+        return sign + components
+    }
+
+    /// Formats the magnitude of `seconds` as zero-padded `HH:mm:ss`, truncating fractional
+    /// seconds. Returns `nil` when the value is non-finite or too large to represent as `Int`.
+    private static func hmsComponents(_ seconds: TimeInterval) -> String? {
+        let magnitude = abs(seconds)
+        guard magnitude.isFinite, magnitude < Double(Int.max) else { return nil }
+        let total = Int(magnitude)
+        let hours = total / 3600
+        let minutes = total % 3600 / 60
+        let secs = total % 60
+
         return String(format: "%02d:%02d:%02d", hours, minutes, secs)
     }
     

@@ -53,6 +53,23 @@ final class FormattingTests {
         #expect(Formatting.durationHMS(-.infinity) == "--:--:--")
     }
 
+    /// B-01: the Δ readout always carries an explicit sign so early vs. late is unambiguous.
+    @Test
+    func test_signedDurationHMS() {
+        #expect(Formatting.signedDurationHMS(7) == "+00:00:07")
+        #expect(Formatting.signedDurationHMS(-65) == "-00:01:05")
+        #expect(Formatting.signedDurationHMS(-3661) == "-01:01:01")
+        #expect(Formatting.signedDurationHMS(0) == "+00:00:00")
+        #expect(Formatting.signedDurationHMS(nil) == "--:--:--")
+    }
+
+    @Test
+    func test_signedDurationHMS_nonFinite() {
+        #expect(Formatting.signedDurationHMS(.nan) == "--:--:--")
+        #expect(Formatting.signedDurationHMS(.infinity) == "--:--:--")
+        #expect(Formatting.signedDurationHMS(-.infinity) == "--:--:--")
+    }
+
     @Test
     func test_angle() {
         #expect(Formatting.angle(degrees: 12.6) == "13°")
