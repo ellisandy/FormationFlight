@@ -265,7 +265,9 @@ final class FlightViewModel: ObservableObject {
                 self.requiredGroundSpeed = nil
             }
         } else {
-            self.currentGroundSpeed = nil
+            // B-08: only the required speed depends on ToT. The current ground speed was
+            // read from the fix above and must stay on screen on a hack mission before
+            // "Hack!" is pressed.
             self.requiredGroundSpeed = nil
         }
     }
