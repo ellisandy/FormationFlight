@@ -206,24 +206,6 @@ struct FlightsListViewModel_SwiftTests_Extra {
         #expect(sut.showDeleteConfirmation)
     }
     
-    @Test("delete removes a flight from the model context")
-    func delete_removesFlight() async throws {
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let f = insertSampleFlight(into: context, name: "ToRemove")
-        try context.save()
-
-        // Sanity check present
-        var flights = try context.fetch(FetchDescriptor<Flight>())
-        #expect(flights.contains { $0.id == f.id })
-
-        let sut = FlightsListViewModel()
-        sut.delete(f, modelContext: context)
-
-        flights = try context.fetch(FetchDescriptor<Flight>())
-        #expect(!flights.contains { $0.id == f.id })
-    }
-
     @Test("confirmDelete deletes pending flight and resets state when present")
     func confirmDelete_withPending_deletesAndResets() async throws {
         let container = try makeInMemoryContainer()

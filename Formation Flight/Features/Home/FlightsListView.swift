@@ -118,10 +118,8 @@ struct FlightsListView: View {
                 }
                 ToolbarItem {
                     Button {
-                        //                        withAnimation {
                         uiLog.debug("Presenting add flight")
                         viewModel.presentAddFlight()
-                        //                        }
                     } label: {
                         Label("Add Item", systemImage: "plus")
                     }
@@ -175,7 +173,7 @@ struct FlightsListView: View {
                     flight: flight,
                     onEdit: {
                         uiLog.debug(
-                            "Editing flight: \(flight.missionName, privacy: .public)"
+                            "Editing flight: \(flight.missionName, privacy: .private)"
                         )
                         viewModel.presentEditFlight(flight)
                     },
