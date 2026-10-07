@@ -33,20 +33,6 @@ extension CLLocation {
         return Measurement(value: courseDegrees, unit: UnitAngle.degrees)
     }
     
-    func distance(from locations: [CLLocation]) -> CLLocationDistance? {
-        guard !locations.isEmpty else { return nil }
-        
-        var distance = 0.0
-        for i in locations.indices {
-            if i == 0 {
-                distance = self.distance(from: locations[i])
-            } else {
-                distance = distance + locations[i - 1].distance(from: locations[i])
-            }
-        }
-        return distance
-    }
-    
     func distance(from location: CLLocation?) -> Measurement<UnitLength>? {
         guard location != nil else { return nil }
         
