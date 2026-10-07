@@ -76,9 +76,14 @@ final class FlightViewModel: ObservableObject {
         self.missionName = flight.missionName
         self.target = CLLocationCoordinate2D(latitude: flight.target?.latitude ?? 0.0, longitude: flight.target?.longitude ?? 0.0)
         self.missionType = flight.missionType
-        
-        if let missionDate = flight.missionDate {
-            self.tot = missionDate
+        self.missionDate = flight.missionDate
+        self.hackTime = flight.hackTime
+
+        // B-23: only a ToT mission starts with a ToT. A hack mission's ToT is set by
+        // startHack(); the editor may still have written a missionDate (B-14), and that
+        // must not show up as a ToT before Hack! is pressed.
+        if self.missionType == .tot {
+            self.tot = flight.missionDate
         }
     }
     
@@ -99,15 +104,11 @@ final class FlightViewModel: ObservableObject {
         self.missionName = missionName
         self.target = target
         self.missionType = missionType
-        
+        self.missionDate = missionDate
+        self.hackTime = hackTime
+
         if self.missionType == .tot {
-            if let missionDate {
-                self.tot = missionDate
-            }
-        }
-        
-        if let hackTime {
-            self.hackTime = hackTime
+            self.tot = missionDate
         }
     }
 
