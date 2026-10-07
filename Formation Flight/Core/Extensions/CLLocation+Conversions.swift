@@ -44,14 +44,8 @@ extension CLLocation {
     }
 
     func distance(from location: CLLocation?) -> Measurement<UnitLength>? {
-        guard location != nil else { return nil }
-        
-        return Measurement(value: distance(from: location!), unit: .meters)
-    }
-}
+        guard let location else { return nil }
 
-extension Measurement {
-    var erasedType: Measurement<Dimension> {
-        return Measurement<Dimension>(value: self.value, unit: self.unit as! Dimension)
+        return Measurement(value: distance(from: location), unit: .meters)
     }
 }
