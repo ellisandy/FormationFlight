@@ -154,6 +154,24 @@ final class LocationProvider_Test: XCTestCase {
         XCTAssertEqual(updateCount, 1)
     }
 
+    // MARK: - Fix freshness
+
+    /// `lastFixTimestamp` is the newest fix's own Core Location `timestamp`, not the time the
+    /// batch was delivered, so consumers can judge how stale the published readings are.
+    func testLastFixTimestampIsNewestFixTimestamp() {
+        let (provider, mockManager) = makeProvider()
+        XCTAssertNil(provider.lastFixTimestamp, "No fix yet means no timestamp")
+
+        let measuredAt = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        let older = CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 0, speed: 10,
+                                    timestamp: measuredAt.addingTimeInterval(-1))
+        let newest = CLLocation.make(latitude: 0, longitude: 0, altitude: 100, course: 0, speed: 10,
+                                     timestamp: measuredAt)
+        mockManager.simulateLocations([older, newest])
+
+        XCTAssertEqual(provider.lastFixTimestamp, newest.timestamp)
+    }
+
     // MARK: - Altitude validity (B-39)
 
     /// Death Valley, the Dead Sea, and plenty of airfields sit below sea level. A negative
