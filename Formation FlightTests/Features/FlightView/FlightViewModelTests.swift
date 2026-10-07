@@ -55,6 +55,17 @@ private let statusBoundaryCases: [(delta: TimeInterval, expected: FlightViewMode
     (delta: -11, expected: .reallyBad), // -(red + 1)
 ]
 
+/// B-40: raw `distance / speed` values (at 10 m/s) and the whole-second ETE they must truncate
+/// to. All raw quotients are exact in Double, so only the truncation is under test. File scope,
+/// like `statusBoundaryCases`, because the suite is `@MainActor` and `@Test(arguments:)` is
+/// evaluated outside the actor.
+private let eteTruncationCases: [(distanceMeters: Double, expectedETE: TimeInterval)] = [
+    (distanceMeters: 9, expectedETE: 0),       // 0.9 s   -> 0 s, never rounds up to 1
+    (distanceMeters: 595, expectedETE: 59),    // 59.5 s  -> 59 s, never rounds up to a minute
+    (distanceMeters: 1004, expectedETE: 100),  // 100.4 s -> 100 s
+    (distanceMeters: 100, expectedETE: 10),    // already integral: unchanged
+]
+
 @Suite("FlightViewModel")
 @MainActor
 struct FlightViewModelTests {
@@ -406,19 +417,74 @@ struct FlightViewModelTests {
         let distance = try #require(vm.distance).converted(to: .meters).value
         #expect(abs(distance - 1000) < 10)
 
+        // ETE is the whole-second truncation of distance / speed (B-40). The geodesic shortfall
+        // above (~997 m -> 99.7 s) plus truncation lands on exactly 99 s, so the window is
+        // "within 1 s" inclusive: 1 % geodesic slack on the distance plus up to 1 s of truncation.
         let ete = try #require(vm.ete)
-        #expect(abs(ete - 100) < 1)
-        #expect(ete == distance / 10, "ETE must be derived from the reported distance and speed")
+        #expect(abs(ete - 100) <= 1)
+        #expect(ete == (distance / 10).rounded(.down), "ETE must be the truncated distance / speed")
 
         let bearing = try #require(vm.bearing)
         #expect(abs(bearing.converted(to: .degrees).value) < 0.001, "target is due north")
 
-        // ETA follows from the injected clock, so it is exactly now + ETE. Delta is
-        // (now + ete) - tot; adding a non-integral ETE to a date of magnitude 8e8 rounds at
-        // ~1e-7 s, so compare with a tolerance far below anything the pipeline could get wrong.
+        // ETA follows from the injected clock, so it is exactly now + ETE. With the clock and
+        // ETE both integral (B-40) the delta (now + ete) - tot is exact too, so no tolerance.
         #expect(vm.eta == Self.fixedNow.addingTimeInterval(ete))
-        let delta = try #require(vm.delta)
-        #expect(abs(delta - (ete - 100)) < 1e-6)
+        #expect(vm.delta == ete - 100)
+    }
+
+    // MARK: - Display consistency: Time + ETE == ETA (B-40)
+
+    /// A clock 0.7 s into a second. Realistic: the 1 Hz timer never fires on a whole second.
+    private static let fractionalNow = Date(timeIntervalSinceReferenceDate: 800_000_000.7)
+    /// `fractionalNow` with the sub-second part dropped; what the pilot sees as "Time".
+    private static let fractionalNowFloor = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+    @Test("Time, ETE and ETA are truncated to whole seconds so the displayed readouts add up")
+    func displayedTimePlusETEEqualsETA() async throws {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        timerScheduler: mockTimer,
+                        now: { Self.fractionalNow })
+        // ToT on the whole second the truncated ETA lands on, so delta must be exactly 0.
+        vm.tot = Date(timeIntervalSinceReferenceDate: 800_000_059)
+        // 595 m at 10 m/s -> raw ETE 59.5 s (exact in Double), which must truncate to 59 s.
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 595)
+
+        mockTimer.fire()
+
+        // Truncate, never round: Time drops the .7, ETE drops the .5, and ETA is built from
+        // those two truncated values rather than from the raw ones (which would give
+        // 800_000_060.2 and display one second later than Time + ETE).
+        #expect(vm.currentTime == Self.fractionalNowFloor)
+        #expect(vm.ete == 59)
+        #expect(vm.eta == Date(timeIntervalSinceReferenceDate: 800_000_059))
+        #expect(vm.delta == 0)
+        #expect(vm.statusColor == .good)
+
+        // The on-screen contract: the Time readout plus the ETE readout is the ETA readout.
+        #expect(Formatting.durationHMS(vm.ete) == "00:00:59")
+        let shownTime = try #require(vm.currentTime)
+        let shownETE = try #require(vm.ete)
+        #expect(Formatting.timeHHmmss(vm.eta)
+                == Formatting.timeHHmmss(shownTime.addingTimeInterval(shownETE.rounded(.down))),
+                "Time + ETE must render as the same second as ETA")
+    }
+
+    @Test("ETE is truncated to a whole second and ETA is derived from the truncated clock and ETE",
+          arguments: eteTruncationCases)
+    func eteTruncatesToWholeSecond(distanceMeters: Double, expectedETE: TimeInterval) async throws {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        timerScheduler: mockTimer,
+                        now: { Self.fractionalNow })
+        setDirectInputs(vm, speedMps: 10, distanceMeters: distanceMeters)
+
+        mockTimer.fire()
+
+        #expect(vm.currentTime == Self.fractionalNowFloor)
+        #expect(vm.ete == expectedETE)
+        #expect(vm.eta == Self.fractionalNowFloor.addingTimeInterval(expectedETE))
     }
 
     // MARK: - Midnight crossing (tests #13)
