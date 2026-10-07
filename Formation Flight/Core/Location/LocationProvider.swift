@@ -161,21 +161,24 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
             
             let dMeters = haversineDistanceMeters(from: a.location.coordinate, to: b.location.coordinate)
             let segSpeed = dMeters / dt // m/s
-            
-            let bearingDeg = initialBearingDegrees(from: a.location.coordinate, to: b.location.coordinate)
-            let bearingRad = bearingDeg * .pi / 180
-            
+
             speedSumMps += segSpeed
-            sumSin += sin(bearingRad)
-            sumCos += cos(bearingRad)
             validSegmentCount += 1
+
+            // A stationary segment has no defined bearing; it still counts toward the speed
+            // average but contributes nothing to the circular mean of the course.
+            if let bearing = a.location.coordinate.initialBearing(to: b.location.coordinate) {
+                let bearingRad = bearing.value.degreesToRadians
+                sumSin += sin(bearingRad)
+                sumCos += cos(bearingRad)
+            }
         }
-        
+
         guard validSegmentCount > 0 else { return nil }
-        
+
         let avgSpeedMps = speedSumMps / Double(validSegmentCount)
         let avgBearingRad = atan2(sumSin / Double(validSegmentCount), sumCos / Double(validSegmentCount))
-        var avgBearingDeg = avgBearingRad * 180 / .pi
+        var avgBearingDeg = avgBearingRad.radiansToDegrees
         if avgBearingDeg < 0 { avgBearingDeg += 360 }
         
         let speed = Measurement(value: avgSpeedMps, unit: UnitSpeed.metersPerSecond)
@@ -195,19 +198,5 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate, ObservableObj
         let a = sin(Δφ/2) * sin(Δφ/2) + cos(φ1) * cos(φ2) * sin(Δλ/2) * sin(Δλ/2)
         let c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return R * c
-    }
-    
-    /// Initial bearing (forward azimuth) from point A to B in degrees [0, 360)
-    private func initialBearingDegrees(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
-        let φ1 = from.latitude * .pi / 180
-        let φ2 = to.latitude * .pi / 180
-        let λ1 = from.longitude * .pi / 180
-        let λ2 = to.longitude * .pi / 180
-        
-        let y = sin(λ2 - λ1) * cos(φ2)
-        let x = cos(φ1) * sin(φ2) - sin(φ1) * cos(φ2) * cos(λ2 - λ1)
-        var θ = atan2(y, x) * 180 / .pi
-        if θ < 0 { θ += 360 }
-        return θ
     }
 }

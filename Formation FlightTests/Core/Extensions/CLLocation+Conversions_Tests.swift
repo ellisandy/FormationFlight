@@ -115,6 +115,34 @@ final class CLLocation_Conversions_Test: XCTestCase {
         XCTAssertEqual(distanceFromNorth, 0.0, accuracy: 1e-6)
     }
 
+    // MARK: - CLLocationCoordinate2D.initialBearing(to:) (B-36)
+
+    /// `getBearing(to:)` is a thin wrapper over the coordinate helper; the two must agree exactly
+    /// so that `LocationProvider`'s manual course estimate and the instrument bearing share one
+    /// forward-azimuth implementation.
+    func testCoordinateInitialBearingMatchesGetBearing() throws {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
+
+        let viaLocation = try XCTUnwrap(p1.getBearing(to: p2))
+        let viaCoordinate = try XCTUnwrap(p1.coordinate.initialBearing(to: p2.coordinate))
+        XCTAssertEqual(viaCoordinate.value, viaLocation.value, accuracy: 0)
+        XCTAssertEqual(viaCoordinate.unit, UnitAngle.degrees)
+    }
+
+    func testCoordinateInitialBearing_IdenticalCoordinatesReturnsNil() {
+        let p = CLLocationCoordinate2D(latitude: 48.42583, longitude: -122.37916)
+        XCTAssertNil(p.initialBearing(to: p))
+    }
+
+    func testCoordinateInitialBearing_WestIsNormalisedInto0To360() throws {
+        let p1 = CLLocationCoordinate2D(latitude: 0.0, longitude: 1.0)
+        let p2 = CLLocationCoordinate2D(latitude: 0.0, longitude: 0.0)
+
+        let degrees = try XCTUnwrap(p1.initialBearing(to: p2)).value
+        XCTAssertEqual(degrees, 270.0, accuracy: 1e-9)
+    }
+
     // MARK: Multiple Point Calculations
     let STARTING_POINT = CLLocation(latitude: 48.75097, longitude: -121.94117)
     let FIRST_CHECKPOINT = CLLocation(latitude: 48.75097, longitude: -121.125242) // 60_000 Meters away CONFIRM TO EAST
