@@ -50,3 +50,26 @@ struct Formation_FlightApp: App {
     }
 }
 
+/// Builds the SwiftData container that backs the app.
+@MainActor
+enum PersistenceController {
+    /// Opens the flight store described by `schema`.
+    ///
+    /// - Parameters:
+    ///   - schema: The schema to open the store with.
+    ///   - url: Location of the store file. Pass `nil` to use SwiftData's default location.
+    ///   - inMemory: When `true`, the store is kept in memory only (used by UI tests).
+    /// - Returns: The container and whether the on-disk store had to be reset to produce it.
+    static func makeContainer(schema: Schema, url: URL?, inMemory: Bool) throws -> (container: ModelContainer, recovered: Bool) {
+        let configuration: ModelConfiguration
+        if inMemory {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        } else if let url {
+            configuration = ModelConfiguration(schema: schema, url: url)
+        } else {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        }
+        return (try ModelContainer(for: schema, configurations: [configuration]), false)
+    }
+}
+
