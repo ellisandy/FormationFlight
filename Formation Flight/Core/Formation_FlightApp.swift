@@ -7,27 +7,30 @@
 
 import SwiftUI
 import SwiftData
+import CoreData
 import CoreLocation
 
 @main
 struct Formation_FlightApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Flight.self
-        ])
+    /// The app's flight store, or `nil` if not even an in-memory container could be created.
+    private let sharedModelContainer: ModelContainer?
+    /// Whether saved flights had to be discarded to open the store.
+    private let didResetStore: Bool
+    @State private var hasDismissedStoreResetNotice = false
 
+    init() {
         let args = ProcessInfo.processInfo.arguments
         let useInMemory = args.contains("-uiTestsResetStore")
 
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: useInMemory)
-
         do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let result = try PersistenceController.makeContainer(inMemory: useInMemory)
+            sharedModelContainer = result.container
+            didResetStore = result.recovered
 
             // coverage:ignore-start
             // Optional: seed data for UI tests when requested
             if useInMemory, args.contains("-uiTestsSeedFlights") {
-                let context = ModelContext(container)
+                let context = ModelContext(result.container)
                 let f1 = Flight(missionName: "UI F1", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
                 let f2 = Flight(missionName: "UI F2", missionType: .hackTime, missionDate: .now, target: Target(longitude: 1, latitude: 1))
                 context.insert(f1)
@@ -35,18 +38,147 @@ struct Formation_FlightApp: App {
                 try? context.save()
             }
             // coverage:ignore-end
-
-            return container
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            AppLogger.data.fault("Could not create any ModelContainer: \(error.localizedDescription, privacy: .public)")
+            sharedModelContainer = nil
+            didResetStore = false
         }
-    }()
-    
+    }
+
     var body: some Scene {
         return WindowGroup {
-            FlightsListView()
+            if let sharedModelContainer {
+                FlightsListView()
+                    .modelContainer(sharedModelContainer)
+                    .alert("Saved Flights Reset", isPresented: storeResetNoticeBinding) {
+                        Button("OK") { hasDismissedStoreResetNotice = true }
+                    } message: {
+                        Text("Saved flights could not be read and were reset.")
+                    }
+            } else {
+                ContentUnavailableView(
+                    "Storage Unavailable",
+                    systemImage: "externaldrive.badge.exclamationmark",
+                    description: Text("Formation Flight could not open its flight store. Please reinstall the app.")
+                )
+            }
         }
-        .modelContainer(sharedModelContainer)
+    }
+
+    private var storeResetNoticeBinding: Binding<Bool> {
+        Binding(
+            get: { didResetStore && !hasDismissedStoreResetNotice },
+            set: { isPresented in
+                if !isPresented {
+                    hasDismissedStoreResetNotice = true
+                }
+            }
+        )
     }
 }
 
+/// Builds the SwiftData container that backs the app, recovering from stores that cannot be opened.
+@MainActor
+enum PersistenceController {
+    private static let log = AppLogger.data
+
+    /// Opens the flight store, resetting it if it was written by a schema the migration plan does not
+    /// know or if it cannot be read at all.
+    ///
+    /// Recovery order: open normally; if the store is incompatible or unreadable, destroy its files and
+    /// open a fresh store; if even that fails, fall back to an in-memory store so the app can launch.
+    ///
+    /// - Parameters:
+    ///   - schema: The schema to open the store with. Defaults to the current versioned schema.
+    ///   - migrationPlan: Every known schema version and how to migrate between them.
+    ///   - url: Location of the store file. Pass `nil` to use SwiftData's default location.
+    ///   - inMemory: When `true`, the store is kept in memory only (used by UI tests).
+    /// - Returns: The container and whether saved flights were discarded to produce it.
+    /// - Throws: Only if not even an in-memory container can be created for `schema`.
+    static func makeContainer(
+        schema: Schema = Schema(versionedSchema: FlightSchemaV1.self),
+        migrationPlan: any SchemaMigrationPlan.Type = FlightMigrationPlan.self,
+        url: URL? = nil,
+        inMemory: Bool = false
+    ) throws -> (container: ModelContainer, recovered: Bool) {
+        if inMemory {
+            return (try makeInMemoryContainer(schema: schema, migrationPlan: migrationPlan), false)
+        }
+
+        let configuration: ModelConfiguration
+        if let url {
+            configuration = ModelConfiguration(schema: schema, url: url)
+        } else {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        }
+        let storeURL = configuration.url
+
+        var recovered = false
+        if storeExists(at: storeURL), !storeIsCompatible(at: storeURL, withAnyOf: migrationPlan.schemas) {
+            log.error("Flight store \(storeURL.lastPathComponent, privacy: .public) was written by an unknown schema version; resetting it.")
+            destroyStore(at: storeURL)
+            recovered = true
+        }
+
+        do {
+            return (try ModelContainer(for: schema, migrationPlan: migrationPlan, configurations: [configuration]), recovered)
+        } catch {
+            log.error("Could not open flight store: \(error.localizedDescription, privacy: .public). Resetting it.")
+        }
+
+        destroyStore(at: storeURL)
+        do {
+            return (try ModelContainer(for: schema, migrationPlan: migrationPlan, configurations: [configuration]), true)
+        } catch {
+            log.fault("Could not open a fresh flight store: \(error.localizedDescription, privacy: .public). Falling back to an in-memory store.")
+        }
+
+        return (try makeInMemoryContainer(schema: schema, migrationPlan: migrationPlan), true)
+    }
+
+    private static func makeInMemoryContainer(schema: Schema, migrationPlan: any SchemaMigrationPlan.Type) throws -> ModelContainer {
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return try ModelContainer(for: schema, migrationPlan: migrationPlan, configurations: [configuration])
+    }
+
+    private static func storeExists(at url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
+    }
+
+    /// Whether the store at `url` was written by one of `schemas`, judged by the model version hashes
+    /// Core Data records in the store metadata.
+    ///
+    /// SwiftData lightweight-migrates any store it can, even one from a schema outside the migration
+    /// plan; for the pre-versioning `Flight` model that leaves rows whose `missionType` is NULL and
+    /// traps on read. Checking compatibility first lets such stores be reset instead.
+    private static func storeIsCompatible(at url: URL, withAnyOf schemas: [any VersionedSchema.Type]) -> Bool {
+        let metadata: [String: Any]
+        do {
+            metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(type: .sqlite, at: url)
+        } catch {
+            log.error("Could not read flight store metadata: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+
+        return schemas.contains { versionedSchema in
+            guard let model = NSManagedObjectModel.makeManagedObjectModel(for: versionedSchema.models) else {
+                return false
+            }
+            return model.isConfiguration(withName: nil, compatibleWithStoreMetadata: metadata)
+        }
+    }
+
+    /// Removes the store file and its SQLite `-wal`/`-shm` sidecars.
+    private static func destroyStore(at url: URL) {
+        let fileManager = FileManager.default
+        for suffix in ["", "-wal", "-shm"] {
+            let fileURL = URL(filePath: url.path(percentEncoded: false) + suffix)
+            guard fileManager.fileExists(atPath: fileURL.path(percentEncoded: false)) else { continue }
+            do {
+                try fileManager.removeItem(at: fileURL)
+            } catch {
+                log.error("Could not remove \(fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+}
