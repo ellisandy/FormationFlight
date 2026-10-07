@@ -26,6 +26,9 @@ final class FlightViewModel: ObservableObject {
     @Published var delta: TimeInterval?
     @Published var tot: Date?
     @Published var statusColor: Status = .unknown
+    /// Textual early/late indicator shown beside the Δ value (B-11): "EARLY", "LATE",
+    /// "ON TIME", or nil when there is no delta to judge.
+    @Published private(set) var deltaLabel: String?
     
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?

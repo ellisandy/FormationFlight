@@ -350,6 +350,45 @@ struct FlightViewModelTests {
         #expect(vm.ete == 10.0)
         #expect(vm.delta == delta)
         #expect(vm.statusColor == expected)
+        // B-11: colour alone is not enough; the sign must be spelled out next to the value.
+        #expect(vm.deltaLabel == (delta < 0 ? "EARLY" : "LATE"))
+    }
+
+    // MARK: - Early/late label (B-11)
+    @Test("Delta label reads EARLY, LATE or ON TIME and is nil without a delta")
+    func deltaLabelFollowsSignOfDelta() async throws {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10), timerScheduler: mockTimer, now: fixedClock)
+
+        // No inputs: nothing to judge.
+        mockTimer.fire()
+        #expect(vm.delta == nil)
+        #expect(vm.deltaLabel == nil)
+
+        // 100 m at 10 m/s -> ETA = now + 10. ToT = now + 13 -> delta = -3 (early).
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 100)
+        vm.tot = Self.fixedNow.addingTimeInterval(13)
+        mockTimer.fire()
+        #expect(vm.delta == -3)
+        #expect(vm.deltaLabel == "EARLY")
+
+        // ToT = now + 7 -> delta = +3 (late).
+        vm.tot = Self.fixedNow.addingTimeInterval(7)
+        mockTimer.fire()
+        #expect(vm.delta == 3)
+        #expect(vm.deltaLabel == "LATE")
+
+        // ToT = now + 10 -> delta = 0 exactly.
+        vm.tot = Self.fixedNow.addingTimeInterval(10)
+        mockTimer.fire()
+        #expect(vm.delta == 0)
+        #expect(vm.deltaLabel == "ON TIME")
+
+        // Losing the ToT loses the delta, and the label must go with it.
+        vm.tot = nil
+        mockTimer.fire()
+        #expect(vm.delta == nil)
+        #expect(vm.deltaLabel == nil)
     }
 
     // MARK: - Instruments and required ground speed
