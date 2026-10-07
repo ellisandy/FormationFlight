@@ -9,7 +9,19 @@ import Testing
 // `LocationProviding` is a MainActor protocol (B-27), so the mock is MainActor too.
 @MainActor
 final class MockLocationProvider: LocationProviding {
-    var authroizationStatus: CLAuthorizationStatus?
+    var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    var accuracyAuthorization: CLAccuracyAuthorization = .fullAccuracy
+    // `isLocationDenied` comes from the protocol extension (denied or restricted).
+    @available(*, deprecated, renamed: "authorizationStatus")
+    var authroizationStatus: CLAuthorizationStatus? {
+        authorizationStatus == .notDetermined ? nil : authorizationStatus
+    }
+
+    private(set) var requestWhenInUseAuthorizationCallCount = 0
+
+    func requestWhenInUseAuthorization() {
+        requestWhenInUseAuthorizationCallCount += 1
+    }
 
     var altitude: Measurement<UnitLength> = Measurement(value: 0, unit: .meters)
 

@@ -15,6 +15,15 @@ import CoreLocation
 public protocol LocationProviding: AnyObject {
     // State
     var updateDelegate: (() -> Void)? { get set }
+    /// Current Core Location authorization, `.notDetermined` until the system reports one.
+    /// Updated for every status, so denied and restricted are visible to the UI (B-16).
+    var authorizationStatus: CLAuthorizationStatus { get }
+    /// Whether the user granted precise location; reduced accuracy is useless for timing.
+    var accuracyAuthorization: CLAccuracyAuthorization { get }
+    /// `true` for `.denied` and `.restricted`: the app cannot obtain a fix and should offer a
+    /// route to Settings rather than waiting.
+    var isLocationDenied: Bool { get }
+    @available(*, deprecated, renamed: "authorizationStatus")
     var authroizationStatus: CLAuthorizationStatus? { get }
     var speed: Measurement<UnitSpeed> { get }
     var altitude: Measurement<UnitLength> { get }
@@ -28,6 +37,14 @@ public protocol LocationProviding: AnyObject {
     // Control
     func startMonitoring()
     func stopMonitoring()
+    /// Asks the system for When-In-Use permission; a no-op once the status is determined.
+    func requestWhenInUseAuthorization()
+}
+
+extension LocationProviding {
+    var isLocationDenied: Bool {
+        authorizationStatus == .denied || authorizationStatus == .restricted
+    }
 }
 
 /// MainActor-isolated location source (B-27).
@@ -44,7 +61,14 @@ public protocol LocationProviding: AnyObject {
 final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegate, LocationProviding {
     static let shared = LocationProvider()
     var updateDelegate: (() -> Void)?
-    var authroizationStatus: CLAuthorizationStatus?
+    var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    var accuracyAuthorization: CLAccuracyAuthorization = .fullAccuracy
+    /// Pre-B-16 spelling, kept for one release. It was `nil` until authorization was granted,
+    /// so `.notDetermined` maps back to `nil` to preserve that contract for existing callers.
+    @available(*, deprecated, renamed: "authorizationStatus")
+    var authroizationStatus: CLAuthorizationStatus? {
+        authorizationStatus == .notDetermined ? nil : authorizationStatus
+    }
     var speed: Measurement<UnitSpeed> = Measurement(value: -1.0, unit: UnitSpeed.metersPerSecond)
     var altitude: Measurement<UnitLength> = Measurement(value: -1.0, unit: UnitLength.meters)
     var course: Measurement<UnitAngle> = Measurement(value: -1.0, unit: UnitAngle.degrees)
@@ -79,27 +103,30 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
     }
-    
+
+    func requestWhenInUseAuthorization() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+
     // MARK: Core Location Delegates
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        // Publish every status, not just the granted one, so the UI can react to denied,
+        // restricted and reduced-accuracy states (B-16).
+        authorizationStatus = manager.authorizationStatus
+        accuracyAuthorization = manager.accuracyAuthorization
+
         switch manager.authorizationStatus {
-        case .authorizedWhenInUse:  // Location services are available.
-            // Insert code here of what should happen when Location services are authorized
-            authroizationStatus = .authorizedWhenInUse
+        case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()
-            break
-            
-        case .restricted, .denied: // Location services currently unavailable.
-            // Insert code here of what should happen when Location services are NOT authorized
+
+        case .restricted, .denied:
             AppLogger.location.warning("LocationProvider: Status \(manager.authorizationStatus.rawValue)")
-            break
-            
-        case .notDetermined: // Authorization not determined yet.
+
+        case .notDetermined:
             manager.requestWhenInUseAuthorization()
-            break
-            
-        default:
-            break
+
+        @unknown default:
+            AppLogger.location.warning("LocationProvider: Unknown status \(manager.authorizationStatus.rawValue)")
         }
     }
     
