@@ -31,13 +31,16 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     /// The first failing Go Fly rule as a user-facing message, or `nil` when the mission can be flown.
     var goFlyValidationMessage: String? {
         if missionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Please enter a mission name."
+            return String(localized: "Please enter a mission name.",
+                          comment: "Validation message when a flight has no mission name")
         }
         if selectedTargetLocation == nil {
-            return "Please enter a valid target location."
+            return String(localized: "Please enter a valid target location.",
+                          comment: "Validation message when a flight has no target selected")
         }
         if !useTOT && hackDurationSeconds <= 0 {
-            return "Please enter a hack time."
+            return String(localized: "Please enter a hack time.",
+                          comment: "Validation message when a hack-time mission has a zero hack duration")
         }
         return nil
     }

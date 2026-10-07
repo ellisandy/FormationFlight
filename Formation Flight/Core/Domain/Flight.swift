@@ -93,22 +93,26 @@ extension Flight {
 
         if missionName.isEmpty {
             validStatus = false
-            message = "Please enter a name for the mission"
+            message = String(localized: "Please enter a name for the mission",
+                             comment: "Flight validation: mission name is empty")
         }
 
         if missionType == .hackTime && hackTime == nil {
             validStatus = false
-            message = "Please enter a hack time"
+            message = String(localized: "Please enter a hack time",
+                             comment: "Flight validation: hack-time mission has no hack time")
         }
 
         if missionType == .tot && missionDate == nil {
             validStatus = false
-            message = "Please enter a date for the mission"
+            message = String(localized: "Please enter a date for the mission",
+                             comment: "Flight validation: time-on-target mission has no date")
         }
 
         if target == nil {
             validStatus = false
-            message = "Please enter a target"
+            message = String(localized: "Please enter a target",
+                             comment: "Flight validation: no target selected")
         }
 
         return (validStatus, message)

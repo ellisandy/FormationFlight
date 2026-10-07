@@ -75,12 +75,12 @@ final class FlightsListViewModel: ObservableObject {
     // MARK: - Editor Actions (Closures from Child)
     func saveNewFlight(from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
         guard !editorVM.missionName.isEmpty else {
-            validationMessage = "Please enter a mission name."
+            validationMessage = Self.missingNameMessage
             return
         }
-        
+
         guard let location = editorVM.selectedTargetLocation else {
-            validationMessage = "Please enter a valid target location."
+            validationMessage = Self.missingTargetMessage
             return
         }
         
@@ -100,19 +100,20 @@ final class FlightsListViewModel: ObservableObject {
             selectedFlight = nil
         } catch {
             dataLog.error("Failed to save new flight: \(String(describing: error), privacy: .public)")
-            validationMessage = "Failed to save flight. Please try again."
+            validationMessage = String(localized: "Failed to save flight. Please try again.",
+                                       comment: "Shown when persisting a new flight fails")
         }
     }
-    
+
     func updateFlight(_ flight: Flight, from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
         dataLog.info("Updating existing flight: \(flight.missionName, privacy: .private)")
         guard !editorVM.missionName.isEmpty else {
-            validationMessage = "Please enter a mission name."
+            validationMessage = Self.missingNameMessage
             return
         }
-        
+
         guard let location = editorVM.selectedTargetLocation else {
-            validationMessage = "Please enter a valid target location."
+            validationMessage = Self.missingTargetMessage
             return
         }
         
@@ -127,9 +128,20 @@ final class FlightsListViewModel: ObservableObject {
             selectedFlight = nil
         } catch {
             dataLog.error("Failed to update flight: \(String(describing: error), privacy: .public)")
-            validationMessage = "Failed to update flight. Please try again."
-            
+            validationMessage = String(localized: "Failed to update flight. Please try again.",
+                                       comment: "Shown when persisting changes to an existing flight fails")
         }
+    }
+
+    // MARK: - Validation Messages
+    private static var missingNameMessage: String {
+        String(localized: "Please enter a mission name.",
+               comment: "Validation message when a flight has no mission name")
+    }
+
+    private static var missingTargetMessage: String {
+        String(localized: "Please enter a valid target location.",
+               comment: "Validation message when a flight has no target selected")
     }
     
     func cancelEditor() {

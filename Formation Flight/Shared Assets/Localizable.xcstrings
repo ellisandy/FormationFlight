@@ -58,6 +58,12 @@
     "End Flight?" : {
 
     },
+    "Failed to save flight. Please try again." : {
+      "comment" : "Shown when persisting a new flight fails"
+    },
+    "Failed to update flight. Please try again." : {
+      "comment" : "Shown when persisting changes to an existing flight fails"
+    },
     "Flight Editor" : {
 
     },
@@ -126,6 +132,27 @@
     },
     "Pick Checkpoint" : {
 
+    },
+    "Please enter a date for the mission" : {
+      "comment" : "Flight validation: time-on-target mission has no date"
+    },
+    "Please enter a hack time" : {
+      "comment" : "Flight validation: hack-time mission has no hack time"
+    },
+    "Please enter a hack time." : {
+      "comment" : "Validation message when a hack-time mission has a zero hack duration"
+    },
+    "Please enter a mission name." : {
+      "comment" : "Validation message when a flight has no mission name"
+    },
+    "Please enter a name for the mission" : {
+      "comment" : "Flight validation: mission name is empty"
+    },
+    "Please enter a target" : {
+      "comment" : "Flight validation: no target selected"
+    },
+    "Please enter a valid target location." : {
+      "comment" : "Validation message when a flight has no target selected"
     },
     "Red Variance" : {
 
