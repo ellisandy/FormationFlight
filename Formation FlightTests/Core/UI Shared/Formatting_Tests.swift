@@ -26,8 +26,10 @@ final class FormattingTests {
     @Test
     func test_durationHMS() {
         #expect(Formatting.durationHMS(0) == "00:00:00")
-        // Documents current truncation behaviour. B-40 (round instead of truncate) is still
-        // open; when it lands this expectation becomes "00:01:00".
+        // Truncation is the deliberate app-wide policy (B-40, resolved): FlightViewModel floors
+        // the clock and ETE to whole seconds and derives ETA from them, so every readout
+        // truncates and Time + ETE always equals ETA on screen. 59.5 must stay "00:00:59",
+        // never round up to "00:01:00".
         #expect(Formatting.durationHMS(59.5) == "00:00:59")
         #expect(Formatting.durationHMS(61.2) == "00:01:01")
         #expect(Formatting.durationHMS(nil) == "--:--:--")
@@ -79,6 +81,48 @@ final class FormattingTests {
         // which (B-10, still open) builds its Measurement in RADIANS and only happened to
         // return "--" for -1. The Double sentinel path is the one this test is about.
         #expect(Formatting.angle(degrees: -1.0) == "--")
+    }
+
+    /// B-34: non-finite or absurdly large input must not reach `Int(_:)`, which traps (and
+    /// takes the whole test runner down with it). Every case here used to trap, so they are
+    /// deliberately isolated in their own test function: if this function disappears from the
+    /// results instead of failing, the guard has regressed.
+    ///
+    /// Only the guards are under test. The angle semantics B-10 will revisit (the `<= 0`
+    /// sentinel, the radians `Int` overload, padding) are exercised elsewhere and unchanged.
+    @Test
+    func test_angle_nonFiniteInputsReturnPlaceholder() {
+        #expect(Formatting.angle(Measurement(value: .nan, unit: .degrees)) == "--")
+        #expect(Formatting.angle(Measurement(value: .infinity, unit: .degrees)) == "--")
+        // Non-optional Double overload routes through the Measurement path.
+        #expect(Formatting.angle(degrees: Double.infinity) == "--")
+        #expect(Formatting.angle(degrees: Double.nan) == "--")
+        // The `Double?` overload has its own `Int(value.rounded())` and must be guarded too.
+        let optionalInfinity: Double? = .infinity
+        let optionalNaN: Double? = .nan
+        #expect(Formatting.angle(degrees: optionalInfinity) == "--")
+        #expect(Formatting.angle(degrees: optionalNaN) == "--")
+        // Finite but beyond Int range: `Int(1e300)` traps just like `Int(.infinity)`.
+        #expect(Formatting.angle(degrees: 1e300) == "--")
+        let optionalHuge: Double? = 1e300
+        #expect(Formatting.angle(degrees: optionalHuge) == "--")
+    }
+
+    /// B-34: a coordinate with a non-finite component is treated like a missing coordinate
+    /// and yields the same empty-string placeholders, instead of trapping in `Int(absValue)`.
+    @Test
+    func test_dms_nonFiniteCoordinateReturnsPlaceholders() {
+        let nanLat = Formatting.dms(from: CLLocationCoordinate2D(latitude: .nan, longitude: 0))
+        #expect(nanLat.lat == "")
+        #expect(nanLat.lon == "")
+
+        let infLon = Formatting.dms(from: CLLocationCoordinate2D(latitude: 0, longitude: .infinity))
+        #expect(infLon.lat == "")
+        #expect(infLon.lon == "")
+
+        let hugeLat = Formatting.dms(from: CLLocationCoordinate2D(latitude: 1e300, longitude: 0))
+        #expect(hugeLat.lat == "")
+        #expect(hugeLat.lon == "")
     }
 
     @Test

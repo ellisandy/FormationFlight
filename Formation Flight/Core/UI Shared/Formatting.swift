@@ -100,27 +100,42 @@ public enum Formatting {
 
         return String(format: "%02d:%02d:%02d", hours, minutes, secs)
     }
-    
+
+    /// B-34: `Int(_:)` traps on NaN, ±infinity, and any magnitude at or beyond `Int.max`.
+    /// Every `Int(Double)` conversion in this file goes through this check first so bad
+    /// input degrades to a placeholder instead of taking the app down.
+    private static func isIntRepresentable(_ value: Double) -> Bool {
+        value.isFinite && abs(value) < Double(Int.max)
+    }
+
     /// Formats an angle measurement as whole degrees with a trailing degree symbol (e.g., `42°`).
     ///
-    /// - Parameter angle: The angle as a `Measurement<UnitAngle>`. If `nil` or non-positive, returns `--`.
+    /// - Parameter angle: The angle as a `Measurement<UnitAngle>`. If `nil`, non-positive, or
+    ///   non-finite (NaN, ±inf, or beyond `Int` range), returns `--`.
     /// - Returns: A rounded, integer degree string (e.g., `90°`) or `--` for invalid/unknown values.
     public static func angle(_ angle: Measurement<UnitAngle>?) -> String {
         guard let measurement = angle else { return "--" }
         let degrees = measurement.converted(to: .degrees).value
         let rounded = degrees.rounded()
+        // B-34: guard before Int(_:). `NaN <= 0` is false, so the sentinel check alone would
+        // let NaN through to a trap.
+        guard isIntRepresentable(rounded) else { return "--" }
         if degrees <= 0 { return "--" }
         return "\(Int(rounded).description.uppercased())°"
     }
     
     /// Formats a degree value as whole degrees with a trailing degree symbol.
     ///
-    /// - Parameter degrees: Degrees as `Double`. `nil` or a sentinel value of `-1` yields `--`.
+    /// - Parameter degrees: Degrees as `Double`. `nil`, a sentinel value of `-1`, or a
+    ///   non-finite value (NaN, ±inf, or beyond `Int` range) yields `--`.
     /// - Returns: A rounded, integer degree string (e.g., `270°`) or `--`.
     public static func angle(degrees: Double?) -> String {
         guard let value = degrees else { return "--" }
         if value == -1 { return "--" }
-        return "\(Int(value.rounded()).description.uppercased())°"
+        let rounded = value.rounded()
+        // B-34: guard before Int(_:).
+        guard isIntRepresentable(rounded) else { return "--" }
+        return "\(Int(rounded).description.uppercased())°"
     }
     
     /// Convenience overload for degree input.
@@ -145,10 +160,16 @@ public enum Formatting {
     ///
     /// Output example: `N 37 46.50`, `W 122 25.10`.
     ///
-    /// - Parameter coordinate: The coordinate to format. If `nil`, returns empty strings.
+    /// - Parameter coordinate: The coordinate to format. If `nil`, or if either component is
+    ///   non-finite (NaN, ±inf, or beyond `Int` range), returns empty strings.
     /// - Returns: A tuple containing latitude and longitude strings.
     public static func dms(from coordinate: CLLocationCoordinate2D?) -> (lat: String, lon: String) {
         guard let target = coordinate else { return ("", "") }
+        // B-34: both components feed Int(absValue); a bad value in either makes the whole
+        // coordinate meaningless, so fall back to the same placeholder as a missing coordinate.
+        guard isIntRepresentable(target.latitude), isIntRepresentable(target.longitude) else {
+            return ("", "")
+        }
         func format(value: Double, positiveHemisphere: String, negativeHemisphere: String) -> String {
             let hemisphere = value >= 0 ? positiveHemisphere : negativeHemisphere
             let absValue = abs(value)
