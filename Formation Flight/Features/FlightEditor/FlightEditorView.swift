@@ -12,9 +12,22 @@ struct FlightEditorView: View {
     @State private var thumbnailPosition: MapCameraPosition
     // B-21: Cancel on a dirty editor asks before discarding.
     @State private var showsDiscardConfirmation = false
+    // B-16: the user may return from Settings after changing the location permission.
+    @Environment(\.scenePhase) private var scenePhase
 
-    init(flight: Flight? = nil, onSave: @escaping (FlightEditorViewModel) -> Void = { _ in }, onCancel: @escaping () -> Void = {}) {
-        _viewModel = StateObject(wrappedValue: FlightEditorViewModel(flight: flight))
+    /// Where the map picker opens when neither a target nor a device fix is known (B-16).
+    ///
+    /// Apple Park, Cupertino. Deliberate: there is no better default for an unknown user, and
+    /// the picker's purpose is to let them move the pin anyway. The banner above the form
+    /// explains why their own location is missing when access is denied or imprecise.
+    static let fallbackPickerCoordinate = CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090)
+
+    init(flight: Flight? = nil,
+         locationProvider: LocationProviding = LocationProvider.shared,
+         onSave: @escaping (FlightEditorViewModel) -> Void = { _ in },
+         onCancel: @escaping () -> Void = {}) {
+        let provider = UITestLocationAccessOverride.provider ?? locationProvider
+        _viewModel = StateObject(wrappedValue: FlightEditorViewModel(flight: flight, locationProvider: provider))
         _thumbnailPosition = State(initialValue: Self.thumbnailPosition(for: flight?.target?.getCLCoordinate()))
         self.onSave = onSave
         self.onCancel = onCancel
@@ -41,6 +54,16 @@ struct FlightEditorView: View {
     var body: some View {
         VStack(spacing: 16) {
             Form {
+                // B-16: only denied and reduced-accuracy states have anything to say; the
+                // banner itself renders nothing otherwise, but omitting the Section avoids an
+                // empty row.
+                if viewModel.locationAccess == .denied || viewModel.locationAccess == .reducedAccuracy {
+                    Section {
+                        LocationAccessBanner(access: viewModel.locationAccess)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                }
                 Section("Mission Name") {
                     TextField("Mission Name", text: $viewModel.missionName)
                         .accessibilityIdentifier("missionNameField")
@@ -80,7 +103,7 @@ struct FlightEditorView: View {
                         var location: CLLocationCoordinate2D {
                             viewModel.selectedTargetLocation ??
                             viewModel.currentLocation ??
-                            CLLocationCoordinate2D(latitude: 37.3349, longitude: -122.0090)
+                            Self.fallbackPickerCoordinate
                         }
                         
                         CheckpointMapPickerView(
@@ -154,6 +177,12 @@ struct FlightEditorView: View {
         .task {
             // B-37: single request per appearance; `.onAppear` used to fire a duplicate.
             viewModel.requestLocationIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // B-16: coming back from Settings re-activates the scene; pick up the new status.
+            if phase == .active {
+                viewModel.refreshLocationAccess()
+            }
         }
         .onChange(of: selectedTargetKey) { _, _ in
             thumbnailPosition = Self.thumbnailPosition(for: viewModel.selectedTargetLocation)
@@ -235,6 +264,45 @@ struct FlightEditorView: View {
         .navigationTitle("Flight Editor")
     }
 }
+
+// MARK: - UI test support
+
+// coverage:ignore-start
+/// Lets a UI test force the editor into the denied-location state (B-16).
+///
+/// The simulator grants location through the tests' interruption monitor, so the banner can
+/// never be reached through real Core Location. Launching with `-uiTestsLocationDenied`
+/// substitutes a fixed provider for the shared one; in every other launch `provider` is `nil`
+/// and the editor uses whatever it was given.
+@MainActor
+enum UITestLocationAccessOverride {
+    static let launchArgument = "-uiTestsLocationDenied"
+
+    static var provider: LocationProviding? {
+        guard ProcessInfo.processInfo.arguments.contains(launchArgument) else { return nil }
+        return DeniedLocationProvider()
+    }
+
+    /// A provider that reports `.denied` and never produces a fix.
+    private final class DeniedLocationProvider: LocationProviding {
+        var updateDelegate: (() -> Void)?
+        let authorizationStatus: CLAuthorizationStatus = .denied
+        let accuracyAuthorization: CLAccuracyAuthorization = .fullAccuracy
+        @available(*, deprecated, renamed: "authorizationStatus")
+        var authroizationStatus: CLAuthorizationStatus? { authorizationStatus }
+        let speed = Measurement(value: -1, unit: UnitSpeed.metersPerSecond)
+        let altitude = Measurement(value: -1, unit: UnitLength.meters)
+        let course = Measurement(value: -1, unit: UnitAngle.degrees)
+        let currentLocation: CLLocation? = nil
+        let computedSpeedAndCourse = false
+        let lastFixTimestamp: Date? = nil
+
+        func startMonitoring() {}
+        func stopMonitoring() {}
+        func requestWhenInUseAuthorization() {}
+    }
+}
+// coverage:ignore-end
 
 struct SimpleFlightEditor_Previews: PreviewProvider {
     static var previews: some View {

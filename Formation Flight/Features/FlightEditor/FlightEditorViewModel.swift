@@ -4,8 +4,8 @@ import MapKit
 import Combine
 
 @MainActor
-final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
-    
+final class FlightEditorViewModel: ObservableObject {
+
     // MARK: - Published State
     @Published var useTOT: Bool = true
     @Published var timeEntry: Date = Date()
@@ -15,10 +15,12 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     @Published var hackDurationSeconds: Int = 0 // total seconds for Hack time
     
     // MARK: - Location
-    private let locationManager = CLLocationManager()
-    /// The app-wide location source (B-16). Placeholder: not yet consulted.
+    /// The app-wide location source (B-16). The editor used to own a second
+    /// `CLLocationManager` with no delegate, so it never learned the authorization outcome
+    /// and could not show the user that location was denied or imprecise.
     let locationProvider: LocationProviding
-    /// What the user has granted, as the editor last observed it (B-16).
+    /// What the user has granted, as the editor last observed it (B-16). Refreshed by
+    /// `requestLocationIfNeeded()` and `refreshLocationAccess()`.
     @Published private(set) var locationAccess: LocationAccess = .notDetermined
 
     // MARK: Flight
@@ -131,8 +133,6 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
                 locationProvider: LocationProviding = LocationProvider.shared) {
         self.flight = selectedFlight
         self.locationProvider = locationProvider
-        super.init()
-        locationManager.delegate = self
 
         if let selectedFlight {
             mapToValues(flight: selectedFlight)
@@ -141,15 +141,32 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
         }
     }
     
+    /// Asks for When-In-Use permission if the user has not been prompted yet, then takes
+    /// whatever fix the shared provider already has so the map picker can open nearby.
+    ///
+    /// Only `.notDetermined` triggers a request: Core Location ignores repeat requests once
+    /// a decision exists, and denied/restricted users are routed to Settings by the banner
+    /// instead.
     func requestLocationIfNeeded() {
-        locationManager.requestWhenInUseAuthorization()
-        if let coord = locationManager.location?.coordinate {
+        if locationProvider.authorizationStatus == .notDetermined {
+            locationProvider.requestWhenInUseAuthorization()
+        }
+        refreshLocationAccess()
+        if let coord = locationProvider.currentLocation?.coordinate {
             currentLocation = coord
         }
     }
 
-    /// Re-reads the provider's authorization into `locationAccess`. Placeholder: no-op.
+    /// Re-reads the provider's authorization into `locationAccess`.
+    ///
+    /// The view calls this when the scene becomes active again, because the user may have
+    /// changed the permission in Settings and come straight back to the editor.
     func refreshLocationAccess() {
+        let access = LocationAccess(authorizationStatus: locationProvider.authorizationStatus,
+                                    accuracyAuthorization: locationProvider.accuracyAuthorization)
+        if access != locationAccess {
+            locationAccess = access
+        }
     }
 
     // MARK: - Time Helpers
@@ -200,5 +217,23 @@ enum LocationAccess: Equatable {
     case authorized
     case reducedAccuracy
     case denied
+
+    /// Collapses Core Location's two-axis state into the single value the UI switches on.
+    ///
+    /// Accuracy only matters once location is granted; a denied user with reduced accuracy
+    /// is still simply denied. An unknown future status is treated as undetermined so the
+    /// banner never nags about a state it does not understand.
+    init(authorizationStatus: CLAuthorizationStatus, accuracyAuthorization: CLAccuracyAuthorization) {
+        switch authorizationStatus {
+        case .notDetermined:
+            self = .notDetermined
+        case .denied, .restricted:
+            self = .denied
+        case .authorizedWhenInUse, .authorizedAlways:
+            self = accuracyAuthorization == .reducedAccuracy ? .reducedAccuracy : .authorized
+        @unknown default:
+            self = .notDetermined
+        }
+    }
 }
 

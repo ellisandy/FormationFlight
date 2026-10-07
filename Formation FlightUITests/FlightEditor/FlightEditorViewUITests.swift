@@ -48,16 +48,23 @@ final class FlightEditorViewUITests: XCTestCase {
     // MARK: - Launch
 
     /// Launches the app against an in-memory store and waits for the Flights list.
-    /// - Parameter seeded: When `true`, the store starts with the two seed flights
-    ///   `UI F1` and `UI F2`; otherwise it starts empty.
+    /// - Parameters:
+    ///   - seeded: When `true`, the store starts with the two seed flights
+    ///     `UI F1` and `UI F2`; otherwise it starts empty.
+    ///   - locationDenied: When `true`, the editor is given a location provider that
+    ///     reports `.denied` (B-16), since the interruption monitor otherwise grants
+    ///     access and the banner could never be reached.
     ///
     /// The safety disclaimer (R-07) is pre-acknowledged through the
     /// `-hasAcknowledgedSafetyDisclaimer YES` launch argument, which
     /// `UserDefaults` honours directly, so it never blocks these tests.
-    private func launch(seeded: Bool = false) {
+    private func launch(seeded: Bool = false, locationDenied: Bool = false) {
         app.launchArguments += ["-uiTestsResetStore", "-hasAcknowledgedSafetyDisclaimer", "YES"]
         if seeded {
             app.launchArguments += ["-uiTestsSeedFlights"]
+        }
+        if locationDenied {
+            app.launchArguments += ["-uiTestsLocationDenied"]
         }
         app.launch()
 
@@ -193,6 +200,23 @@ final class FlightEditorViewUITests: XCTestCase {
         hackSegment.tap()
         XCTAssertTrue(hackSegment.isSelected, "Hack segment should be selected after tapping it")
         XCTAssertFalse(totSegment.isSelected, "TOT segment should be deselected after choosing Hack")
+    }
+
+    // MARK: - Location access (B-16)
+
+    func testLocationDeniedShowsBannerWithOpenSettings() throws {
+        launch(locationDenied: true)
+        openNewFlightEditor()
+
+        // The banner is the first Section of the form, so it is laid out without scrolling.
+        XCTAssertTrue(
+            app.otherElements["locationAccessBanner"].waitForExistence(timeout: 5),
+            "locationAccessBanner should be shown when location access is denied"
+        )
+        let openSettings = app.buttons["locationAccessOpenSettingsButton"]
+        XCTAssertTrue(openSettings.exists, "locationAccessOpenSettingsButton should be inside the banner")
+        XCTAssertTrue(openSettings.isEnabled, "locationAccessOpenSettingsButton should be tappable")
+        // Not tapped: it would leave the app for Settings.
     }
 
     // MARK: - Go Fly
