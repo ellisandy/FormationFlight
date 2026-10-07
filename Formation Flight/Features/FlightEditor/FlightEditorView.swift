@@ -129,12 +129,8 @@ struct FlightEditorView: View {
             
         }
         .task {
+            // B-37: single request per appearance; `.onAppear` used to fire a duplicate.
             viewModel.requestLocationIfNeeded()
-        }
-        .onAppear {
-            Task {
-                viewModel.requestLocationIfNeeded()
-            }
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
