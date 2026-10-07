@@ -83,6 +83,48 @@ final class FormattingTests {
         #expect(Formatting.angle(degrees: -1.0) == "--")
     }
 
+    /// B-34: non-finite or absurdly large input must not reach `Int(_:)`, which traps (and
+    /// takes the whole test runner down with it). Every case here used to trap, so they are
+    /// deliberately isolated in their own test function: if this function disappears from the
+    /// results instead of failing, the guard has regressed.
+    ///
+    /// Only the guards are under test. The angle semantics B-10 will revisit (the `<= 0`
+    /// sentinel, the radians `Int` overload, padding) are exercised elsewhere and unchanged.
+    @Test
+    func test_angle_nonFiniteInputsReturnPlaceholder() {
+        #expect(Formatting.angle(Measurement(value: .nan, unit: .degrees)) == "--")
+        #expect(Formatting.angle(Measurement(value: .infinity, unit: .degrees)) == "--")
+        // Non-optional Double overload routes through the Measurement path.
+        #expect(Formatting.angle(degrees: Double.infinity) == "--")
+        #expect(Formatting.angle(degrees: Double.nan) == "--")
+        // The `Double?` overload has its own `Int(value.rounded())` and must be guarded too.
+        let optionalInfinity: Double? = .infinity
+        let optionalNaN: Double? = .nan
+        #expect(Formatting.angle(degrees: optionalInfinity) == "--")
+        #expect(Formatting.angle(degrees: optionalNaN) == "--")
+        // Finite but beyond Int range: `Int(1e300)` traps just like `Int(.infinity)`.
+        #expect(Formatting.angle(degrees: 1e300) == "--")
+        let optionalHuge: Double? = 1e300
+        #expect(Formatting.angle(degrees: optionalHuge) == "--")
+    }
+
+    /// B-34: a coordinate with a non-finite component is treated like a missing coordinate
+    /// and yields the same empty-string placeholders, instead of trapping in `Int(absValue)`.
+    @Test
+    func test_dms_nonFiniteCoordinateReturnsPlaceholders() {
+        let nanLat = Formatting.dms(from: CLLocationCoordinate2D(latitude: .nan, longitude: 0))
+        #expect(nanLat.lat == "")
+        #expect(nanLat.lon == "")
+
+        let infLon = Formatting.dms(from: CLLocationCoordinate2D(latitude: 0, longitude: .infinity))
+        #expect(infLon.lat == "")
+        #expect(infLon.lon == "")
+
+        let hugeLat = Formatting.dms(from: CLLocationCoordinate2D(latitude: 1e300, longitude: 0))
+        #expect(hugeLat.lat == "")
+        #expect(hugeLat.lon == "")
+    }
+
     @Test
     func test_dms() {
         let coord = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
