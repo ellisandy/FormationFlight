@@ -8,8 +8,7 @@
 import SwiftUI
 
 struct SettingsEditorFormView: View {
-    @ObservedObject var viewModel: SettingsEditorViewModel
-    @State private var editMode: EditMode = .active
+    @Bindable var viewModel: SettingsEditorViewModel
     @State private var showsSafetyDisclaimer = false
 
     var body: some View {
@@ -70,7 +69,6 @@ struct SettingsEditorFormView: View {
                     .accessibilityIdentifier("settingsSafetyDisclaimerText")
             }
         }
-        .environment(\.editMode, $editMode)
         .sheet(isPresented: $showsSafetyDisclaimer) {
             // Read-only re-display: the pilot already acknowledged at first
             // launch, so the button simply dismisses.

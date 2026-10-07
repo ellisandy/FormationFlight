@@ -27,7 +27,15 @@ final class FlightsListViewModel: ObservableObject {
     @Published var settings: Settings = Settings.load(from: UserDefaults.standard)
     
     // Deletion coordination
-    @Published var pendingDeleteFlight: Flight?
+    @Published var pendingDeleteFlight: Flight? {
+        didSet { pendingDeleteFlightName = pendingDeleteFlight?.missionName }
+    }
+    /// Snapshot of the pending flight's name, captured when deletion is requested.
+    ///
+    /// The confirmation alert reads this instead of `pendingDeleteFlight.missionName`
+    /// so the dismiss animation never touches a model that has already been deleted
+    /// from the context.
+    @Published private(set) var pendingDeleteFlightName: String?
     @Published var showDeleteConfirmation: Bool = false
     
     init(validationMessage: String? = nil,
@@ -44,6 +52,8 @@ final class FlightsListViewModel: ObservableObject {
         self.selectedFlight = selectedFlight
         self.settings = settings
         self.pendingDeleteFlight = pendingDeleteFlight
+        // Property observers do not run inside the initializer.
+        self.pendingDeleteFlightName = pendingDeleteFlight?.missionName
         self.showDeleteConfirmation = showDeleteConfirmation
         self.locationProvider = locationProvider
     }
@@ -176,26 +186,21 @@ final class FlightsListViewModel: ObservableObject {
         }
         dataLog.info("Deleting flight (confirmed): \(flight.missionName, privacy: .private)")
         modelContext.delete(flight)
+        do {
+            try modelContext.save()
+        } catch {
+            dataLog.error("Failed to delete flight: \(String(describing: error), privacy: .public)")
+            // Undo the staged deletion so the list keeps matching the store.
+            modelContext.rollback()
+            validationMessage = String(localized: "Failed to delete flight. Please try again.",
+                                       comment: "Shown when persisting a flight deletion fails")
+        }
         pendingDeleteFlight = nil
         showDeleteConfirmation = false
     }
-    
+
     func cancelDelete() {
         pendingDeleteFlight = nil
         showDeleteConfirmation = false
-    }
-    
-    func handleOnDelete(indexSet: IndexSet, flights: [Flight], modelContext: ModelContext) {
-        let items = indexSet.map { flights[$0] }
-        guard !items.isEmpty else { return }
-        
-        if items.count == 1, let first = items.first {
-            // Single item: go through confirmation flow
-            requestDelete(flight: first)
-        } else {
-            // Multiple selection: delete directly (or implement multi-confirmation if desired)
-            dataLog.info("Deleting \(items.count, privacy: .public) flights via onDelete")
-            items.forEach { modelContext.delete($0) }
-        }
     }
 }

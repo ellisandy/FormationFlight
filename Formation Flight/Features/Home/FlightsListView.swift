@@ -26,8 +26,9 @@ private struct FlightsListRowView: View {
         .contentShape(Rectangle())
         .swipeActions {
             Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
+                Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
             .accessibilityIdentifier("flightRowDelete_\(flight.id.uuidString)")
         }
         .accessibilityIdentifier("flightRow_\(flight.id.uuidString)")
@@ -76,7 +77,9 @@ struct FlightsListView: View {
     private let uiLog = AppLogger.ui
     
     @Environment(\.modelContext) private var modelContext
-    @Query var flights: [Flight]
+    // B-31: a stable order so rows do not shuffle between launches or after edits.
+    @Query(sort: [SortDescriptor(\Flight.missionDate), SortDescriptor(\Flight.missionName)])
+    var flights: [Flight]
     
     @StateObject private var viewModel = FlightsListViewModel()
 
@@ -175,12 +178,13 @@ struct FlightsListView: View {
         } message: {
             Text(viewModel.validationMessage ?? "")
         }
-        // Deletion confirmation, driven by view model state
+        // Deletion confirmation, driven by view model state. The message reads the
+        // captured name string rather than the model so the dismiss animation never
+        // touches a `Flight` that has already been deleted from the context.
         .alert(
             "Delete Flight?",
-            isPresented: $viewModel.showDeleteConfirmation,
-            presenting: viewModel.pendingDeleteFlight
-        ) { _ in
+            isPresented: $viewModel.showDeleteConfirmation
+        ) {
             Button("Delete", role: .destructive) {
                 withAnimation {
                     viewModel.confirmDelete(modelContext: modelContext)
@@ -189,8 +193,8 @@ struct FlightsListView: View {
             Button("Cancel", role: .cancel) {
                 viewModel.cancelDelete()
             }
-        } message: { flight in
-            Text("Are you sure you want to delete \(flight.missionName)? This action cannot be undone.")
+        } message: {
+            Text("Are you sure you want to delete \(viewModel.pendingDeleteFlightName ?? "")? This action cannot be undone.")
         }
         .accessibilityIdentifier("FlightsListViewRoot")
     }
@@ -210,13 +214,6 @@ struct FlightsListView: View {
                         // Ask the view model to start the confirmation flow
                         viewModel.requestDelete(flight: flight)
                     }
-                )
-            }
-            .onDelete { indexSet in
-                viewModel.handleOnDelete(
-                    indexSet: indexSet,
-                    flights: flights,
-                    modelContext: modelContext
                 )
             }
         }

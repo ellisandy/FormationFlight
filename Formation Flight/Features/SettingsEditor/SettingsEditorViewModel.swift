@@ -1,7 +1,9 @@
 import Foundation
+import Observation
 
-final class SettingsEditorViewModel: ObservableObject {
-    @Published var settings: Settings
+@Observable
+final class SettingsEditorViewModel {
+    var settings: Settings
 
     init(settings: Settings = .empty()) {
         self.settings = settings
@@ -12,7 +14,7 @@ final class SettingsEditorViewModel: ObservableObject {
         let persisted = Settings.load(from: userDefaults)
         self.settings = persisted
     }
-    
+
     func save(userDefaults: UserDefaults) {
         // Normalise the tolerance pair (no negatives, yellow <= red) before persisting,
         // and reflect the normalised values back into the editor.

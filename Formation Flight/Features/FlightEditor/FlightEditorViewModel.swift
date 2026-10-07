@@ -48,6 +48,22 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     /// `true` when all Go Fly validation rules pass.
     var canGoFly: Bool { goFlyValidationMessage == nil }
 
+    // MARK: - Hack Duration Guarding (B-34)
+
+    /// Upper bound for an editable hack duration: 24 hours in seconds.
+    nonisolated static let maxHackDurationSeconds = 86_400
+
+    /// Converts a hack time in seconds to a whole number of seconds safe for the editor.
+    ///
+    /// `Int(Double)` traps on non-finite input, so `nan` and `±infinity` return `nil`
+    /// (treated as "no hack time"). Finite values are clamped to
+    /// `0...maxHackDurationSeconds` before converting.
+    nonisolated static func hackDurationSeconds(from value: Double) -> Int? {
+        guard value.isFinite else { return nil }
+        let clamped = min(max(value, 0), Double(maxHackDurationSeconds))
+        return Int(clamped)
+    }
+
     func mapToValues(flight: Flight) {
         if flight.missionType == .tot {
             useTOT = true
@@ -59,7 +75,7 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
             selectedTargetLocation = targetCoord
         }
         
-        if let hackDuration = flight.hackTime.map({ Int($0) }) {
+        if let hackDuration = flight.hackTime.flatMap(Self.hackDurationSeconds(from:)) {
             hackDurationSeconds = hackDuration
         }
         
