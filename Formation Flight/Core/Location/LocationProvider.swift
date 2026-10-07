@@ -27,11 +27,6 @@ public protocol LocationProviding: AnyObject {
     func stopMonitoring()
 }
 
-private struct TimedLocation {
-    let location: CLLocation
-    let timestamp: Date
-}
-
 /// MainActor-isolated location source (B-27).
 ///
 /// `CLLocationManagerDelegate` is a nonisolated Objective-C protocol, so the conformance is
@@ -53,7 +48,13 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
     var currentLocation: CLLocation?
     var computedSpeedAndCourse: Bool = false
 
-    private var previousLocations: [TimedLocation] = []
+    /// The most recent fixes, oldest first, each carrying its own Core Location `timestamp`
+    /// (B-22). Capped at `maxBufferedFixes`.
+    private var previousLocations: [CLLocation] = []
+    private static let maxBufferedFixes = 10
+    /// Segments between consecutive buffered fixes longer than this are left out of the manual
+    /// estimate: averaging across a GPS dropout would describe the gap, not the current motion.
+    private static let maxSegmentInterval: TimeInterval = 30
     /// Assigned once in `init`; no second manager is allocated when one is injected (T-07).
     private let locationManager: CLLocationManager
 
@@ -108,12 +109,12 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
         if let _lastLocation = locations.last {
             currentLocation = _lastLocation
             
-            // Append incoming locations with timestamps and keep only the last 10
-            let now = Date()
-            let newTimed = locations.map { TimedLocation(location: $0, timestamp: now) }
-            previousLocations.append(contentsOf: newTimed)
-            if previousLocations.count > 10 {
-                previousLocations = Array(previousLocations.suffix(10))
+            // Buffer the incoming fixes with their own timestamps (B-22). Stamping them with
+            // the receipt time collapsed every fix in a batch onto one instant (dt == 0) and
+            // folded delivery latency into cross-batch segments.
+            previousLocations.append(contentsOf: locations)
+            if previousLocations.count > Self.maxBufferedFixes {
+                previousLocations = Array(previousLocations.suffix(Self.maxBufferedFixes))
             }
             
             if _lastLocation.speed > 0 {
@@ -155,26 +156,26 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
     private func computeManualSpeedAndCourse() -> (speed: Measurement<UnitSpeed>, course: Measurement<UnitAngle>)? {
         // Need at least two samples
         guard previousLocations.count >= 2 else { return nil }
-        
-        // Work with up to the last 10 samples
-        let samples = Array(previousLocations.suffix(10))
-        
+
+        let samples = previousLocations
+
         var validSegmentCount = 0
         var speedSumMps: Double = 0
-        
+
         // For circular mean of angles
         var sumSin: Double = 0
         var sumCos: Double = 0
-        
+
         for i in 1..<samples.count {
             let a = samples[i - 1]
             let b = samples[i]
-            
+
+            // Each fix carries the time it was measured (B-22). Skip zero/negative gaps
+            // (duplicate or out-of-order fixes) and gaps longer than `maxSegmentInterval`.
             let dt = b.timestamp.timeIntervalSince(a.timestamp)
-            // Only include segments with dt > 0 and <= 5 seconds
-            guard dt > 0, dt <= 5 else { continue }
-            
-            let dMeters = haversineDistanceMeters(from: a.location.coordinate, to: b.location.coordinate)
+            guard dt > 0, dt <= Self.maxSegmentInterval else { continue }
+
+            let dMeters = haversineDistanceMeters(from: a.coordinate, to: b.coordinate)
             let segSpeed = dMeters / dt // m/s
 
             speedSumMps += segSpeed
@@ -182,7 +183,7 @@ final class LocationProvider: NSObject, @preconcurrency CLLocationManagerDelegat
 
             // A stationary segment has no defined bearing; it still counts toward the speed
             // average but contributes nothing to the circular mean of the course.
-            if let bearing = a.location.coordinate.initialBearing(to: b.location.coordinate) {
+            if let bearing = a.coordinate.initialBearing(to: b.coordinate) {
                 let bearingRad = bearing.value.degreesToRadians
                 sumSin += sin(bearingRad)
                 sumCos += cos(bearingRad)
