@@ -207,7 +207,18 @@ final class FlightViewModel: ObservableObject {
         } else {
             self.eta = nil
         }
-        
+
+        // Set Required Ground Speed (B-24). Distance only changes with a fix, but the time
+        // left to ToT shrinks every second, so the value is recomputed here on every tick
+        // from the cached distance rather than only inside the location callback. Uses the
+        // floored clock so the time remaining is on the same whole-second basis as ToT.
+        if let dist = self.distance, let tot = self.tot,
+           let rgs = computeRequiredGroundSpeed(distance: dist, arrivalTime: tot, now: flooredClock) {
+            self.requiredGroundSpeed = rgs.converted(to: .knots)
+        } else {
+            self.requiredGroundSpeed = nil
+        }
+
         // Set Delta
         if let eta = self.eta, let tot = self.tot {
             // Positive delta means ETA is after TOT (late). Negative means early.
@@ -256,27 +267,10 @@ final class FlightViewModel: ObservableObject {
         
         // Set Historical Track
         self.track = locationProvider.course
-        
-        // If track is within tolerance of bearing, calculate the required ground speed.
-        if let _track = self.track, let _bearing = self.bearing, let _tot = self.tot {
-            
-            if let _distance = self.distance {
-                if let rgs = computeRequiredGroundSpeed(distance: _distance, arrivalTime: _tot, now: now()) {
-                    // Convert to your preferred display unit (knots)
-                    self.requiredGroundSpeed = rgs.converted(to: .knots)
-                } else {
-                    self.requiredGroundSpeed = nil
-                }
-            } else {
-                // Missing inputs; you can choose to clear or keep the previous value
-                self.requiredGroundSpeed = nil
-            }
-        } else {
-            // B-08: only the required speed depends on ToT. The current ground speed was
-            // read from the fix above and must stay on screen on a hack mission before
-            // "Hack!" is pressed.
-            self.requiredGroundSpeed = nil
-        }
+
+        // Required ground speed is not computed here (B-24): it depends on the time left to
+        // ToT, which changes every second, so `updateTimings()` derives it from the cached
+        // distance on each tick. This callback only refreshes what the fix itself provides.
     }
     
     // MARK: - Helpers
