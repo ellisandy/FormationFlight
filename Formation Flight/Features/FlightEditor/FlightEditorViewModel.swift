@@ -23,7 +23,20 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     
     // MARK: Flight View
     @Published var isFlightViewPresented: Bool = false
-    
+
+    // MARK: Validation
+    /// User-facing message set when `presentFlightView()` is refused because the mission is invalid.
+    @Published var validationMessage: String?
+
+    /// The first failing Go Fly rule as a user-facing message, or `nil` when the mission can be flown.
+    ///
+    /// Placeholder that mirrors today's behaviour: Go Fly performs no validation, so every
+    /// mission is reported as flyable. The B-02 fix supplies the real rules.
+    var goFlyValidationMessage: String? { nil }
+
+    /// `true` when all Go Fly validation rules pass.
+    var canGoFly: Bool { goFlyValidationMessage == nil }
+
     func mapToValues(flight: Flight) {
         if flight.missionType == .tot {
             useTOT = true
