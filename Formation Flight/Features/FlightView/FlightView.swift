@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 import CoreLocation
 
 private struct LabelValueRow: View {
@@ -347,6 +348,16 @@ struct FlightView: View {
             } message: {
                 Text("This will stop tracking and close out the current mission.")
             }
+        }
+        // Keep the screen awake for the duration of the flight. Pilots need the
+        // timing and instrument readouts visible without touching the device, so
+        // the system idle timer must not dim or lock the display while this view
+        // is on screen. Re-enabled on disappear so the rest of the app behaves normally.
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
 }
