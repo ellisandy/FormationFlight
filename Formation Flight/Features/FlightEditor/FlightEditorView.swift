@@ -43,7 +43,9 @@ struct FlightEditorView: View {
                             hackDurationSeconds: Binding<TimeInterval?>(
                                 get: { TimeInterval(viewModel.hackDurationSeconds) },
                                 set: { newValue in
-                                    viewModel.hackDurationSeconds = Int(newValue ?? 0)
+                                    // B-34: never feed a non-finite or absurd value into `Int(_:)`.
+                                    viewModel.hackDurationSeconds = newValue
+                                        .flatMap(FlightEditorViewModel.hackDurationSeconds(from:)) ?? 0
                                 }
                             )
                         )
