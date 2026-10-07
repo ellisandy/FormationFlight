@@ -22,9 +22,36 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     var isEditing: Bool { flight != nil }
     
     // MARK: Dirty tracking (B-21)
-    /// `true` when any editable field differs from the flight as loaded (or from the pristine
-    /// new-flight state). Placeholder: always `false` until the snapshot lands.
-    var isDirty: Bool { false }
+
+    /// The editable fields, captured so Cancel can tell whether anything changed.
+    ///
+    /// `CLLocationCoordinate2D` is not `Equatable`, so the target is stored as two doubles.
+    private struct Snapshot: Equatable {
+        var useTOT: Bool
+        var missionName: String
+        var hackDurationSeconds: Int
+        var timeEntry: Date
+        var targetLatitude: Double?
+        var targetLongitude: Double?
+    }
+
+    /// The state the editor opened with. Always overwritten at the end of `init` and
+    /// `mapToValues`, so the initial value is irrelevant.
+    private var baseline = Snapshot(useTOT: true, missionName: "", hackDurationSeconds: 0,
+                                    timeEntry: .distantPast, targetLatitude: nil, targetLongitude: nil)
+
+    private var currentSnapshot: Snapshot {
+        Snapshot(useTOT: useTOT,
+                 missionName: missionName,
+                 hackDurationSeconds: hackDurationSeconds,
+                 timeEntry: timeEntry,
+                 targetLatitude: selectedTargetLocation?.latitude,
+                 targetLongitude: selectedTargetLocation?.longitude)
+    }
+
+    /// `true` when any editable field differs from the flight as loaded, or from the pristine
+    /// new-flight state. Cancel asks before discarding only when this is `true`.
+    var isDirty: Bool { currentSnapshot != baseline }
 
     // MARK: Flight View
     @Published var isFlightViewPresented: Bool = false
@@ -91,8 +118,11 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
         if let entryDate = flight.missionDate {
             timeEntry = entryDate
         }
+
+        // The mapped flight is the new "unchanged" state.
+        baseline = currentSnapshot
     }
-    
+
     public init(flight selectedFlight: Flight? = nil) {
         self.flight = selectedFlight
         super.init()
@@ -100,6 +130,8 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
 
         if let selectedFlight {
             mapToValues(flight: selectedFlight)
+        } else {
+            baseline = currentSnapshot
         }
     }
     

@@ -10,6 +10,8 @@ struct FlightEditorView: View {
 
     // B-33: the thumbnail camera is view state so it can follow a changed target.
     @State private var thumbnailPosition: MapCameraPosition
+    // B-21: Cancel on a dirty editor asks before discarding.
+    @State private var showsDiscardConfirmation = false
 
     init(flight: Flight? = nil, onSave: @escaping (FlightEditorViewModel) -> Void = { _ in }, onCancel: @escaping () -> Void = {}) {
         _viewModel = StateObject(wrappedValue: FlightEditorViewModel(flight: flight))
@@ -157,6 +159,18 @@ struct FlightEditorView: View {
             thumbnailPosition = Self.thumbnailPosition(for: viewModel.selectedTargetLocation)
         }
         .toolbar {
+            // B-21: Cancel is the single way out; the system back button is hidden below so
+            // edits can never be dropped silently.
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Cancel") {
+                    if viewModel.isDirty {
+                        showsDiscardConfirmation = true
+                    } else {
+                        onCancel()
+                    }
+                }
+                .accessibilityIdentifier("flightEditorCancelButton")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(viewModel.isEditing ? "Save" : "Add") {
                     onSave(viewModel)
@@ -164,6 +178,17 @@ struct FlightEditorView: View {
                 .bold()
                 .accessibilityIdentifier("flightEditorSaveButton")
             }
+        }
+        .navigationBarBackButtonHidden(true)
+        .confirmationDialog("Discard changes?",
+                            isPresented: $showsDiscardConfirmation,
+                            titleVisibility: .visible) {
+            Button("Discard", role: .destructive) {
+                onCancel()
+            }
+            Button("Keep Editing", role: .cancel) { }
+        } message: {
+            Text("Your changes to this flight will not be saved.")
         }
         .alert("Validation", isPresented: Binding(
             get: { viewModel.validationMessage != nil },
