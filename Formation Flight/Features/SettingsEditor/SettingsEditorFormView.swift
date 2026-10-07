@@ -10,7 +10,8 @@ import SwiftUI
 struct SettingsEditorFormView: View {
     @ObservedObject var viewModel: SettingsEditorViewModel
     @State private var editMode: EditMode = .active
-    
+    @State private var showsSafetyDisclaimer = false
+
     var body: some View {
         Form {
             Section("Units") {
@@ -53,8 +54,30 @@ struct SettingsEditorFormView: View {
                     }
                 }
             }
+
+            // R-07: persistent safety reminder plus a way to re-read the full
+            // disclaimer after the first-launch acknowledgement.
+            Section {
+                Button("Show Safety Disclaimer") {
+                    showsSafetyDisclaimer = true
+                }
+                .accessibilityIdentifier("settingsShowDisclaimerButton")
+            } header: {
+                Text("Safety")
+            } footer: {
+                Text(SafetyDisclaimer.settingsFooter)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settingsSafetyDisclaimerText")
+            }
         }
         .environment(\.editMode, $editMode)
+        .sheet(isPresented: $showsSafetyDisclaimer) {
+            // Read-only re-display: the pilot already acknowledged at first
+            // launch, so the button simply dismisses.
+            SafetyDisclaimerView {
+                showsSafetyDisclaimer = false
+            }
+        }
     }
     
     let windDirectionFormatter: NumberFormatter = {

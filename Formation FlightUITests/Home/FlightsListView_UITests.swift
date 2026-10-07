@@ -50,8 +50,14 @@ final class FlightsListViewUITests: XCTestCase {
     /// Launches the app against an in-memory store and waits for the Flights list.
     /// - Parameter seeded: When `true`, the store starts with the two seed flights
     ///   `UI F1` and `UI F2`; otherwise it starts empty.
+    ///
+    /// The safety disclaimer (R-07) is pre-acknowledged through the
+    /// `-hasAcknowledgedSafetyDisclaimer YES` launch argument, which
+    /// `UserDefaults` honours directly, so it never blocks these tests.
+    /// `testSafetyDisclaimerShowsOnFirstLaunchAndIsAcknowledgedOnce` launches
+    /// on its own to cover the first-launch path.
     private func launch(seeded: Bool = false) {
-        app.launchArguments += ["-uiTestsResetStore"]
+        app.launchArguments += ["-uiTestsResetStore", "-hasAcknowledgedSafetyDisclaimer", "YES"]
         if seeded {
             app.launchArguments += ["-uiTestsSeedFlights"]
         }
@@ -142,6 +148,36 @@ final class FlightsListViewUITests: XCTestCase {
     }
 
     // MARK: - Tests
+
+    func testSafetyDisclaimerShowsOnFirstLaunchAndIsAcknowledgedOnce() throws {
+        // Deliberately not `launch()`: this test must start with the disclaimer
+        // unacknowledged. `-uiTestsResetStore` only resets the SwiftData store,
+        // not UserDefaults, so an explicit NO is passed to override any YES the
+        // simulator persisted from an earlier run and keep this test repeatable.
+        app.launchArguments += ["-uiTestsResetStore", "-hasAcknowledgedSafetyDisclaimer", "NO"]
+        app.launch()
+
+        let disclaimer = app.otherElements["safetyDisclaimerView"]
+        XCTAssertTrue(disclaimer.waitForExistence(timeout: 5), "A first launch must present safetyDisclaimerView")
+
+        let acknowledgeButton = app.buttons["safetyDisclaimerAcknowledgeButton"]
+        XCTAssertTrue(acknowledgeButton.waitForExistence(timeout: 5), "safetyDisclaimerAcknowledgeButton should be inside the disclaimer")
+
+        // The full-screen cover sits over the Flights list, so its toolbar
+        // button must not be reachable until the disclaimer is acknowledged.
+        let addButton = app.buttons["addFlightButton"]
+        XCTAssertFalse(addButton.isHittable, "addFlightButton must not be hittable behind the safety disclaimer")
+
+        acknowledgeButton.tap()
+
+        XCTAssertFalse(disclaimer.waitForExistence(timeout: 2), "safetyDisclaimerView should be dismissed after tapping I Understand")
+        XCTAssertTrue(
+            app.otherElements["FlightsListViewRoot"].waitForExistence(timeout: 5),
+            "FlightsListViewRoot should be on screen once the disclaimer is acknowledged"
+        )
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5), "addFlightButton should exist once the disclaimer is acknowledged")
+        XCTAssertTrue(addButton.isHittable, "addFlightButton should be hittable once the disclaimer is acknowledged")
+    }
 
     func testEmptyStateAndCreateFirstFlightButtonPresentsEditor() throws {
         launch()

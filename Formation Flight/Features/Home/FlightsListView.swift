@@ -79,7 +79,12 @@ struct FlightsListView: View {
     @Query var flights: [Flight]
     
     @StateObject private var viewModel = FlightsListViewModel()
-    
+
+    // R-07: the safety disclaimer is shown once, on first launch, and must be
+    // acknowledged before the app can be used.
+    private let safetyDisclaimerStore = SafetyDisclaimerStore()
+    @State private var showsSafetyDisclaimer = false
+
     var body: some View {
         NavigationStack {
             Group {
@@ -138,9 +143,22 @@ struct FlightsListView: View {
         }, content: {
             SettingsEditorView(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
         })
+        .fullScreenCover(isPresented: $showsSafetyDisclaimer) {
+            SafetyDisclaimerView {
+                uiLog.debug("Safety disclaimer acknowledged")
+                safetyDisclaimerStore.acknowledge()
+                showsSafetyDisclaimer = false
+            }
+            // The only way out is the acknowledgement button.
+            .interactiveDismissDisabled()
+        }
         .onAppear {
             uiLog.debug("FlightsListView appeared")
             viewModel.startMonitoring()
+            if !safetyDisclaimerStore.hasAcknowledged {
+                uiLog.debug("Presenting safety disclaimer (first launch)")
+                showsSafetyDisclaimer = true
+            }
         }
         .alert(
             "Validation",

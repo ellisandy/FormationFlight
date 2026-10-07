@@ -23,8 +23,9 @@ final class Formation_FlightUITestsLaunchTests: XCTestCase {
         let app = XCUIApplication()
         // Launch against an empty in-memory store so the captured screen (the
         // empty state) is identical on every run regardless of what the
-        // simulator has saved.
-        app.launchArguments += ["-uiTestsResetStore"]
+        // simulator has saved. The safety disclaimer (R-07) is pre-acknowledged
+        // so the screenshot shows the Flights list, not the first-launch cover.
+        app.launchArguments += ["-uiTestsResetStore", "-hasAcknowledgedSafetyDisclaimer", "YES"]
         app.launch()
 
         let root = app.otherElements["FlightsListViewRoot"]

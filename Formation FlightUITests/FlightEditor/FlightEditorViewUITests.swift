@@ -44,8 +44,12 @@ final class FlightEditorViewUITests: XCTestCase {
     /// Launches the app against an in-memory store and waits for the Flights list.
     /// - Parameter seeded: When `true`, the store starts with the two seed flights
     ///   `UI F1` and `UI F2`; otherwise it starts empty.
+    ///
+    /// The safety disclaimer (R-07) is pre-acknowledged through the
+    /// `-hasAcknowledgedSafetyDisclaimer YES` launch argument, which
+    /// `UserDefaults` honours directly, so it never blocks these tests.
     private func launch(seeded: Bool = false) {
-        app.launchArguments += ["-uiTestsResetStore"]
+        app.launchArguments += ["-uiTestsResetStore", "-hasAcknowledgedSafetyDisclaimer", "YES"]
         if seeded {
             app.launchArguments += ["-uiTestsSeedFlights"]
         }
