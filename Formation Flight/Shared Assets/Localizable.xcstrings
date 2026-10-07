@@ -1,1 +1,205 @@
-{"sourceLanguage":"en","strings":{},"version":"1.0"}
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lldm" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add Flight" : {
+
+    },
+    "Add Item" : {
+
+    },
+    "Are you sure you want to delete %@? This action cannot be undone." : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Close" : {
+
+    },
+    "Create a new flight" : {
+
+    },
+    "Create your first flight" : {
+
+    },
+    "Create your first flight to get started." : {
+
+    },
+    "Date" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Flight?" : {
+
+    },
+    "Distance Unit" : {
+
+    },
+    "Done" : {
+
+    },
+    "Edit Hack" : {
+
+    },
+    "Edit TOT" : {
+
+    },
+    "End Flight" : {
+
+    },
+    "End Flight?" : {
+
+    },
+    "Flight Editor" : {
+
+    },
+    "Flights" : {
+
+    },
+    "Formation Flight could not open its flight store. Please reinstall the app." : {
+
+    },
+    "Go Fly" : {
+
+    },
+    "Hack" : {
+
+    },
+    "Hack!" : {
+
+    },
+    "Hour" : {
+
+    },
+    "Instruments" : {
+
+    },
+    "Lat: %@" : {
+
+    },
+    "Latitude" : {
+
+    },
+    "Latitude: %@" : {
+
+    },
+    "Lon: %@" : {
+
+    },
+    "Longitude" : {
+
+    },
+    "Longitude: %@" : {
+
+    },
+    "Min" : {
+
+    },
+    "Minute" : {
+
+    },
+    "Mission Details" : {
+
+    },
+    "Mission Name" : {
+
+    },
+    "No Flights Yet" : {
+
+    },
+    "No instruments available" : {
+
+    },
+    "OK" : {
+
+    },
+    "Open settings" : {
+
+    },
+    "Pick Checkpoint" : {
+
+    },
+    "Red Variance" : {
+
+    },
+    "Save" : {
+
+    },
+    "Saved flights could not be read and were reset." : {
+
+    },
+    "Saved Flights Reset" : {
+
+    },
+    "Sec" : {
+
+    },
+    "Second" : {
+
+    },
+    "Select Target" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Speed Unit" : {
+
+    },
+    "Stops tracking and closes out the current mission." : {
+
+    },
+    "Storage Unavailable" : {
+
+    },
+    "Target" : {
+
+    },
+    "This will stop tracking and close out the current mission." : {
+
+    },
+    "Time Entry" : {
+
+    },
+    "Time on Target Drift Tolerance" : {
+
+    },
+    "Time Type" : {
+
+    },
+    "Timing" : {
+
+    },
+    "TOT" : {
+
+    },
+    "Units" : {
+
+    },
+    "Validation" : {
+
+    },
+    "Yellow Variance" : {
+
+    },
+    "Yellow: +/-%lld seconds \nRed:     +/-%lld seconds" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Yellow: +/-%1$lld seconds \nRed:     +/-%2$lld seconds"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
