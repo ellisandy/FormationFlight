@@ -141,6 +141,21 @@ struct FlightTests {
   }
 }
 
+// MARK: - On-disk contract
+
+/// `MissionType` is stored by SwiftData as its raw string on every `Flight` row, so these
+/// values are an on-disk contract: changing one makes existing rows undecodable. Pin them.
+@Suite("MissionType raw values")
+struct MissionTypeRawValueTests {
+    @Test("MissionType raw values are stable (on-disk contract)")
+    func testMissionTypeRawValuesArePinned() {
+        #expect(MissionType.hackTime.rawValue == "hack_time")
+        #expect(MissionType.tot.rawValue == "tot")
+        // Adding a case needs a migration story; this forces the list above to be revisited.
+        #expect(MissionType.allCases.count == 2)
+    }
+}
+
 // MARK: - Persistence fixtures
 
 /// Mimics the `Flight` model that shipped before the current schema

@@ -166,6 +166,49 @@ struct SettingsTests {
         #expect(loaded.redTolerance == 0)
     }
 
+    // MARK: - Persistence: corrupt instrumentSettings payloads fall back to defaults
+    //
+    // `Settings.load(from:)` reads the blob under the "instrumentSettings" key. Ordering of the
+    // merged list is deliberately not asserted here: B-12 (load rebuilds default order) is open.
+
+    @Test("load(from:) returns the default instrument list when the stored blob is not JSON")
+    func testLoadCorruptInstrumentSettingsDataFallsBackToDefaults() throws {
+        let suiteName = "SettingsTests.testLoadCorruptInstrumentSettingsDataFallsBackToDefaults"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(Data("definitely not json".utf8), forKey: "instrumentSettings")
+
+        let loaded = Settings.load(from: defaults)
+        #expect(loaded.instrumentSettings == Settings.empty().instrumentSettings)
+        #expect(loaded.instrumentSettings.allSatisfy { $0.isEnabled })
+    }
+
+    @Test("load(from:) returns the default instrument list when a saved entry has an unknown type")
+    func testLoadUnknownInstrumentTypeFallsBackToDefaults() throws {
+        let suiteName = "SettingsTests.testLoadUnknownInstrumentTypeFallsBackToDefaults"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // `InstrumentSetting.init(from:)` throws on an unknown `type`, so the whole array fails
+        // to decode. The valid "Cur GS": false entry must therefore NOT be merged: if it were,
+        // currentGroundSpeed would come back disabled and this would be a partial decode.
+        let json = """
+        [
+          {"type": "Cur GS", "isEnabled": false},
+          {"type": "Not An Instrument", "isEnabled": true}
+        ]
+        """
+        defaults.set(Data(json.utf8), forKey: "instrumentSettings")
+
+        let loaded = Settings.load(from: defaults)
+        #expect(loaded.instrumentSettings == Settings.empty().instrumentSettings)
+        let currentGroundSpeed = loaded.instrumentSettings.first { $0.type == .currentGroundSpeed }
+        #expect(currentGroundSpeed?.isEnabled == true)
+    }
+
     // MARK: - Tolerance validation
     @Test("validated() raises red to yellow when yellow > red")
     func testValidatedFixesInvertedTolerances() {
