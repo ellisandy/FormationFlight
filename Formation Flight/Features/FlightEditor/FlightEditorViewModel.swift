@@ -29,10 +29,18 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
     @Published var validationMessage: String?
 
     /// The first failing Go Fly rule as a user-facing message, or `nil` when the mission can be flown.
-    ///
-    /// Placeholder that mirrors today's behaviour: Go Fly performs no validation, so every
-    /// mission is reported as flyable. The B-02 fix supplies the real rules.
-    var goFlyValidationMessage: String? { nil }
+    var goFlyValidationMessage: String? {
+        if missionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Please enter a mission name."
+        }
+        if selectedTargetLocation == nil {
+            return "Please enter a valid target location."
+        }
+        if !useTOT && hackDurationSeconds <= 0 {
+            return "Please enter a hack time."
+        }
+        return nil
+    }
 
     /// `true` when all Go Fly validation rules pass.
     var canGoFly: Bool { goFlyValidationMessage == nil }
@@ -97,7 +105,12 @@ final class FlightEditorViewModel: NSObject, ObservableObject, CLLocationManager
         selectedTargetLocation = coordinate
     }
     
-    func presentFlightView() {        
+    func presentFlightView() {
+        if let message = goFlyValidationMessage {
+            validationMessage = message
+            return
+        }
+        validationMessage = nil
         isFlightViewPresented = true
     }
     

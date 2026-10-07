@@ -108,8 +108,6 @@ struct FlightEditorView: View {
                 }
                 Section {
                     Button {
-                        // TODO: Run validation before. Also, maybe save...?
-                        
                         viewModel.presentFlightView()
                     } label: {
                         Text("Go Fly")
@@ -117,6 +115,7 @@ struct FlightEditorView: View {
                             .tint(.primary)
                             .frame(maxWidth: .infinity)
                     }
+                    .disabled(!viewModel.canGoFly)
                     .accessibilityIdentifier("goFlyButton")
                     .padding(.horizontal, 8)
                     .buttonStyle(.glass)
@@ -145,6 +144,18 @@ struct FlightEditorView: View {
                 .accessibilityIdentifier("flightEditorSaveButton")
             }
         }
+        .alert("Validation", isPresented: Binding(
+            get: { viewModel.validationMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    viewModel.validationMessage = nil
+                }
+            }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.validationMessage ?? "")
+        }
         .fullScreenCover(isPresented: $viewModel.isFlightViewPresented,
                          onDismiss: {
             viewModel.dismissFlightView()
@@ -161,6 +172,19 @@ struct FlightEditorView: View {
                                                       hackTime: Double(viewModel.hackDurationSeconds),
                                                       settings: Settings.load(from: UserDefaults.standard)
                                                      ))
+            } else {
+                // Safety net: the cover must never be empty and undismissable.
+                VStack(spacing: 16) {
+                    Text(viewModel.goFlyValidationMessage ?? "Please enter a valid target location.")
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("flightViewFallbackMessage")
+                    Button("Close") {
+                        viewModel.dismissFlightView()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("flightViewFallbackCloseButton")
+                }
+                .padding()
             }
         })
         .navigationTitle("Flight Editor")
