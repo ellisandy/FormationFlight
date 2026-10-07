@@ -189,6 +189,88 @@ final class FlightEditorViewModelTests {
         #expect(vm.validationMessage == nil)
     }
 
+    // MARK: - Shared validation rules (B-14)
+    //
+    // Go Fly and Save must agree: the editor's message for a failure is the same string
+    // `Flight.validFlight()` produces for a model in the same state, so one wording exists
+    // per rule and the string catalog carries each only once.
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForZeroHack() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Hack Mission"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = false
+        vm.hackDurationSeconds = 0
+
+        let flight = Flight(missionName: "Hack Mission", missionType: .hackTime, missionDate: nil,
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: 0)
+
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+    }
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForEmptyName() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = ""
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+
+        let flight = Flight(missionName: "", missionType: .tot, missionDate: Date().addingTimeInterval(600),
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: nil)
+
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+    }
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForMissingTarget() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Mission"
+
+        let flight = Flight(missionName: "Mission", missionType: .tot, missionDate: Date().addingTimeInterval(600),
+                            target: Target(longitude: 0, latitude: 0), hackTime: nil)
+        flight.target = nil
+
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+    }
+
+    @Test
+    func testGoFlyMessageMatchesValidFlightForPastTOT() throws {
+        let past = Date().addingTimeInterval(-3_600)
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Late"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.useTOT = true
+        vm.timeEntry = past
+
+        let flight = Flight(missionName: "Late", missionType: .tot, missionDate: past,
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: nil)
+
+        #expect(vm.canGoFly == false)
+        let editorMessage = try #require(vm.goFlyValidationMessage)
+        let modelMessage = try #require(flight.validFlight().message)
+        #expect(editorMessage == modelMessage)
+        #expect(editorMessage.localizedCaseInsensitiveContains("past"))
+    }
+
+    @Test
+    func testPresentFlightViewPastTOT_DoesNotPresent() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Late"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.timeEntry = Date().addingTimeInterval(-3_600)
+
+        vm.presentFlightView()
+
+        #expect(vm.isFlightViewPresented == false)
+        #expect(vm.validationMessage != nil)
+    }
+
     @Test
     func testCanGoFlyTracksStateChanges() {
         let vm = FlightEditorViewModel()

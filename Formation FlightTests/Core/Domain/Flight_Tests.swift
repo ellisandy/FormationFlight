@@ -63,6 +63,79 @@ struct FlightTests {
     #expect(validation.message!.localizedCaseInsensitiveContains("hack time"))
   }
 
+  // B-14: a hack-time mission with a 0 s hack is as unusable as one with no hack at all
+  // (pressing Hack would make TOT = now and the readout instantly red).
+  @Test
+  func testHackTimeZeroIsRejected() throws {
+    let flight = Flight(
+      missionName: "Zero Hack",
+      missionType: .hackTime,
+      missionDate: nil,
+      target: sampleTarget,
+      hackTime: 0
+    )
+    let validation = flight.validFlight()
+    #expect(!validation.valid)
+    #expect(validation.message?.localizedCaseInsensitiveContains("hack") == true)
+  }
+
+  @Test
+  func testNegativeHackTimeIsRejected() throws {
+    let flight = Flight(
+      missionName: "Negative Hack",
+      missionType: .hackTime,
+      missionDate: nil,
+      target: sampleTarget,
+      hackTime: -5
+    )
+    #expect(!flight.validFlight().valid)
+  }
+
+  // B-14: a TOT more than a minute in the past cannot be flown. The clock is injected so
+  // the boundary is exact.
+  @Test
+  func testPastTOTIsRejected() throws {
+    let now = Date(timeIntervalSince1970: 2_000_000)
+    let flight = Flight(
+      missionName: "Late",
+      missionType: .tot,
+      missionDate: now.addingTimeInterval(-61),
+      target: sampleTarget,
+      hackTime: nil
+    )
+    let validation = flight.validFlight(now: now)
+    #expect(!validation.valid)
+    #expect(validation.message?.localizedCaseInsensitiveContains("past") == true)
+  }
+
+  @Test
+  func testTOTWithinOneMinuteGraceIsAccepted() throws {
+    let now = Date(timeIntervalSince1970: 2_000_000)
+    let flight = Flight(
+      missionName: "Just now",
+      missionType: .tot,
+      missionDate: now.addingTimeInterval(-60),
+      target: sampleTarget,
+      hackTime: nil
+    )
+    let validation = flight.validFlight(now: now)
+    #expect(validation.valid)
+    #expect(validation.message == nil)
+  }
+
+  @Test
+  func testFutureTOTIsAccepted() throws {
+    let now = Date(timeIntervalSince1970: 2_000_000)
+    let flight = Flight(
+      missionName: "Later",
+      missionType: .tot,
+      missionDate: now.addingTimeInterval(3_600),
+      target: sampleTarget,
+      hackTime: nil
+    )
+    #expect(flight.validFlight(now: now).valid)
+  }
+
   @Test
   func testTotNilDate() throws {
     let flight = Flight(

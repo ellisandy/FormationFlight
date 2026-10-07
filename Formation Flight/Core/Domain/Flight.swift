@@ -85,9 +85,10 @@ extension Flight {
 extension Flight {
     /// Validates the flight based on mission type and required fields.
     ///
+    /// - Parameter now: The current time, injectable for tests. Not yet consulted (B-14 placeholder).
     /// - Returns: A tuple `(valid, message)` where `valid` indicates overall validity and
     ///   `message` provides a user-facing prompt for the first missing requirement, if any.
-    func validFlight() -> (valid: Bool, message: String?)  {
+    func validFlight(now: Date = Date()) -> (valid: Bool, message: String?)  {
         var validStatus = true
         var message: String?
 
