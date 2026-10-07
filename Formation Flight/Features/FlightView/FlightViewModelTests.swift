@@ -484,13 +484,3 @@ struct FlightViewModelTests {
     }
 }
 
-// MARK: - Temporary compile shim (removed by the B-03 production fix)
-//
-// `FlightViewModel.start()` / `stop()` do not exist yet. These no-op stand-ins let the
-// lifecycle tests above compile against the current production code so they can be run
-// and observed failing. The fix commit deletes this extension and adds the real methods.
-extension FlightViewModel {
-    func start() {}
-    func stop() {}
-}
-

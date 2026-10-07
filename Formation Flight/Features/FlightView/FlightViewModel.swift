@@ -51,8 +51,12 @@ final class FlightViewModel: ObservableObject {
     
     // MARK: - Private
     private let timerScheduler: TimerScheduling
-    private var timerToken: AnyCancellableLike?
-    
+    /// Marked `nonisolated(unsafe)` solely so `deinit` (which is nonisolated under
+    /// Swift 6) can cancel a still-live timer as a safety net. All other access is
+    /// from MainActor-isolated methods, and the view's `.onDisappear` -> `stop()`
+    /// is the primary teardown path.
+    nonisolated(unsafe) private var timerToken: AnyCancellableLike?
+
     // MARK: - Initialization
     init(flight: Flight,
          settings: Settings,
@@ -70,8 +74,6 @@ final class FlightViewModel: ObservableObject {
         if let missionDate = flight.missionDate {
             self.tot = missionDate
         }
-        
-        configure()
     }
     
     init(missionName: String = "",
@@ -99,15 +101,41 @@ final class FlightViewModel: ObservableObject {
         if let hackTime {
             self.hackTime = hackTime
         }
-        
-        configure()
     }
-    
-    private func configure() {
-        self.locationProvider.updateDelegate = self.onLocationUpdate
-        startTimer()
+
+    /// Safety net only: if a started VM is released without `stop()`, make sure the
+    /// repeating timer does not outlive it. `deinit` is nonisolated under Swift 6, so
+    /// it must not touch `locationProvider` (MainActor state); clearing the delegate
+    /// and stopping GPS is the job of `stop()`, called from `FlightView.onDisappear`.
+    deinit {
+        timerToken?.cancel()
     }
-    
+
+    // MARK: - Lifecycle
+    /// Begins live updates: wires the location delegate, starts GPS monitoring, and
+    /// schedules the 1 Hz timing refresh. Idempotent; a second call is a no-op.
+    func start() {
+        guard timerToken == nil else { return }
+        locationProvider.updateDelegate = { [weak self] in
+            self?.onLocationUpdate()
+        }
+        locationProvider.startMonitoring()
+        currentTime = Date()
+        timerToken = timerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
+            self?.updateTimings()
+        }
+    }
+
+    /// Ends live updates: cancels the timer, detaches from the location provider,
+    /// and stops GPS monitoring. Safe to call when not started.
+    func stop() {
+        guard timerToken != nil else { return }
+        timerToken?.cancel()
+        timerToken = nil
+        locationProvider.updateDelegate = nil
+        locationProvider.stopMonitoring()
+    }
+
     // MARK: - Public API (UI Intents)
     func presentEditHackTime() {
         isEditingHackTime = true
@@ -134,15 +162,6 @@ final class FlightViewModel: ObservableObject {
     func onLocationUpdate() {
         AppLogger.viewModel.debug("Location update received from LocationProvider")
         updateInstruments()
-    }
-    
-    // MARK: - Timer
-    private func startTimer() {
-        locationProvider.startMonitoring()
-        // Schedule 1-second updates using injected scheduler
-        timerToken = timerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
-            self?.updateTimings()
-        }
     }
     
     // MARK: - Update Pipelines
