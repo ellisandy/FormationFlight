@@ -74,8 +74,11 @@ struct SettingsTests {
         let s = Settings.empty()
         #expect(s.speedUnit == .kts)
         #expect(s.distanceUnit == .nm)
-        #expect(s.yellowTolerance == 0)
-        #expect(s.redTolerance == 0)
+        // B-05: a fresh install must not treat every non-zero delta as red.
+        // Default tolerances must be non-zero and ordered yellow <= red.
+        #expect(s.yellowTolerance > 0)
+        #expect(s.redTolerance > 0)
+        #expect(s.yellowTolerance <= s.redTolerance)
         // Ensure we have at least the 5 default instruments and they are enabled as specified
         #expect(s.instrumentSettings.count == 5)
         #expect(s.instrumentSettings.allSatisfy { $0.isEnabled })
@@ -121,6 +124,46 @@ struct SettingsTests {
         // Specifically, bearing should be disabled due to saved state
         let bearingLoaded = loaded.instrumentSettings.first { $0.type == .bearing }
         #expect(bearingLoaded?.isEnabled == false)
+    }
+
+    // MARK: - Persistence: tolerance defaults vs explicit values
+    @Test("load(from:) on a fresh UserDefaults returns the default tolerances, not 0")
+    func testLoadFreshDefaultsUsesDefaultTolerances() throws {
+        let suiteName = "SettingsTests.testLoadFreshDefaultsUsesDefaultTolerances"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // B-05: UserDefaults.integer(forKey:) returns 0 for a never-set key, which
+        // made every non-zero delta "red" on a fresh install. Loading from an empty
+        // store must yield the same tolerances as empty().
+        let loaded = Settings.load(from: defaults)
+        let expected = Settings.empty()
+
+        #expect(loaded.yellowTolerance == expected.yellowTolerance)
+        #expect(loaded.redTolerance == expected.redTolerance)
+        #expect(loaded.yellowTolerance > 0)
+        #expect(loaded.redTolerance > 0)
+        #expect(loaded.yellowTolerance <= loaded.redTolerance)
+    }
+
+    @Test("load(from:) keeps an explicitly saved 0/0 tolerance pair")
+    func testLoadExplicitZeroTolerancesArePreserved() throws {
+        let suiteName = "SettingsTests.testLoadExplicitZeroTolerancesArePreserved"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // A user who deliberately saves 0/0 must get 0/0 back; the default
+        // fallback must only apply when the keys were never written.
+        var saved = Settings.empty()
+        saved.yellowTolerance = 0
+        saved.redTolerance = 0
+        saved.save(to: defaults)
+
+        let loaded = Settings.load(from: defaults)
+        #expect(loaded.yellowTolerance == 0)
+        #expect(loaded.redTolerance == 0)
     }
 
     // MARK: - Decoding ignores unknown CodingKeys (minSpeed/maxSpeed/proximityToNextPoint)
