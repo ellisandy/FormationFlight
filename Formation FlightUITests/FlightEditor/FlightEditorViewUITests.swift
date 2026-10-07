@@ -15,7 +15,12 @@ final class FlightEditorViewUITests: XCTestCase {
     private var app: XCUIApplication!
 
     /// Matches the list row container of every flight (`flightRow_<uuid>`).
-    private let flightRowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
+    ///
+    /// Built fresh on each access: `NSPredicate` is not `Sendable`, and under Swift 6
+    /// a stored instance cannot be handed to `XCUIElementQuery` more than once.
+    private var flightRowPredicate: NSPredicate {
+        NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
+    }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -76,10 +81,12 @@ final class FlightEditorViewUITests: XCTestCase {
     /// exposed; matching the row container and tapping its centre hits the button.
     private func flightRowButton(named name: String) -> XCUIElement {
         // Exact match: "UI F1 Renamed" must not satisfy a lookup for "UI F1".
-        let byLabel = NSPredicate(format: "label == %@", name)
+        // A separate predicate per query: NSPredicate is not Sendable, so one
+        // instance cannot be sent to two XCUIElementQuery calls under Swift 6.
+        func byLabel() -> NSPredicate { NSPredicate(format: "label == %@", name) }
         let rows = flightRows
-        let direct = rows.matching(byLabel)
-        return direct.count > 0 ? direct.firstMatch : rows.containing(byLabel).firstMatch
+        let direct = rows.matching(byLabel())
+        return direct.count > 0 ? direct.firstMatch : rows.containing(byLabel()).firstMatch
     }
 
     /// Waits until `query` matches exactly `count` elements.

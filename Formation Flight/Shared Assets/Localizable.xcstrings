@@ -13,8 +13,14 @@
     "Add Item" : {
 
     },
+    "Always fly the aircraft first, follow your unit's procedures and applicable regulations, and cross-check against primary instruments." : {
+      "comment" : "Safety disclaimer, paragraph 3: pilot responsibilities"
+    },
     "Are you sure you want to delete %@? This action cannot be undone." : {
 
+    },
+    "Before You Fly" : {
+      "comment" : "Title of the aviation safety disclaimer shown on first launch"
     },
     "Cancel" : {
 
@@ -73,6 +79,12 @@
     "Formation Flight could not open its flight store. Please reinstall the app." : {
 
     },
+    "Formation Flight is a supplemental timing aid for situational awareness only. It is not a substitute for primary navigation." : {
+      "comment" : "Persistent one-line safety disclaimer shown in Settings"
+    },
+    "Formation Flight is a supplemental timing aid. It helps you track time on target, distance, bearing, and required groundspeed using your device's GPS." : {
+      "comment" : "Safety disclaimer, paragraph 1: what the app does"
+    },
     "Go Fly" : {
 
     },
@@ -85,8 +97,14 @@
     "Hour" : {
 
     },
+    "I Understand" : {
+      "comment" : "Button that acknowledges the safety disclaimer"
+    },
     "Instruments" : {
 
+    },
+    "It is not a certified navigation or flight-management system and must not be used as your primary means of navigation, terrain avoidance, or traffic separation. GPS data can be delayed, degraded, or unavailable." : {
+      "comment" : "Safety disclaimer, paragraph 2: what the app is not"
     },
     "Lat: %@" : {
 
@@ -157,6 +175,9 @@
     "Red Variance" : {
 
     },
+    "Safety" : {
+
+    },
     "Save" : {
 
     },
@@ -176,6 +197,9 @@
 
     },
     "Settings" : {
+
+    },
+    "Show Safety Disclaimer" : {
 
     },
     "Speed Unit" : {

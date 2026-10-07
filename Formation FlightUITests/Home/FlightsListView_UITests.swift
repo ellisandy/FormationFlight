@@ -18,10 +18,18 @@ final class FlightsListViewUITests: XCTestCase {
 
     private var app: XCUIApplication!
 
+    // Predicates are built fresh on each access: `NSPredicate` is not `Sendable`,
+    // and under Swift 6 a stored instance cannot be handed to `XCUIElementQuery`
+    // more than once.
+
     /// Matches the list row container of every flight (`flightRow_<uuid>`).
-    private let flightRowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
+    private var flightRowPredicate: NSPredicate {
+        NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
+    }
     /// Matches the swipe-action delete button of every flight (`flightRowDelete_<uuid>`).
-    private let flightRowDeletePredicate = NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")
+    private var flightRowDeletePredicate: NSPredicate {
+        NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")
+    }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
