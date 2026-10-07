@@ -232,7 +232,21 @@ final class FlightViewModel: ObservableObject {
         } else {
             self.delta = nil
         }
-        
+
+        // Spell out the sign of the delta (B-11). The tint alone is not a dependable cue in a
+        // cockpit, and "+00:00:07" still needs the reader to remember which way the sign runs.
+        if let _delta = delta {
+            if _delta < 0 {
+                deltaLabel = String(localized: "EARLY", comment: "Flight Δ row: ETA is before ToT")
+            } else if _delta > 0 {
+                deltaLabel = String(localized: "LATE", comment: "Flight Δ row: ETA is after ToT")
+            } else {
+                deltaLabel = String(localized: "ON TIME", comment: "Flight Δ row: ETA equals ToT")
+            }
+        } else {
+            deltaLabel = nil
+        }
+
         // Map absolute delta (seconds) to status using settings tolerances: <= yellow = good, <= red = bad, > red = reallyBad.
         // With no delta (no fix, no speed, or no ToT) there is nothing to judge, so fall back to .unknown
         // rather than leaving a stale colour on screen.

@@ -13,6 +13,9 @@ private struct LabelValueRow: View {
     let label: String
     let value: String?
     var valueColor: Color? = nil
+    /// Short qualifier shown beside the value (e.g. "EARLY" next to the Δ readout, B-11).
+    /// Rendered in the value's colour so the word and the tint reinforce each other.
+    var caption: String? = nil
     /// Accessibility identifier for the combined row, used by UI tests.
     var identifier: String? = nil
 
@@ -20,6 +23,13 @@ private struct LabelValueRow: View {
         HStack {
             Text(label).font(.title)
             Spacer()
+            if let caption {
+                Text(caption)
+                    .font(.caption.bold())
+                    .foregroundStyle(valueColor ?? .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
             Text(value ?? "")
                 .font(.title)
                 .monospacedDigit()
@@ -33,7 +43,12 @@ private struct LabelValueRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier ?? "")
         .accessibilityLabel(label)
-        .accessibilityValue(value ?? "")
+        .accessibilityValue(accessibilityValueText)
+    }
+
+    /// The value followed by the caption, so VoiceOver reads "+00:00:07, LATE".
+    private var accessibilityValueText: String {
+        [value, caption].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }
 
@@ -76,9 +91,11 @@ private struct TimingSection: View {
     let ete: String
     let eta: String
     let delta: String
+    /// "EARLY" / "LATE" / "ON TIME", or nil when there is no delta (B-11).
+    let deltaLabel: String?
     let tot: String
     let emphasisColor: Color
-    
+
     var body: some View {
         VStack {
             LabelValueRow(label: "Time", value: time, identifier: "timingTimeRow")
@@ -86,7 +103,7 @@ private struct TimingSection: View {
 
             LabelValueRow(label: "ETE", value: ete, identifier: "timingETERow")
             LabelValueRow(label: "ETA", value: eta, valueColor: emphasisColor, identifier: "timingETARow")
-            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor, identifier: "timingDeltaRow")
+            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor, caption: deltaLabel, identifier: "timingDeltaRow")
             LabelValueRow(label: "TOT", value: tot, identifier: "timingTOTRow")
                 .padding(.bottom, 10)
         }
@@ -184,6 +201,7 @@ struct FlightView: View {
                         ete: Formatting.durationHMS(viewModel.ete),
                         eta: Formatting.timeHHmmss(viewModel.eta),
                         delta: Formatting.signedDurationHMS(viewModel.delta),
+                        deltaLabel: viewModel.deltaLabel,
                         tot: Formatting.timeHHmmss(viewModel.tot),
                         emphasisColor: viewModel.statusColor.color
                     )
