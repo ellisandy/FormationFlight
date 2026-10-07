@@ -204,6 +204,27 @@ struct FlightsListViewModel_SwiftTests_Extra {
         #expect(!sut.showDeleteConfirmation)
     }
 
+    /// B-30: `confirmDelete` must persist the deletion, not just stage it in the caller's
+    /// context. A plain `ModelContext` has autosave disabled, so a second context on the
+    /// same container only observes the deletion once `save()` has been called.
+    @Test("confirmDelete persists the deletion so a fresh context no longer sees the flight")
+    func confirmDelete_persistsDeletion() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Persisted")
+        try context.save()
+
+        let sut = makeSUT()
+        sut.requestDelete(flight: f)
+
+        sut.confirmDelete(modelContext: context)
+
+        let freshContext = ModelContext(container)
+        let flights = try freshContext.fetch(FetchDescriptor<Flight>())
+        #expect(!flights.contains { $0.id == f.id })
+        #expect(sut.validationMessage == nil)
+    }
+
     @Test("confirmDelete with no pending hides confirmation and does nothing")
     func confirmDelete_withoutPending_doesNothing() async throws {
         let container = try makeInMemoryContainer()
