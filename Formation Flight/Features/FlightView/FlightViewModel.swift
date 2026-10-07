@@ -25,7 +25,7 @@ final class FlightViewModel: ObservableObject {
     @Published var eta: Date?
     @Published var delta: TimeInterval?
     @Published var tot: Date?
-    @Published var statusColor: Status = .good
+    @Published var statusColor: Status = .unknown
     
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
@@ -202,6 +202,8 @@ final class FlightViewModel: ObservableObject {
         }
         
         // Map absolute delta (seconds) to status using settings tolerances: <= yellow = good, <= red = bad, > red = reallyBad.
+        // With no delta (no fix, no speed, or no ToT) there is nothing to judge, so fall back to .unknown
+        // rather than leaving a stale colour on screen.
         if let _delta = delta {
             let absDelta = abs(_delta)
 
@@ -212,6 +214,8 @@ final class FlightViewModel: ObservableObject {
             } else {
                 statusColor = .reallyBad
             }
+        } else {
+            statusColor = .unknown
         }
     }
     
