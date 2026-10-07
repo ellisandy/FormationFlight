@@ -355,6 +355,29 @@ struct FlightPersistenceTests {
         #expect(try fetchFlights(named: "Round trip", in: ModelContext(second.container)).count == 1)
     }
 
+    // Coverage: the schema is versioned and the migration plan starts at V1.
+    @Test("FlightMigrationPlan starts at FlightSchemaV1 and opens a fresh store")
+    func migrationPlanStartsAtV1() throws {
+        #expect(FlightMigrationPlan.schemas.count == 1)
+        #expect(FlightMigrationPlan.schemas.contains { $0 == FlightSchemaV1.self })
+        #expect(FlightMigrationPlan.stages.isEmpty)
+        #expect(FlightSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
+        #expect(FlightSchemaV1.models.contains { $0 == Flight.self })
+
+        let store = try makeTemporaryStore()
+        defer { store.cleanUp() }
+        let schema = Schema(versionedSchema: FlightSchemaV1.self)
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: FlightMigrationPlan.self,
+            configurations: [ModelConfiguration(schema: schema, url: store.url)]
+        )
+        let context = ModelContext(container)
+        context.insert(Flight(missionName: "Versioned", missionType: .hackTime, target: sampleTarget, hackTime: 5))
+        try context.save()
+        #expect(try fetchFlights(named: "Versioned", in: context).count == 1)
+    }
+
     // Coverage: the UI-test launch argument path keeps the store in memory.
     @Test("An in-memory container is never reported as recovered")
     func inMemoryContainer() throws {
