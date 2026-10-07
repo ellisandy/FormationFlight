@@ -13,7 +13,7 @@
     "distributor" : "com.apple.TestFlight",
     "language" : "en",
     "locationScenario" : {
-      "identifier" : "..\/..\/Formation Flight\/TestAssets\/TestFlight1.gpx"
+      "identifier" : "Formation FlightUITests\/TestAssets\/TestFlight1.gpx"
     },
     "region" : "US",
     "targetForVariableExpansion" : {
