@@ -74,13 +74,36 @@ final class FormattingTests {
 
     @Test
     func test_angle() {
-        #expect(Formatting.angle(degrees: 12.6) == "13°")
+        // B-10: bearings read as three digits on a compass card, so 13° renders as "013°".
+        #expect(Formatting.angle(degrees: 12.6) == "013°")
         #expect(Formatting.angle(degrees: -12.4) == "--")
         #expect(Formatting.angle(nil) == "--")
-        // Written as `-1.0` on purpose: an integer literal resolves to the `Int` overload,
-        // which (B-10, still open) builds its Measurement in RADIANS and only happened to
-        // return "--" for -1. The Double sentinel path is the one this test is about.
+        // Written as `-1.0` on purpose so it resolves to the `Double` overload: -1 is the
+        // CoreLocation "unknown course" sentinel and must render as the placeholder.
         #expect(Formatting.angle(degrees: -1.0) == "--")
+    }
+
+    /// B-10: due north is a real bearing, not "unknown"; values are normalised into 0..<360
+    /// after rounding so 359.6° wraps to "000°" rather than printing "360°"; the `Int`
+    /// overload is in degrees (it used to build its `Measurement` in radians, so
+    /// `angle(degrees: 90)` printed "5157°"); and every value is zero-padded to three digits.
+    @Test
+    func test_angle_zeroIsValidWrapsAndPads() {
+        #expect(Formatting.angle(Measurement(value: 0, unit: .degrees)) == "000°")
+        #expect(Formatting.angle(degrees: 0.0) == "000°")
+        #expect(Formatting.angle(degrees: 0.4) == "000°")
+        #expect(Formatting.angle(degrees: 359.6) == "000°")
+        #expect(Formatting.angle(degrees: 359.4) == "359°")
+        #expect(Formatting.angle(degrees: 360.0) == "000°")
+        #expect(Formatting.angle(degrees: 270.4) == "270°")
+        #expect(Formatting.angle(degrees: 7.0) == "007°")
+        #expect(Formatting.angle(degrees: 90 as Int) == "090°")
+        #expect(Formatting.angle(degrees: 0 as Int) == "000°")
+        #expect(Formatting.angle(degrees: 359 as Int) == "359°")
+        let optionalZero: Double? = 0
+        #expect(Formatting.angle(degrees: optionalZero) == "000°")
+        let optionalSentinel: Double? = -1
+        #expect(Formatting.angle(degrees: optionalSentinel) == "--")
     }
 
     /// B-34: non-finite or absurdly large input must not reach `Int(_:)`, which traps (and
@@ -88,8 +111,8 @@ final class FormattingTests {
     /// deliberately isolated in their own test function: if this function disappears from the
     /// results instead of failing, the guard has regressed.
     ///
-    /// Only the guards are under test. The angle semantics B-10 will revisit (the `<= 0`
-    /// sentinel, the radians `Int` overload, padding) are exercised elsewhere and unchanged.
+    /// Only the guards are under test; the angle semantics are covered by
+    /// `test_angle_zeroIsValidWrapsAndPads`.
     @Test
     func test_angle_nonFiniteInputsReturnPlaceholder() {
         #expect(Formatting.angle(Measurement(value: .nan, unit: .degrees)) == "--")
@@ -140,14 +163,26 @@ final class FormattingTests {
 
     /// Southern and eastern hemispheres (Sydney). Minutes: 0.8688 * 60 = 52.128 -> "52.13",
     /// 0.2093 * 60 = 12.558 -> "12.56".
-    ///
-    /// Both minute values are >= 10 on purpose: zero-padding of minutes below 10 is not
-    /// asserted anywhere because the `%02.2f` format in `dms` does not pad (B-10, open).
     @Test
     func test_dms_southEastHemispheres() {
         let coord = CLLocationCoordinate2D(latitude: -33.8688, longitude: 151.2093)
         let (latStr, lonStr) = Formatting.dms(from: coord)
         #expect(latStr == "S 33 52.13")
         #expect(lonStr == "E 151 12.56")
+    }
+
+    /// B-10: minutes below 10 are zero-padded to two integer digits so the column lines up
+    /// ("05.00", not "5.00"). 0.0833 * 60 = 4.998 -> "05.00" on both axes.
+    @Test
+    func test_dms_padsMinutesBelowTen() {
+        let coord = CLLocationCoordinate2D(latitude: 37.0833, longitude: -122.0833)
+        let (latStr, lonStr) = Formatting.dms(from: coord)
+        #expect(latStr == "N 37 05.00")
+        #expect(lonStr == "W 122 05.00")
+
+        // Whole degrees: zero minutes still print two digits.
+        let whole = Formatting.dms(from: CLLocationCoordinate2D(latitude: 45, longitude: -90))
+        #expect(whole.lat == "N 45 00.00")
+        #expect(whole.lon == "W 90 00.00")
     }
 }
