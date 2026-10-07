@@ -299,6 +299,60 @@ final class FlightEditorViewModelTests {
         #expect(vm.hackDurationSeconds == 123)
     }
 
+    // MARK: - Hack time guarding (B-34)
+    //
+    // Chosen behaviour: a non-finite stored `hackTime` (`nan`, `±infinity`) is treated as
+    // absent, so `hackDurationSeconds` is left unchanged (the default 0 then fails Go Fly
+    // validation with "Please enter a hack time" rather than flying a bogus duration).
+    // Finite values are clamped to 0...86_400 seconds (24 hours).
+
+    @Test
+    func testMapToValuesWithInfiniteHackTime_DoesNotTrapAndLeavesDurationUnchanged() async {
+        let flight = Flight(missionName: "Inf", missionType: .hackTime, missionDate: nil,
+                            target: Target(longitude: 0, latitude: 0), hackTime: .infinity)
+
+        let vm = FlightEditorViewModel()
+        vm.hackDurationSeconds = 42
+        vm.mapToValues(flight: flight)
+
+        #expect(vm.hackDurationSeconds == 42)
+    }
+
+    @Test
+    func testMapToValuesWithNaNHackTime_DoesNotTrapAndLeavesDurationUnchanged() async {
+        let flight = Flight(missionName: "NaN", missionType: .hackTime, missionDate: nil,
+                            target: Target(longitude: 0, latitude: 0), hackTime: .nan)
+
+        let vm = FlightEditorViewModel()
+        vm.hackDurationSeconds = 42
+        vm.mapToValues(flight: flight)
+
+        #expect(vm.hackDurationSeconds == 42)
+    }
+
+    @Test
+    func testMapToValuesWithHugeHackTime_ClampsToOneDay() async {
+        let flight = Flight(missionName: "Huge", missionType: .hackTime, missionDate: nil,
+                            target: Target(longitude: 0, latitude: 0), hackTime: 1e12)
+
+        let vm = FlightEditorViewModel()
+        vm.mapToValues(flight: flight)
+
+        #expect(vm.hackDurationSeconds == 86_400)
+    }
+
+    @Test
+    func testMapToValuesWithNegativeHackTime_ClampsToZero() async {
+        let flight = Flight(missionName: "Negative", missionType: .hackTime, missionDate: nil,
+                            target: Target(longitude: 0, latitude: 0), hackTime: -30)
+
+        let vm = FlightEditorViewModel()
+        vm.hackDurationSeconds = 42
+        vm.mapToValues(flight: flight)
+
+        #expect(vm.hackDurationSeconds == 0)
+    }
+
     @Test
     func testMapToValuesWithNilMissionDate_DoesNotChangeTimeEntry() async {
         let target = Target(longitude: 10.0, latitude: 20.0)
