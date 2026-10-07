@@ -161,9 +161,15 @@ final class FlightViewModel: ObservableObject {
         isEditingToT = false
     }
     
+    /// Anchors the ToT to the moment "Hack!" is pressed. Reads the clock directly rather than
+    /// the timer-sampled `currentTime` (B-09): that sample is nil before the first tick and up
+    /// to a second stale afterwards, in an app whose tolerances are whole seconds. The press
+    /// is truncated to the second so the ToT sits on the same whole-second basis as the
+    /// Time / ETE / ETA readouts (B-40).
     func startHack() {
-        guard let _hackTime = hackTime, let now = currentTime else { return }
-        tot = now.addingTimeInterval(_hackTime)
+        guard let _hackTime = hackTime else { return }
+        let pressed = Self.floorToSecond(now())
+        tot = pressed.addingTimeInterval(_hackTime)
     }
     
     // MARK: - Location Updates
@@ -181,7 +187,7 @@ final class FlightViewModel: ObservableObject {
     /// and ETA is derived from those two floored values. Delta then inherits the same basis.
     private func updateTimings() {
         let wallClock = now()
-        let flooredClock = Date(timeIntervalSinceReferenceDate: wallClock.timeIntervalSinceReferenceDate.rounded(.down))
+        let flooredClock = Self.floorToSecond(wallClock)
         self.currentTime = flooredClock
 
         // Set ETE, truncated to a whole second so that it matches what durationHMS displays.
@@ -273,6 +279,11 @@ final class FlightViewModel: ObservableObject {
     }
     
     // MARK: - Helpers
+    /// Drops the sub-second part of `date` (B-40 whole-second policy).
+    private static func floorToSecond(_ date: Date) -> Date {
+        Date(timeIntervalSinceReferenceDate: date.timeIntervalSinceReferenceDate.rounded(.down))
+    }
+
     private func computeRequiredGroundSpeed(distance: Measurement<UnitLength>,
                                             arrivalTime: Date,
                                             now: Date) -> Measurement<UnitSpeed>? {
