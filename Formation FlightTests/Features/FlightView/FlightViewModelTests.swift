@@ -866,6 +866,63 @@ struct FlightViewModelTests {
         #expect(vm.hackTime == nil)
     }
 
+    // MARK: - Stale fix (B-07)
+    @Test("Speed-derived readouts blank out once the newest fix is older than the stale threshold")
+    func staleFixBlanksSpeedDerivedReadouts() async throws {
+        #expect(FlightViewModel.staleFixThreshold == 15)
+
+        let clock = MutableClock(Self.fixedNow)
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(yellow: 5, red: 10),
+                        timerScheduler: mockTimer,
+                        locationProvider: lp,
+                        now: { clock.now })
+        vm.tot = Self.fixedNow.addingTimeInterval(1000)
+
+        let tenMps = Measurement(value: 10, unit: UnitSpeed.metersPerSecond)
+        let north = Measurement(value: 0, unit: UnitAngle.degrees)
+
+        // Fix at t0: everything computes.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1000),
+                       speed: tenMps, course: north, notify: true)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == tenMps)
+        #expect(vm.statusColor != .unknown)
+
+        // t0 + 14 s with no new fix: still inside the threshold, readouts intact.
+        clock.now = Self.fixedNow.addingTimeInterval(FlightViewModel.staleFixThreshold - 1)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == tenMps)
+        #expect(vm.track == north)
+        #expect(vm.ete != nil)
+        #expect(vm.statusColor != .unknown)
+
+        // t0 + 16 s: the fix is stale. Speed and everything derived from it must blank so the
+        // pilot sees placeholders rather than an ETE counting down on a frozen number. Position
+        // is still the last known, so distance and bearing stay.
+        clock.now = Self.fixedNow.addingTimeInterval(FlightViewModel.staleFixThreshold + 1)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == nil)
+        #expect(vm.track == nil)
+        #expect(vm.ete == nil)
+        #expect(vm.eta == nil)
+        #expect(vm.delta == nil)
+        #expect(vm.deltaLabel == nil)
+        #expect(vm.statusColor == .unknown)
+        #expect(vm.distance != nil, "last known position is still meaningful")
+        #expect(vm.bearing != nil, "last known position is still meaningful")
+
+        // A fresh fix brings the readouts back.
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -900),
+                       speed: tenMps, course: north, notify: true)
+        mockTimer.fire()
+        #expect(vm.currentGroundSpeed == tenMps)
+        #expect(vm.track == north)
+        #expect(vm.ete != nil)
+        #expect(vm.statusColor != .unknown)
+    }
+
     // MARK: - Published mutable state (B-18)
     @Test("Assigning hackTime, missionType and settings publishes a change")
     func mutableModelStateIsPublished() async throws {

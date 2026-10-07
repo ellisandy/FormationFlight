@@ -55,6 +55,13 @@ final class FlightViewModel: ObservableObject {
     @Published var isEditingToT: Bool = false
     @Published var isEditingHackTime: Bool = false
     
+    // MARK: - Staleness (B-07)
+    /// A fix older than this is no longer trusted for speed-derived readouts. GPS normally
+    /// reports at 1 Hz, so 15 s of silence means the receiver has lost the sky or the app
+    /// has stopped receiving updates; showing the last speed as if it were live would let
+    /// ETE/ETA keep counting down on a frozen number.
+    static let staleFixThreshold: TimeInterval = 15
+
     // MARK: - Private
     private let timerScheduler: TimerScheduling
     /// Source of the current wall-clock time. Defaults to `Date()`; tests inject a
