@@ -96,5 +96,5 @@ Engineering recommendation: A now (it is a label change and removes the ambiguit
 
 Once we have answers, each item is a small, test-first change:
 
-- B-25 option C: an off-track indicator driven by track minus bearing, with a threshold setting, plus unit tests for the threshold and wrap-around at 360°.
+- B-25: resolved with the turn-in model (see the decision above). Follow-ups from the post-landing evaluation are tracked in the backlog as B-42 – B-45.
 - B-26: resolved, no change (see the decision above).

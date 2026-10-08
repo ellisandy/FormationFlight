@@ -8,18 +8,31 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 
 ## Status (2026-10-07)
 
-- **P0 B-01 – B-06: done** (PRs #3–#8, merged into `feature/stability-backlog`).
-- **P3: done** for everything not blocked by an open P1 item. T-01 – T-13 are all addressed; "tests to add" 1, 3 (hemispheres), 4, 7, 9 (corrupt data), 10, 12, 13, 14, 15 are in. Still open because they would fail until the referenced fix lands: 2 (B-10), 3 minute padding (B-10), 5 (B-08), 6 (B-23), 8 (B-14), 9 ordering (B-12), 11 (B-07/B-22). Two residual T-07 touches remain in production code, not tests: `FlightEditorViewModel()` owns a real `CLLocationManager` (B-16) and `LocationProvider` still allocates a default manager even when one is injected.
-- **P4: done.** H-01 – H-08 complete, including the string catalog (73 keys extracted, view-model strings via `String(localized:)`), `.gitignore`, and the Xcode Cloud manifest committed. `Design.swift` needed no change (the 12.5 never reached the repo). The GPX no longer ships (R-03's file half); `README` was never in the project file.
-- **Enablers landed along the way:** B-29 (injectable clock), the model half of B-11 (`.unknown` status), B-38 (dead `CLLocationManager` in the map picker).
-- **R (release readiness):** R-01 done (`PrivacyInfo.xcprivacy`). R-02 file half done (background modes and push/iCloud entitlements removed, `ITSAppUsesNonExemptEncryption = NO`); the purpose string and `UILaunchScreen_Generation` removal are build settings, delivered as a prepared project-file change for the owner to apply (see below). R-03 done. R-04 half done (`DefaultImage` deleted); dark and tinted icon appearances still need artwork. R-05: `.gitignore` and the Xcode Cloud manifest are committed; test-target build numbers and UI-test Swift 6 are in the same prepared project-file change (code already compiles under Swift 6, verified with a `SWIFT_VERSION=6.0` override build); deployment target 26.0 left as-is pending a decision. R-06: the full UI suite passes on iPad Pro 13-inch, so iPad stays enabled; 13-inch screenshots are required. R-07 done (first-launch disclaimer with acknowledgement, Settings entry, UI test). R-08: `docs/AppStore/` holds the privacy policy to host and the listing draft with review notes and a checklist.
-- **Owner action pending (project file is policy-protected):** apply `/tmp/formationflight-r-settings.pbxproj` over `Formation Flight.xcodeproj/project.pbxproj`. It changes only: the location purpose string, removal of `INFOPLIST_KEY_UILaunchScreen_Generation` (both configs), `CURRENT_PROJECT_VERSION` 1 → 2 on both test targets, and `SWIFT_VERSION` 5.0 → 6.0 on the UI test target.
-- **P2: done.** B-27 (`LocationProvider`/`LocationProviding`/`TimerScheduling` are `@MainActor`, `@preconcurrency CLLocationManagerDelegate`), B-28 (`@MainActor` `onFire`), B-29, B-30 (delete persists with rollback on failure, name snapshot for the alert, dead `.onDelete`/`handleOnDelete` removed, labelled swipe button), B-31 (sorted by mission date then name), B-32 (`@Observable` settings view model, `EditButton`), B-33 (thumbnail follows the target), B-34 (all `Int(Double)` sites guarded; angle semantics still B-10), B-35, B-36 (single forward-azimuth helper), B-37, B-38, B-39 (`verticalAccuracy >= 0`), B-40 (clock and ETE truncated to whole seconds so Time + ETE == ETA on screen). B-17 (`.common` run-loop mode) came along with B-28 since it was the same three lines.
-- **P1: done except B-25/B-26.** B-07 (speed/course `>= 0` valid, cleared to the sentinel when invalid; readouts blank after 15 s without a fix), B-08, B-09 (hack anchors to the clock, works before the first tick), B-10 (`000°`–`359°`, 0° valid, degrees overload fixed, `dms` minutes zero-padded), B-11 (EARLY/LATE/ON TIME caption), B-12 (instrument order and enablement honoured in Settings and in flight; lenient per-entry decoding), B-13 (tolerance steppers with live clamping), B-14 (`FlightValidation` is the single rule set for save and Go Fly; hack 0 s and past TOT rejected; only the mission type's field is stored), B-15 (typed lat/lon with decimal comma, map follows typed value, camera `.onEnd`), B-16 (editor uses the shared provider; denied/reduced-accuracy banner with Open Settings; `authorizationStatus`/`accuracyAuthorization`/`requestWhenInUseAuthorization()` on the protocol), B-17, B-18, B-19 (via R-02), B-20, B-21 (Cancel with a discard alert; back button hidden), B-22 (fix timestamps), B-23, B-24 (Req GS tracks the clock), B-41 (launch screen on Auto Layout, system background). Discard confirmation is an alert, not a confirmation dialog: anchored to a toolbar item the dialog becomes a popover and drops its cancel-role button.
-- **R-04: done to the extent the flat source allows.** Dark (transparent background) and tinted (grayscale) appearances were derived from the original tile by keying out the navy; the launch-screen image has transparent rounded corners. Verified in the compiled catalog (`assetutil`: default, dark, tintable) and on the simulator. An Icon Composer `.icon` for the full Liquid Glass treatment still needs layered artwork; the system's automatic glass rendering of the flat icon ships for 1.0.
-- **B-26: closed, no change.** Pilot feedback: bearing and track stay true with no `°T` label; they are read relatively (steer Trk onto Brg), so only a shared reference matters. Documented on `FlightViewModel.bearing`/`track` and in `docs/decisions/`.
-- **B-25: done (turn-in model).** ETE = continue the current standard-rate orbit (direction from the GPS track rate; shorter turn when straight) until pointed at the target, then straight; Required GS solves the same path for TOT; Δ caption adds "+N ORBIT" when early by ≥ 120 s. `TurnToTarget`/`TurnDetector` with geometry tests; decision recorded in `docs/decisions/`.
-- **Open:** R-08 needs the privacy policy hosted. Everything else in this backlog is done.
+### Open
+
+| Item | Priority | Summary | Blocking release? |
+|---|---|---|---|
+| R-08 | R | Host the privacy policy and support page; enter the URLs in App Store Connect. Drafts in `docs/AppStore/`. | Yes (owner action) |
+| B-42 | P1 | Required GS falls back to direct-to when the 400 m/s search ceiling puts the target inside the turn circle; up to 13 s late in the close-in orbit. | Yes |
+| B-43 | P1 | ETE / ETA / Δ / ORBIT caption flap when the turn detector toggles at its 1°/s threshold. | Yes |
+| B-44 | P2 | `TurnDetector` uses the wall clock instead of the fix timestamp. | No |
+| B-45 | P2 | `turnDuration` / `turnDirection` are published but never shown. Product call. | No |
+| D-01 | D | Flight screen background inverts the colour scheme and fails contrast. | Should |
+| D-02 | D | End Flight is destructive but looks like Edit TOT / Edit Hack. | Should |
+| D-03 – D-06 | D | Settings title, AX Dynamic Type cards, unit spacing, smaller HIG items. | No |
+
+Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full UI suite passes on iPad Pro 13-inch, so 13-inch screenshots are required); an Icon Composer `.icon` for the full Liquid Glass treatment needs layered artwork and ships later.
+
+### Done
+
+- **P0 B-01 – B-06** (PRs #3–#8).
+- **R-01 – R-07.** R-02/R-05 project-file parts were applied by the owner (purpose string, `UILaunchScreen_Generation` removed); the test-target `CURRENT_PROJECT_VERSION` and UI-test `SWIFT_VERSION` parts of that change were not re-checked. R-04 dark and tinted appearances derived from the flat tile; verified in the compiled catalog and on the simulator.
+- **P1 B-07 – B-24, B-41.** Discard confirmation is an alert, not a confirmation dialog: anchored to a toolbar item the dialog becomes a popover and drops its cancel-role button.
+- **B-25: turn-in model.** ETE = continue the current standard-rate orbit (direction from the GPS track rate; shorter turn when straight) until pointed at the target, then straight; Required GS solves the same path for TOT; Δ caption adds "+N ORBIT" when early by ≥ 120 s. `TurnToTarget` / `TurnDetector` with geometry, detector and view-model tests. A second evaluation after it landed confirmed the geometry and found the required-speed and detector issues now tracked as B-42 – B-45. Decision in `docs/decisions/`.
+- **B-26: closed, no change.** Bearing and track stay true with no `°T` label; they are read relatively (steer Trk onto Brg), so only a shared reference matters. Documented on `FlightViewModel.bearing` / `track` and in `docs/decisions/`.
+- **P2 B-27 – B-40** (B-17 landed with B-28).
+- **P3 T-01 – T-13** and all listed "tests to add". Two residual T-07 touches remain in production code: `FlightEditorViewModel()` owns a real `CLLocationManager` (B-16) and `LocationProvider` still allocates a default manager even when one is injected.
+- **P4 H-01 – H-08**, including the string catalog, `.gitignore`, and the committed Xcode Cloud manifest.
 
 ---
 
@@ -210,6 +223,25 @@ The app will ship **free** on the App Store, so no StoreKit, in-app purchase, or
   The label has `clipsSubviews="YES"`, `lineBreakMode="middleTruncation"` and the deprecated `minimumFontSize`; harmless at 36 pt but worth cleaning. Both `UILaunchScreen_Generation = YES` and `UILaunchStoryboardName` are set, which is ambiguous configuration. The launch screen (dark blue, icon) also looks nothing like the first real frame (system-background `NavigationStack` list), so the hand-off is a hard visual jump.
 - **Fix:** Replace the frame/autoresizing mask with constraints: centre X, a fixed square size (e.g. 200×200 or 40 % of width with `aspect 1:1`), and a vertical relationship to the label or centre Y; set `contentMode = scaleAspectFit`. Give the label trailing ≥ safe-area and remove `clipsSubviews`/`minimumFontSize`. Remove `INFOPLIST_KEY_UILaunchScreen_Generation`. Consider matching the system background so the launch frame blends into the list. Note: iOS caches launch snapshots, so delete the app or reboot the simulator to see storyboard changes.
 
+### B-42 · Required GS silently falls back to direct-to whenever the 400 m/s search ceiling puts the target inside the turn circle
+- **Where:** `Core/Domain/TurnToTarget.swift` `requiredGroundSpeed(...)` (the `low = 0.5, high = 400.0` bisection and the `tHigh > timeRemaining || tLow < timeRemaining` fallback); consumed by `FlightViewModel.computeRequiredGroundSpeed(...)`.
+- **What:** The bisection assumes `solve(...).totalTime` falls monotonically as speed rises. It does not. Turn radius `R = v / ω` grows with speed; once `R` exceeds half the target's abeam offset the near-side circle contains the target, `candidate(_:)` returns `nil` for that side, and the solver switches to a ~300° turn the other way, so the time jumps *up*. At `high = 400` (`R ≈ 7.6 km`) this happens for every target closer than about 8 nm abeam, `tHigh > timeRemaining` trips, and the function returns `distance / timeRemaining`: the straight-line speed, presented as the turn-aware one. Measured with the probe below (bearing 90°, track 0°, standard rate):
+
+  | Geometry | Time left | Req GS shown | Modelled arrival at that speed | Correct speed |
+  |---|---|---|---|---|
+  | 2.0 nm abeam (3 704 m) | 100 s | 72 kt (37.0 m/s) | 113.2 s, 13 s late | 83 kt (42.9 m/s) |
+  | 2.7 nm abeam (5 000 m) | 90 s | 108 kt (55.6 m/s) | 103.5 s, 13 s late | 128 kt (66.0 m/s) |
+  | 2.7 nm abeam (5 000 m) | 120 s | 81 kt (41.7 m/s) | 132.7 s, 13 s late | 91 kt (46.8 m/s) |
+  | 5 nm, 120° off the nose | 180 s | 117 kt | on time | 117 kt |
+
+  The error exceeds the default red tolerance (B-05) on the one readout the pilot sets after rolling out, and it is largest exactly in the close-in orbit the B-25 decision describes.
+- **Fix:** Restrict the search to the monotonic regime. Either (a) set `high = min(400, ω · dPerp / 2)` where `dPerp` is the target's perpendicular offset from the track line (so the near circle never contains the target), or (b) coarse-scan speeds upward from `low` (e.g. 2 m/s steps) for the first bracket where the time crosses `timeRemaining` *with the same `direction`*, then bisect inside that bracket. Keep the direct-to fallback only when the scan finds no speed at all. Tests: the three failing rows above as `abs(solve(..., groundSpeed: v).totalTime - T) < 0.01`; a parameterised round-trip over random distance/bearing/time that asserts `solve(requiredGroundSpeed(...)).totalTime ≈ T` whenever the result is non-nil; and a `FlightViewModelTests` case with a 2 nm abeam target and 100 s to ToT. Probe to reproduce: in `TurnToTarget.swift`, scan `solve(distance: 5_000, bearing: 90, track: 0, groundSpeed: v).totalTime` for `v` in 40…400 and watch it fall to 61 s at 120 m/s then jump to 144 s at 160 m/s.
+
+### B-43 · ETE, ETA, Δ and the ORBIT caption flap by up to ~100 s when the turn detector toggles at its 1°/s threshold
+- **Where:** `Core/Domain/TurnToTarget.swift` `TurnDetector` (`turningThresholdDegreesPerSecond = 1.0`; `smoothedRate = 0.5 * smoothedRate + 0.5 * rate`); `FlightViewModel.updateTimings()` passes `preferredDirection: turnDirection` to `solve(...)`.
+- **What:** The detector is a two-sample average against a single threshold, so GPS course jitter near 1°/s (routine at low groundspeed or in turbulence) toggles `turnDirection` between a direction and `nil` from one fix to the next. With a direction the solver continues the orbit the long way round; without one it takes the shortest turn. Those two paths differ by most of a circle, up to 120 s at standard rate, so ETE, ETA, Δ, the status colour and the "+N ORBIT" caption can all alternate at 1 Hz.
+- **Fix:** Hysteresis (enter "turning" at ≥ 1.5°/s, leave at ≤ 0.5°/s), a longer smoothing window (a 4–5 s exponential average or a median of the last five rates), and clear the direction only after N consecutive below-threshold samples. Tests in `TurnDetectorTests`: a right turn with ±1.5°/s of per-sample jitter stays `.right` throughout; a roll-out still returns to `nil` within about 5 s; a single wild sample mid-turn does not clear the direction.
+
 ---
 
 ## P2 — Robustness and architecture
@@ -272,6 +304,16 @@ The app will ship **free** on the App Store, so no StoreKit, in-app purchase, or
 - **Where:** `Formatting.swift:66-68`; `FlightViewModel.swift:156, 164`
 - **Fix:** Round consistently; update `Formatting_Tests.swift:31` accordingly.
 
+### B-44 · `TurnDetector` is fed the wall clock, not the fix timestamp
+- **Where:** `Features/FlightView/FlightViewModel.swift` `updateInstruments()`: `turnDetector.record(track: course, at: now())`.
+- **What:** B-22 moved speed estimation onto `location.timestamp` because Core Location delivers fixes late and sometimes in batches. The detector measures a heading rate from the *receipt* time instead: two fixes delivered together give `dt ≈ 0`, which the `guard dt > 0` branch treats as a reset (direction cleared), and a fix delivered a second late halves the measured rate and can drop it under the threshold. `lastFixTimestamp` is already on `LocationProviding`.
+- **Fix:** Use `locationProvider.lastFixTimestamp` as the sample time and ignore a sample whose timestamp has not advanced. Test with `MockLocationProvider` advancing the fix timestamps 1 s apart while the injected clock stands still (and the reverse: clock advancing, timestamps frozen, must not produce a turn).
+
+### B-45 · `turnDuration` and `turnDirection` are published but nothing reads them
+- **Where:** `Features/FlightView/FlightViewModel.swift` (the two `@Published private(set)` properties under "Published State (Timing)"); `FlightView.swift` has no reference to either.
+- **What:** Their doc comments say they let the view explain why ETE exceeds distance / speed, but the flight screen shows nothing. The pilot cannot tell whether the ETE on screen assumes a 20° turn-in or a 300° continuation of the orbit, which is exactly the "turn in now or go around" call B-25 exists to support.
+- **Fix:** Either surface them (a caption on the ETE row, e.g. "TURN 0:45 R", via the existing `LabelValueRow.caption`, and a small L/R marker on the Trk card) with accessibility identifiers and a UI test, or make them private and delete the comments. Product call; the first option is recommended.
+
 ---
 
 ## P3 — Test suite
@@ -323,9 +365,48 @@ The app will ship **free** on the App Store, so no StoreKit, in-app purchase, or
 
 ---
 
+## D — Design and Human Interface Guidelines audit (2026-10-07)
+
+Rendered from the `#Preview`s on iPhone 18 Pro (iOS 27) in light and dark appearance, landscape, and Dynamic Type AX 3. D-01 and D-02 affect the flight screen a pilot reads in the cockpit; the rest are polish. Items already in good shape: purpose string, privacy manifest, first-launch disclaimer, location-denied banner with Open Settings, no unused entitlements, Cancel/Save toolbar placement in the editors.
+
+### D-01 · Flight screen background inverts the colour scheme and fails contrast in both appearances
+- **Where:** `Features/FlightView/FlightView.swift` `body` (`LinearGradient` of `Color.accentColor` at 0.5 and 0.8 opacity, `.ignoresSafeArea()`); `Shared Assets/Assets.xcassets/AccentColor.colorset/Contents.json` (both appearances reference `labelColor`).
+- **What:** Because the accent colour *is* the label colour, the gradient is black over white in light mode and white over black in dark mode, while every readout uses `.primary`. Measured from the rendered previews: in light mode the "Mission Details" header is black on roughly #333 (≈ 1.7:1); in dark mode the headers are white on roughly #CCC (≈ 1.6:1); the orange `.bad` tint sits at ≈ 1.5:1 against the mid-grey in both. HIG asks for 4.5:1 (3:1 for large text) and says colour must not be the only status cue; the status tint on Cur GS, Req GS and ETA currently is. The label-coloured accent also neuters `.tint` on every control in the app (see D-06).
+- **Fix:** Give `AccentColor` a real hue (the icon's navy, with a lighter dark-appearance variant) and stop deriving the flight background from it. Use a dedicated `FlightBackground` colour set with light and dark variants (a fixed dark cockpit background is fine as long as text is then forced to a light foreground, not `.primary`), keep the cards on `.ultraThinMaterial`, and verify green/orange/red pass 3:1 against the card material in both appearances and with Increase Contrast on. Run the Sufficient Contrast nutrition-label checks before claiming the label in App Store Connect (R-08).
+
+### D-02 · "End Flight" is destructive but renders identically to "Edit TOT" / "Edit Hack"
+- **Where:** `FlightView.swift` bottom `safeAreaInset` (`Button(role: .destructive)` with `.buttonStyle(.glass)`).
+- **What:** The glass style ignores the destructive role for the label colour, so the preview shows two indistinguishable pills stacked directly under the buttons the pilot taps most. HIG: destructive actions should be visually distinct and placed to avoid accidental activation.
+- **Fix:** `.tint(.red)` with `.glassProminent` (or keep `.glass` and set the label `.foregroundStyle(.red)`), keep the existing confirmation dialog, and consider moving End Flight to a top-trailing close position so it is not adjacent to Hack!/Edit.
+
+### D-03 · Settings sheet has no title
+- **Where:** `Features/SettingsEditor/SettingsEditorView.swift` (`NavigationStack` with Cancel, `EditButton`, Save and no `.navigationTitle`).
+- **What:** The navigation bar is three bare pills; VoiceOver has no screen name to announce and the user has no confirmation of where they are.
+- **Fix:** `.navigationTitle("Settings")` with `.navigationBarTitleDisplayMode(.inline)`. Optionally move `EditButton` into the Instruments section header to relieve the trailing group.
+
+### D-04 · Instrument cards degrade at accessibility Dynamic Type sizes
+- **Where:** `FlightView.swift` `InstrumentsSection` (fixed `InstrumentLayout.cardsPerRow = 3`) and `InstrumentCard` (`.minimumScaleFactor(0.6)` on the value).
+- **What:** At AX 3 the "Cur GS" / "Req GS" titles wrap onto two lines and the values shrink to 60 %, so the most important numbers get *smaller* as the user asks for larger text. The bottom button inset also grows and covers more of the scroll content.
+- **Fix:** Read `@Environment(\.dynamicTypeSize)`; when `isAccessibilitySize`, make `cardsPerRow` 1 or 2 (turn the static constant into a function of the size), remove `minimumScaleFactor` from the values, and use `ViewThatFits` for the title. Verify at AX 5 in portrait and landscape on iPhone and iPad; add a UI test that launches with `-UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityL` and asserts the cards exist and are hittable.
+
+### D-05 · Measurement readouts have no space before the unit
+- **Where:** `Core/UI Shared/MeasurementFormatters.swift` (`unitStyle = .short` in both `speedString` and `distanceString`).
+- **What:** The flight screen shows "574km/h", "630km/h", "111.1km". `MeasurementFormatter`'s `.short` style drops the separator; the method doc comments promise "250 kt" / "12 nm" and system apps space the unit.
+- **Fix:** `unitStyle = .medium`, or move to `Measurement.FormatStyle` (`.measurement(width: .abbreviated, usage: .asProvided, numberFormatStyle: …)`), and update `MeasurementFormatters_Tests` (note T-05: pin the locale in those tests).
+
+### D-06 · Smaller HIG items
+- Edit TOT / Edit Hack sheets (`FlightView.swift`, the two `.sheet` modifiers) have no title and open full height for a wheel picker. Add a header and `.presentationDetents([.medium])` with `.presentationDragIndicator(.visible)`.
+- Hard-coded `.tint(.blue)` on the empty-state button (`FlightsListView.swift` `FlightsEmptyStateView`) and the disclaimer button (`SafetyDisclaimerView.swift`). Use the accent colour once D-01 gives it a hue.
+- Settings toolbar uses the `gear` symbol (`FlightsListView.swift` toolbar); `gearshape` is the current system glyph.
+- `HackTimePickerView` wheel labels (`"\(m)m"`, `"%02ds"`) are neither localized nor pluralised; use `Text("\(m) min")` / `"\(s) s"` through the string catalog, or `Duration.UnitsFormatStyle`.
+- `FlightView` has no navigation bar; the only exits are the bottom buttons. Acceptable for a cockpit screen, but confirm VoiceOver's escape gesture (two-finger Z) reaches the End Flight confirmation, or add `.accessibilityAction(.escape)`.
+- The seeded `FlightsListView` preview renders the empty state because the seeding `ModelContext` is never saved; call `try? context.save()` so the list preview actually shows rows.
+
+---
+
 ## Verified OK (for the record)
 - Great-circle bearing math, haversine, and all `Measurement` unit conversions are correct.
-- Required-GS, ETE, ETA, Δ sign convention and divide-by-zero guards are correct; only display (B-01) is broken.
+- ETE, ETA, Δ sign convention and divide-by-zero guards are correct; only display (B-01) was broken. The direct-to Required GS was correct; the turn-aware solver that replaced it has the defect tracked as B-42.
 - TOT stored as absolute `Date`, so midnight crossing is inherently handled.
 - Keep-awake (`isIdleTimerDisabled`) is balanced on `FlightView` appear/disappear; sheets over it do not unbalance it.
 - All SwiftData access is on the main actor; `onDelete` offsets match the iterated array; `ForEach` ids are unique UUIDs.
