@@ -61,6 +61,9 @@
     "EARLY" : {
       "comment" : "Flight Δ row: ETA is before ToT"
     },
+    "EARLY · +%lld ORBIT" : {
+      "comment" : "Flight Δ row: early by at least this many full standard-rate orbits"
+    },
     "Edit Hack" : {
 
     },

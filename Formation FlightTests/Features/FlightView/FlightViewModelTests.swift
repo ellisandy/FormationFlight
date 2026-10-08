@@ -430,10 +430,12 @@ struct FlightViewModelTests {
         // Due east, allowing for meridian convergence over ~900 m.
         #expect(abs(bearing.converted(to: .degrees).value - 90) < 0.5)
 
-        // Required GS = distance / time remaining, with time remaining taken from the injected clock.
+        // Required GS ≈ distance / time remaining (track and bearing are aligned to within
+        // meridian convergence, so the turn-aware solver (B-25) adds only a fraction of a
+        // degree of turn; its bisection resolves to 1e-4 m/s).
         let rgs = try #require(vm.requiredGroundSpeed)
         let expectedMps = distance.converted(to: .meters).value / 60
-        #expect(abs(rgs.converted(to: .metersPerSecond).value - expectedMps) < 1e-6)
+        #expect(abs(rgs.converted(to: .metersPerSecond).value - expectedMps) < 1e-3)
         #expect(rgs.converted(to: .knots).value > 0)
     }
 
@@ -457,7 +459,8 @@ struct FlightViewModelTests {
         let distance = try #require(vm.distance)
         let rgs = try #require(vm.requiredGroundSpeed)
         let expectedMps = distance.converted(to: .meters).value / 120
-        #expect(abs(rgs.converted(to: .metersPerSecond).value - expectedMps) < 1e-6)
+        // Aligned within meridian convergence; see instrumentsAndRequiredGroundSpeed.
+        #expect(abs(rgs.converted(to: .metersPerSecond).value - expectedMps) < 1e-3)
     }
 
     @Test("Required speed is nil when time remaining <= 0")
@@ -976,6 +979,146 @@ struct FlightViewModelTests {
         #expect(vm.requiredGroundSpeed == nil)
         #expect(vm.distance != nil)
         #expect(vm.track != nil)
+    }
+
+    // MARK: - Turn-in model (B-25)
+
+    /// Places the aircraft `meters` away from `target` so that the bearing from aircraft to
+    /// target is `bearingDegrees` (flat-earth offsets; the tests read back the VM's own
+    /// distance and bearing rather than assuming these are exact).
+    private func location(fromTarget target: CLLocationCoordinate2D, bearingDegrees: Double, meters: Double) -> CLLocation {
+        let metersPerDegreeLat = 111_320.0
+        let metersPerDegreeLon = metersPerDegreeLat * cos(target.latitude.degreesToRadians)
+        // The aircraft sits on the reciprocal bearing from the target.
+        let back = bearingDegrees + 180
+        let dLat = meters * cos(back.degreesToRadians) / metersPerDegreeLat
+        let dLon = meters * sin(back.degreesToRadians) / metersPerDegreeLon
+        return CLLocation(latitude: target.latitude + dLat, longitude: target.longitude + dLon)
+    }
+
+    @Test("ETE with the target abeam includes the standard-rate turn onto it")
+    func eteIncludesTurnOntoTarget() async throws {
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(600)
+
+        // Flying north at 100 m/s with the target 8 km due east.
+        lp.setLocation(location: location(fromTarget: vm.target, bearingDegrees: 90, meters: 8_000),
+                       speed: Measurement(value: 100, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
+
+        let distance = try #require(vm.distance?.converted(to: .meters).value)
+        let bearing = try #require(vm.bearing?.converted(to: .degrees).value)
+        let expected = try #require(TurnToTarget.solve(distance: distance, bearing: bearing, track: 0, groundSpeed: 100))
+        let ete = try #require(vm.ete)
+        #expect(ete == expected.totalTime.rounded(.down))
+        // The turn is what makes ETE exceed the straight-line figure.
+        #expect(ete > (distance / 100).rounded(.down))
+        #expect(vm.turnDuration == expected.turnDuration.rounded(.down))
+        #expect(vm.turnDirection == nil, "two fixes with the same course are straight flight")
+    }
+
+    @Test("Aligned with the target the turn model reduces to distance over speed")
+    func eteAlignedMatchesDirectTo() async throws {
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
+
+        lp.setLocation(location: locationOffsetFromTarget(vm.target, metersNorth: -1_000),
+                       speed: Measurement(value: 10, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
+
+        let distance = try #require(vm.distance?.converted(to: .meters).value)
+        #expect(vm.ete == (distance / 10).rounded(.down))
+        #expect(vm.turnDuration == nil)
+    }
+
+    @Test("Required ground speed solves the turn-then-straight path for the time remaining")
+    func requiredSpeedIsTurnAware() async throws {
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(200)
+
+        lp.setLocation(location: location(fromTarget: vm.target, bearingDegrees: 90, meters: 8_000),
+                       speed: Measurement(value: 100, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
+
+        let distance = try #require(vm.distance?.converted(to: .meters).value)
+        let bearing = try #require(vm.bearing?.converted(to: .degrees).value)
+        let required = try #require(vm.requiredGroundSpeed?.converted(to: .metersPerSecond).value)
+        let expected = try #require(TurnToTarget.requiredGroundSpeed(distance: distance, bearing: bearing, track: 0,
+                                                                     timeRemaining: 200))
+        #expect(abs(required - expected) < 1e-6)
+        // Flying that speed along the modelled path lands exactly on ToT.
+        let check = try #require(TurnToTarget.solve(distance: distance, bearing: bearing, track: 0, groundSpeed: required))
+        #expect(abs(check.totalTime - 200) < 0.01)
+        #expect(required > distance / 200, "turning costs time, so the required speed exceeds direct-to")
+    }
+
+    @Test("An orbit in progress is continued rather than reversed")
+    func continuesDetectedOrbit() async throws {
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let clock = MutableClock(Self.fixedNow)
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: { clock.now })
+        vm.tot = Self.fixedNow.addingTimeInterval(900)
+
+        // Three fixes a second apart with the course swinging right at standard rate.
+        let aircraft = location(fromTarget: vm.target, bearingDegrees: 300, meters: 8_000)
+        for course in [354.0, 357.0, 0.0] {
+            lp.setLocation(location: aircraft,
+                           speed: Measurement(value: 100, unit: .metersPerSecond),
+                           course: Measurement(value: course, unit: .degrees),
+                           notify: true)
+            clock.advance(by: 1)
+        }
+        mockTimer.fire()
+
+        #expect(vm.turnDirection == .right)
+        let distance = try #require(vm.distance?.converted(to: .meters).value)
+        let bearing = try #require(vm.bearing?.converted(to: .degrees).value)
+        // The target is 60° to the LEFT, so the shortest turn would be left; the model must
+        // keep turning right the long way round because that is the orbit being flown.
+        let continued = try #require(TurnToTarget.solve(distance: distance, bearing: bearing, track: 0,
+                                                        groundSpeed: 100, preferredDirection: .right))
+        let reversed = try #require(TurnToTarget.solve(distance: distance, bearing: bearing, track: 0, groundSpeed: 100))
+        #expect(continued.direction == .right)
+        #expect(reversed.direction == .left)
+        #expect(vm.ete == continued.totalTime.rounded(.down))
+        #expect(try #require(vm.ete) > reversed.totalTime.rounded(.down))
+    }
+
+    @Test("Δ caption adds an orbit hint once early by a full standard-rate orbit")
+    func deltaCaptionShowsSurplusOrbits() async throws {
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, now: fixedClock)
+        setDirectInputs(vm, speedMps: 10, distanceMeters: 100)   // ete = 10 s
+
+        vm.tot = Self.fixedNow.addingTimeInterval(10 + 30)       // 30 s early
+        mockTimer.fire()
+        #expect(vm.delta == -30)
+        #expect(vm.deltaLabel == "EARLY")
+
+        vm.tot = Self.fixedNow.addingTimeInterval(10 + 130)      // 130 s early: one orbit fits
+        mockTimer.fire()
+        #expect(vm.delta == -130)
+        #expect(vm.deltaLabel == "EARLY · +1 ORBIT")
+
+        vm.tot = Self.fixedNow.addingTimeInterval(10 + 250)      // 250 s early: two orbits
+        mockTimer.fire()
+        #expect(vm.deltaLabel == "EARLY · +2 ORBIT")
+
+        vm.tot = Self.fixedNow.addingTimeInterval(10 - 5)        // late: no hint
+        mockTimer.fire()
+        #expect(vm.deltaLabel == "LATE")
     }
 }
 

@@ -29,7 +29,13 @@ final class FlightViewModel: ObservableObject {
     /// Textual early/late indicator shown beside the Δ value (B-11): "EARLY", "LATE",
     /// "ON TIME", or nil when there is no delta to judge.
     @Published private(set) var deltaLabel: String?
-    
+    /// Seconds of the ETE spent in the roll-in turn (B-25), nil when ETE is nil or no turn is
+    /// needed. Lets the view explain why ETE exceeds distance / speed.
+    @Published private(set) var turnDuration: TimeInterval?
+    /// The orbit direction inferred from the GPS track rate, nil when flying straight. The
+    /// time-to-target path continues this turn rather than assuming a reversal.
+    @Published private(set) var turnDirection: TurnToTarget.Direction?
+
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
     @Published var requiredGroundSpeed: Measurement<UnitSpeed>?
@@ -69,6 +75,8 @@ final class FlightViewModel: ObservableObject {
     static let staleFixThreshold: TimeInterval = 15
     /// Clock reading at the most recent location callback; nil until the first fix.
     private var lastLocationUpdate: Date?
+    /// Tracks the sign of the heading rate across fixes to tell which way we are orbiting (B-25).
+    private var turnDetector = TurnDetector()
 
     // MARK: - Private
     private let timerScheduler: TimerScheduling
@@ -222,16 +230,31 @@ final class FlightViewModel: ObservableObject {
            wallClock.timeIntervalSince(lastFix) > Self.staleFixThreshold {
             self.currentGroundSpeed = nil
             self.track = nil
+            turnDetector.reset()
+            turnDirection = nil
         }
 
-        // Set ETE, truncated to a whole second so that it matches what durationHMS displays.
-        if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
-           let dist = self.distance?.converted(to: .meters),
-           gs.value > 0 {
-            let rawETE = dist.value / gs.value // seconds
+        // Set ETE (B-25): the time to turn onto the target at standard rate, continuing the
+        // orbit already in progress, and then fly straight to it. Without a usable track or
+        // bearing this degrades to the direct-to figure, distance / speed. Truncated to a
+        // whole second so that it matches what durationHMS displays (B-40).
+        let geometry = turnGeometry()
+        if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond).value, gs > 0,
+           let dist = self.distance?.converted(to: .meters).value {
+            let rawETE: Double
+            if let geometry,
+               let solution = TurnToTarget.solve(distance: dist, bearing: geometry.bearing, track: geometry.track,
+                                                 groundSpeed: gs, preferredDirection: turnDirection) {
+                rawETE = solution.totalTime
+                self.turnDuration = solution.turnDuration > 0 ? solution.turnDuration.rounded(.down) : nil
+            } else {
+                rawETE = dist / gs
+                self.turnDuration = nil
+            }
             self.ete = rawETE.isFinite ? rawETE.rounded(.down) : nil
         } else {
             self.ete = nil
+            self.turnDuration = nil
         }
 
         // Set ETA from the floored clock and the truncated ETE so Time + ETE == ETA on screen.
@@ -245,8 +268,11 @@ final class FlightViewModel: ObservableObject {
         // left to ToT shrinks every second, so the value is recomputed here on every tick
         // from the cached distance rather than only inside the location callback. Uses the
         // floored clock so the time remaining is on the same whole-second basis as ToT.
+        // Turn-aware (B-25): the speed at which the turn-then-straight path arrives exactly at
+        // ToT, so it is the speed to set after rolling out. Direct-to when the geometry is unknown.
         if let dist = self.distance, let tot = self.tot,
-           let rgs = computeRequiredGroundSpeed(distance: dist, arrivalTime: tot, now: flooredClock) {
+           let rgs = computeRequiredGroundSpeed(distance: dist, arrivalTime: tot, now: flooredClock,
+                                                geometry: geometry) {
             self.requiredGroundSpeed = rgs.converted(to: .knots)
         } else {
             self.requiredGroundSpeed = nil
@@ -264,7 +290,15 @@ final class FlightViewModel: ObservableObject {
         // cockpit, and "+00:00:07" still needs the reader to remember which way the sign runs.
         if let _delta = delta {
             if _delta < 0 {
-                deltaLabel = String(localized: "EARLY", comment: "Flight Δ row: ETA is before ToT")
+                // Orbit hint (B-25): while early by at least one full standard-rate orbit
+                // (120 s), a complete go-around still fits before the turn-in point.
+                let orbits = TurnToTarget.surplusOrbits(delta: _delta)
+                if orbits > 0 {
+                    deltaLabel = String(localized: "EARLY · +\(orbits) ORBIT",
+                                        comment: "Flight Δ row: early by at least this many full standard-rate orbits")
+                } else {
+                    deltaLabel = String(localized: "EARLY", comment: "Flight Δ row: ETA is before ToT")
+                }
             } else if _delta > 0 {
                 deltaLabel = String(localized: "LATE", comment: "Flight Δ row: ETA is after ToT")
             } else {
@@ -315,6 +349,17 @@ final class FlightViewModel: ObservableObject {
         // Set Historical Track
         self.track = locationProvider.course
 
+        // Orbit direction (B-25): a valid course feeds the detector; the sentinel (< 0) means
+        // the receiver has no course, so the detector forgets its history rather than
+        // measuring a bogus rate against a stale sample.
+        let course = locationProvider.course.converted(to: .degrees).value
+        if course >= 0 {
+            turnDirection = turnDetector.record(track: course, at: now())
+        } else {
+            turnDetector.reset()
+            turnDirection = nil
+        }
+
         // Required ground speed is not computed here (B-24): it depends on the time left to
         // ToT, which changes every second, so `updateTimings()` derives it from the cached
         // distance on each tick. This callback only refreshes what the fix itself provides.
@@ -326,17 +371,36 @@ final class FlightViewModel: ObservableObject {
         Date(timeIntervalSinceReferenceDate: date.timeIntervalSinceReferenceDate.rounded(.down))
     }
 
+    /// Track and bearing in true degrees when both are known and valid, for the turn model.
+    private func turnGeometry() -> (track: Double, bearing: Double)? {
+        guard let track = self.track?.converted(to: .degrees).value, track >= 0, track.isFinite,
+              let bearing = self.bearing?.converted(to: .degrees).value, bearing >= 0, bearing.isFinite
+        else { return nil }
+        return (track, bearing)
+    }
+
     private func computeRequiredGroundSpeed(distance: Measurement<UnitLength>,
                                             arrivalTime: Date,
-                                            now: Date) -> Measurement<UnitSpeed>? {
+                                            now: Date,
+                                            geometry: (track: Double, bearing: Double)?) -> Measurement<UnitSpeed>? {
         let timeRemaining = arrivalTime.timeIntervalSince(now) // seconds
         guard timeRemaining > 0 else {
             // Already at/after the arrival time; cannot compute a positive required speed
             return nil
         }
-        // Convert distance to meters, then speed = meters / second
         let meters = distance.converted(to: .meters).value
-        let mps = meters / timeRemaining
+        let mps: Double
+        if let geometry,
+           let turnAware = TurnToTarget.requiredGroundSpeed(distance: meters, bearing: geometry.bearing,
+                                                            track: geometry.track, timeRemaining: timeRemaining,
+                                                            preferredDirection: turnDirection) {
+            mps = turnAware
+        } else if geometry != nil {
+            // Turn geometry known but no speed in range can make the time.
+            return nil
+        } else {
+            mps = meters / timeRemaining
+        }
         guard mps.isFinite && mps > 0 else { return nil }
         return Measurement(value: mps, unit: UnitSpeed.metersPerSecond)
     }

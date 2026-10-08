@@ -12,6 +12,8 @@ Background on how the in-flight screen works today:
 
 ## B-25: What should ETE mean when you are not pointed at the target?
 
+> **Decision (2026-10-07): none of the options below; a turn-in model instead.** The pilot orbits off the target and uses the screen to decide between "turn in now" and "go around again". ETE is therefore the time to continue the orbit already in progress at standard rate (3°/s, fixed) until pointed at the target, then fly straight to it. The orbit direction is inferred from the GPS track rate; when flying straight the shorter turn is assumed. Required GS solves the same path for the speed that arrives exactly at TOT, so it is the speed to set after rolling out. Δ reads EARLY while orbiting and reaches zero at the turn-in point; when early by at least one full orbit (120 s) the caption adds "+N ORBIT" so the pilot knows a go-around still fits. Small residuals are flown out with speed, larger ones with a racetrack, per the pilot. Implemented in `TurnToTarget` and `TurnDetector` (`Core/Domain/TurnToTarget.swift`). The options below are kept for the record.
+
 ### What the app does now
 
 ETE is distance to the target divided by your current GPS groundspeed. ETA is now plus ETE, and Δ is ETA minus TOT. This is the "direct-to" assumption: it answers "if I turned straight at the target right now and kept this speed, when would I get there?"
