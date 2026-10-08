@@ -12,8 +12,10 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 
 | Item | Priority | Summary | Blocking release? |
 |---|---|---|---|
-| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Screenshots captured 2026-10-07 (6.9-inch iPhone and 13-inch iPad, six each; reproducible with `scripts/app-store-screenshots/`). Remaining: enter the URLs (in `docs/AppStore/listing.md`), upload the screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
-| R-08 follow-up | R | Reshoot the flight-screen, editor (thumbnail) and iPad screenshots: D-01, D-02, D-05, D-07, D-08 and D-09 changed what they show. | Yes (owner action) |
+| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Screenshots reshot 2026-10-07 after PR #11 (6.9-inch iPhone and 13-inch iPad, seven each including a dark-appearance flight screen; reproducible with `scripts/app-store-screenshots/`). Remaining: enter the URLs (in `docs/AppStore/listing.md`), upload the screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
+| D-10 | D | Go Fly, the editor's primary action, is a pale neutral glass pill. | No |
+| D-11 | D | iPad: window-resize grabber in every screenshot; large empty area below the 700 pt column. | No |
+| D-12 | D | Map thumbnail clips a highway shield at its edge. | No |
 
 Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full UI suite passes on iPad Pro 13-inch, so 13-inch screenshots are required); an Icon Composer `.icon` for the full Liquid Glass treatment needs layered artwork and ships later.
 
@@ -29,6 +31,7 @@ Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full 
 - **P4 H-01 – H-08**, including the string catalog, `.gitignore`, and the committed Xcode Cloud manifest.
 - **B-42 – B-46** (`feature/release-polish`). B-42: Required GS scans 0.5–400 m/s in 2 m/s steps for the first bracket on one turn direction and bisects inside it; the three failing rows now land on time and a seeded random round-trip test covers the rest. B-43: median of the last five rates with 1.5°/s enter / 0.5°/s exit hysteresis. B-44: the detector runs on `lastFixTimestamp` and ignores non-advancing samples. B-45 (product call: surface it): ETE caption "TURN m:ss L/R" and an L/R badge on the Trk card; unit-tested, not UI-tested, because the caption depends on live GPS geometry. B-46: Δ is truncated to whole seconds before classification, and `signedDurationHMS` prints sub-second values unsigned.
 - **D-01 – D-09** (`feature/release-polish`). D-01: AccentColor is the icon navy (#0B3462, #7FA8E0 dark); `FlightBackground`, `StatusGood` / `StatusWarning` / `StatusBad` colour sets with darker light-mode variants (≥ 4.5:1 by calculation); the Δ row carries a status symbol. Increase Contrast variants were not added. D-02: End Flight is a red `.glassProminent` button top-trailing. D-04: one card per row at accessibility sizes, UI test at AX L. D-05/D-09: "250 kt", "12.0 NM" from `Settings.*Unit.symbol`, shared with the Settings pickers. D-07: content held to a 700 pt column on wide screens and Settings uses `.presentationSizing(.form)`; `NavigationSplitView` and a two-column landscape flight screen were not done. D-08: `MKMapSnapshotter` thumbnail without POIs.
+- **R-08 screenshot reshoot.** All seven screens per device recaptured on iPhone 18 Pro Max and iPad Pro 13-inch (M5) after the D-01 – D-09 changes, light appearance plus a dark flight screen; the reshoot surfaced D-10 – D-12.
 
 ---
 
@@ -418,6 +421,21 @@ Rendered from the `#Preview`s on iPhone 18 Pro (iOS 27) in light and dark appear
 - **Where:** `Core/Domain/Settings.swift` (`SpeedUnit` / `DistanceUnit` raw values shown in the Settings pickers), `Core/UI Shared/MeasurementFormatters.swift` (`MeasurementFormatter` symbols).
 - **What:** Settings offers "kts" and "nm"; the flight screen renders the formatter's symbols "kn" and "nmi" ("140kn", "10.5nmi"). Pilots expect "kt" / "kts" and "NM".
 - **Fix:** Pick one vocabulary (aviation convention: "kt" and "NM") and use it in both places: display names for the setting enums, and a custom symbol for knots and nautical miles in the formatter (or a small hand-written format for those two units). Do it together with D-05's spacing fix and update `MeasurementFormatters_Tests`.
+
+### D-10 · Go Fly, the editor's primary action, does not read as primary
+- **Where:** `Features/FlightEditor/FlightEditorView.swift` Go Fly button (`.buttonStyle(.glass)` with `.tint(.primary)`).
+- **What:** Seen in the post-PR #11 screenshots: Go Fly is a pale outlined capsule with black text that blends into the grouped background, on iPad especially, while the navy accent from D-01 goes unused. HIG: give the one primary action on a screen a prominent style.
+- **Fix:** `.buttonStyle(.glassProminent)` with the accent tint (drop `.tint(.primary)`), keeping the disabled state legible when validation fails.
+
+### D-11 · iPad: window chrome in screenshots and large empty areas below the content column
+- **Where:** iPadOS windowing (resize grabber, app name in the status bar); `FlightsListView`, `FlightEditorView`, `FlightView` on regular width.
+- **What:** Every 13-inch screenshot shows the bottom-right window-resize grabber because the app runs as a resizable window. With D-07's 700 pt column the content is no longer stretched, but the Flights list fills the top ~20 % of the screen, the editor ~60 % and the flight screen ~60 %, leaving the lower half empty. The large "Flights" title and toolbar sit at the screen edges while the list is centred in the column.
+- **Fix:** For screenshots, capture with the simulator in full-screen app mode (Settings › Multitasking & Gestures) if the grabber is unwanted. In the app, use the space: larger type for the flight-screen readouts on regular width, a two-column Timing | Instruments layout, or the `NavigationSplitView` deferred from D-07.
+
+### D-12 · Map thumbnail clips a highway shield at its edge
+- **Where:** `Core/UI Shared/TargetMapThumbnail.swift` (`MKMapSnapshotter.Options`).
+- **What:** On the Rose Bowl target an I-210 shield is cut off at the thumbnail's top-right corner. POIs are excluded but road shields and labels are not, and at ~80×50 pt they are mostly clutter.
+- **Fix:** Use `mapType = .mutedStandard` (or a `preferredConfiguration` with labels reduced), or tighten the region so the pin dominates. Check the Rose Bowl and Lake Mead seeds after the change.
 
 ---
 
