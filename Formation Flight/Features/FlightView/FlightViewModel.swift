@@ -34,8 +34,14 @@ final class FlightViewModel: ObservableObject {
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
     @Published var requiredGroundSpeed: Measurement<UnitSpeed>?
     @Published var distance: Measurement<UnitLength>?
-    @Published var bearing: Measurement<UnitAngle>? // degrees
-    @Published var track: Measurement<UnitAngle>?   // degrees
+    /// Bearing to the target, TRUE north, degrees (B-26 decision, 2026-10-07).
+    ///
+    /// Both `bearing` and `track` come from GPS geometry and are deliberately left true with no
+    /// `°T` label: pilots steer so Trk matches Brg, so the only requirement is that the two share
+    /// one reference. Do not convert one of them to magnetic without converting the other.
+    @Published var bearing: Measurement<UnitAngle>?
+    /// Track over the ground, TRUE north, degrees. Same reference as `bearing`; see above.
+    @Published var track: Measurement<UnitAngle>?
     
     // MARK: - Published State (Mission Details)
     @Published var missionName: String

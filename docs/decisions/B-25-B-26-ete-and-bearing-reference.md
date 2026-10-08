@@ -57,6 +57,8 @@ Engineering recommendation: C. It keeps the numbers predictable in the cockpit, 
 
 ## B-26: Should Bearing and Track be true or magnetic?
 
+> **Decision (2026-10-07): keep both true, no label.** Pilot feedback: true was the assumption, a suffix is clutter, and the readouts are used relatively (steer until Trk matches Brg), so the only requirement is that both share one reference. Recorded as a comment on `FlightViewModel.bearing`/`track`. No code change beyond that. The options below are kept for the record.
+
 ### What the app does now
 
 Bearing and Track are computed from GPS coordinates, so they are referenced to true north. The labels on the screen are just "Brg" and "Trk" with no T or M suffix.
@@ -93,4 +95,4 @@ Engineering recommendation: A now (it is a label change and removes the ambiguit
 Once we have answers, each item is a small, test-first change:
 
 - B-25 option C: an off-track indicator driven by track minus bearing, with a threshold setting, plus unit tests for the threshold and wrap-around at 360°.
-- B-26 option A: label changes and a test that the formatter output carries the suffix; option C or D would add a setting or editor field, a variation source, and tests for the conversion at east and west variations.
+- B-26: resolved, no change (see the decision above).
