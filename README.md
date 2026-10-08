@@ -1,19 +1,40 @@
 # Formation Flight
 
-A free iOS timing aid for pilots flying time-on-target (TOT) and hack-time missions. Pick a target and a time, and Formation Flight uses the device's GPS to show time to go, ETA, how early or late you are, and the groundspeed you need to arrive on time.
+A free iOS timing aid for GA pilots flying time-on-target (TOT) and hack-time missions. Pick a target and a time, and Formation Flight uses the device's GPS to show time to go, ETA, how early or late you are, and the groundspeed you need to arrive on time.
+
+**Coming soon to the App Store.** Free, with no ads, no account and no in-app purchases. Read more on the [project site](https://ellisandy.github.io/FormationFlight/).
+
+<p align="center">
+  <img src="docs/images/flight.png" alt="The in-flight screen" width="220">
+  <img src="docs/images/editor-tot.png" alt="The flight editor" width="220">
+  <img src="docs/images/flight-dark.png" alt="The in-flight screen in dark mode" width="220">
+</p>
 
 > [!WARNING]
 > Formation Flight is a supplemental situational-awareness tool. It is **not** a certified navigation system and must not be used as a primary means of navigation, terrain avoidance, or traffic separation. Always fly the aircraft first and cross-check against your primary instruments.
 
+## Why it exists
+
+My brother and his friends fly community flyovers eight to ten times a year: parades, ballgames, Memorial Day ceremonies. The goal is to cross the crowd right as the music on the ground hits its mark. With a stopwatch and mental math he was landing within about ±20 seconds. He asked me for something that would just tell him whether he was early or late and how fast to fly to fix it. With Formation Flight he's within a second or two.
+
 ## Features
 
 - Time, ETE, ETA, and an early/late Δ against the TOT, colour-coded against tolerances you set
+- Time-on-target missions flown to a clock time, or hack missions flown to a countdown started with **Hack!**
 - Current groundspeed and the groundspeed required to make the TOT
 - Distance and bearing to the target, plus current track
 - ETE modelled as a standard-rate turn onto the target followed by straight flight
-- Targets picked on a map or entered as coordinates
-- Large, high-contrast readouts; the screen stays awake during a flight
+- Targets picked on a satellite map or entered as coordinates; flights saved ahead of time
+- TOT editable mid-flight
+- Choice of speed and distance units, and of which instruments to show
+- Large, high-contrast readouts in light and dark mode; the screen stays awake during a flight
 - No account, no network access, no data collection. Location never leaves the device.
+
+## In progress
+
+- Voice callouts
+- Apple Watch companion app
+- Notifications
 
 ## Requirements
 
