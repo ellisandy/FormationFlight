@@ -10,6 +10,7 @@ import XCTest
 /// `UI F2`, both hack-time). Elements are located by accessibility identifier
 /// only; display strings are used solely for system alerts and the
 /// confirmation dialog, which have no identifiers.
+@MainActor
 final class FlightEditorViewUITests: XCTestCase {
 
     private var app: XCUIApplication!
@@ -23,7 +24,7 @@ final class FlightEditorViewUITests: XCTestCase {
         NSPredicate(format: "identifier BEGINSWITH %@", "flightRow_")
     }
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         // The simulator keeps its last orientation between runs; the editor's
         // Form only fits without scrolling in portrait.
@@ -41,7 +42,7 @@ final class FlightEditorViewUITests: XCTestCase {
         }
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 
@@ -122,24 +123,35 @@ final class FlightEditorViewUITests: XCTestCase {
     /// Scrolls the editor form until `element` exists. Rows of a SwiftUI `Form`
     /// are only in the accessibility tree once laid out, so on short screens the
     /// Target row and Go Fly button are not queryable until the form is scrolled.
-    /// The drag starts near the bottom of the window so it never lands on the
-    /// time-entry wheels, which would spin instead of scrolling the form.
-    private func revealInEditorForm(_ element: XCUIElement, _ description: String, maxSwipes: Int = 3) {
+    /// The drag runs down the form's leading margin, 8 pt from the window edge
+    /// and outside every row, so it never lands on the time-entry wheels, which
+    /// would spin instead of scrolling the form. (A vertical position alone is
+    /// not enough: on a 667 pt-tall iPhone SE the wheels reach 0.9 of the height.)
+    /// Pass `upward: true` to scroll back towards the top of the form, e.g. to
+    /// reach the mission name field after revealing Go Fly.
+    private func revealInEditorForm(_ element: XCUIElement, _ description: String, upward: Bool = false, maxSwipes: Int = 3) {
         let window = app.windows.firstMatch
+        let height = window.frame.height
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        let low = origin.withOffset(CGVector(dx: 8, dy: height * 0.9))
+        let high = origin.withOffset(CGVector(dx: 8, dy: height * 0.3))
         var swipes = 0
         while !element.exists, swipes < maxSwipes {
-            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
-            let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-            start.press(forDuration: 0.05, thenDragTo: end)
+            if upward {
+                high.press(forDuration: 0.05, thenDragTo: low)
+            } else {
+                low.press(forDuration: 0.05, thenDragTo: high)
+            }
             swipes += 1
         }
         XCTAssertTrue(element.waitForExistence(timeout: 2), "\(description) should be reachable in the editor form")
     }
 
     /// Types `name` into the mission name field and dismisses the keyboard with Return.
+    /// Scrolls the form back up first if an earlier step scrolled the field away.
     private func enterMissionName(_ name: String) {
         let nameField = app.textFields["missionNameField"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "missionNameField should exist in the editor")
+        revealInEditorForm(nameField, "missionNameField", upward: true)
         nameField.tap()
         nameField.typeText(name + "\n")
     }

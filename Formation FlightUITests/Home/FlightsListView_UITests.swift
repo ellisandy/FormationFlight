@@ -14,6 +14,7 @@ import XCTest
 /// for seed data (`-uiTestsSeedFlights`, which inserts `UI F1` and `UI F2`).
 /// Elements are located by accessibility identifier only; display strings are
 /// used solely for system alerts, which have no identifiers.
+@MainActor
 final class FlightsListViewUITests: XCTestCase {
 
     private var app: XCUIApplication!
@@ -31,7 +32,7 @@ final class FlightsListViewUITests: XCTestCase {
         NSPredicate(format: "identifier BEGINSWITH %@", "flightRowDelete_")
     }
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         // The simulator keeps its last orientation between runs; the editor's
         // Form only fits without scrolling in portrait.
@@ -49,7 +50,7 @@ final class FlightsListViewUITests: XCTestCase {
         }
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 
