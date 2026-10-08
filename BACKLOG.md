@@ -12,7 +12,8 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 
 | Item | Priority | Summary | Blocking release? |
 |---|---|---|---|
-| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Remaining: enter the URLs (in `docs/AppStore/listing.md`), screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
+| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Screenshots captured 2026-10-07 (6.9-inch iPhone and 13-inch iPad, six each; reproducible with `scripts/app-store-screenshots/`). Remaining: enter the URLs (in `docs/AppStore/listing.md`), upload the screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
+| B-46 | P1 | Δ shows "LATE +00:00:00" (or "EARLY -00:00:00") when under a second off. | Should |
 | B-42 | P1 | Required GS falls back to direct-to when the 400 m/s search ceiling puts the target inside the turn circle; up to 13 s late in the close-in orbit. | Yes |
 | B-43 | P1 | ETE / ETA / Δ / ORBIT caption flap when the turn detector toggles at its 1°/s threshold. | Yes |
 | B-44 | P2 | `TurnDetector` uses the wall clock instead of the fix timestamp. | No |
@@ -20,6 +21,9 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 | D-01 | D | Flight screen background inverts the colour scheme and fails contrast. | Should |
 | D-02 | D | End Flight is destructive but looks like Edit TOT / Edit Hack. | Should |
 | D-03 – D-06 | D | Settings title, AX Dynamic Type cards, unit spacing, smaller HIG items. | No |
+| D-07 | D | iPad shows the iPhone layout stretched edge to edge with large empty areas. | No |
+| D-08 | D | Editor target thumbnail is mostly covered by the Maps "Legal" link. | No |
+| D-09 | D | Unit abbreviations disagree: Settings says "kts" / "nm", flight screen shows "kn" / "nmi". | No |
 
 Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full UI suite passes on iPad Pro 13-inch, so 13-inch screenshots are required); an Icon Composer `.icon` for the full Liquid Glass treatment needs layered artwork and ships later.
 
@@ -242,6 +246,11 @@ The app will ship **free** on the App Store, so no StoreKit, in-app purchase, or
 - **What:** The detector is a two-sample average against a single threshold, so GPS course jitter near 1°/s (routine at low groundspeed or in turbulence) toggles `turnDirection` between a direction and `nil` from one fix to the next. With a direction the solver continues the orbit the long way round; without one it takes the shortest turn. Those two paths differ by most of a circle, up to 120 s at standard rate, so ETE, ETA, Δ, the status colour and the "+N ORBIT" caption can all alternate at 1 Hz.
 - **Fix:** Hysteresis (enter "turning" at ≥ 1.5°/s, leave at ≤ 0.5°/s), a longer smoothing window (a 4–5 s exponential average or a median of the last five rates), and clear the direction only after N consecutive below-threshold samples. Tests in `TurnDetectorTests`: a right turn with ±1.5°/s of per-sample jitter stays `.right` throughout; a roll-out still returns to `nil` within about 5 s; a single wild sample mid-turn does not clear the direction.
 
+### B-46 · Δ reads "LATE +00:00:00" when the aircraft is less than a second late
+- **Where:** `Features/FlightView/FlightViewModel.swift` caption logic (`if _delta < 0 … else if _delta > 0 … else "ON TIME"`); `Core/UI Shared/Formatting.swift` `signedDurationHMS` (sign from the raw value, magnitude truncated by `hmsComponents`).
+- **What:** The caption and sign come from the raw fractional delta, but the digits are truncated to whole seconds. Any delta in (0, 1) s renders "LATE +00:00:00" and any delta in (-1, 0) s renders "EARLY -00:00:00", so the exact-hit case never says ON TIME. Seen during App Store screenshot capture (2026-10-07) on a simulated approach timed to the TOT.
+- **Fix:** Classify on the same whole-second value that is displayed: truncate (or round, consistently in both places) once in the view model, drive the caption and the sign from that, and have `signedDurationHMS` print no sign (or "±") for zero. Tests: delta 0.4 → "ON TIME" with "00:00:00"; delta -0.4 → same; delta 1.2 → "LATE +00:00:01"; delta -1.2 → "EARLY -00:00:01".
+
 ---
 
 ## P2 — Robustness and architecture
@@ -373,6 +382,7 @@ Rendered from the `#Preview`s on iPhone 18 Pro (iOS 27) in light and dark appear
 - **Where:** `Features/FlightView/FlightView.swift` `body` (`LinearGradient` of `Color.accentColor` at 0.5 and 0.8 opacity, `.ignoresSafeArea()`); `Shared Assets/Assets.xcassets/AccentColor.colorset/Contents.json` (both appearances reference `labelColor`).
 - **What:** Because the accent colour *is* the label colour, the gradient is black over white in light mode and white over black in dark mode, while every readout uses `.primary`. Measured from the rendered previews: in light mode the "Mission Details" header is black on roughly #333 (≈ 1.7:1); in dark mode the headers are white on roughly #CCC (≈ 1.6:1); the orange `.bad` tint sits at ≈ 1.5:1 against the mid-grey in both. HIG asks for 4.5:1 (3:1 for large text) and says colour must not be the only status cue; the status tint on Cur GS, Req GS and ETA currently is. The label-coloured accent also neuters `.tint` on every control in the app (see D-06).
 - **Fix:** Give `AccentColor` a real hue (the icon's navy, with a lighter dark-appearance variant) and stop deriving the flight background from it. Use a dedicated `FlightBackground` colour set with light and dark variants (a fixed dark cockpit background is fine as long as text is then forced to a light foreground, not `.primary`), keep the cards on `.ultraThinMaterial`, and verify green/orange/red pass 3:1 against the card material in both appearances and with Increase Contrast on. Run the Sufficient Contrast nutrition-label checks before claiming the label in App Store Connect (R-08).
+- **Note (2026-10-07):** Confirmed during App Store screenshot capture: in light mode the flight screen is a flat grey gradient and the green status values are hard to read. The submitted flight-screen screenshots were taken in dark appearance; reshoot them once this lands.
 
 ### D-02 · "End Flight" is destructive but renders identically to "Edit TOT" / "Edit Hack"
 - **Where:** `FlightView.swift` bottom `safeAreaInset` (`Button(role: .destructive)` with `.buttonStyle(.glass)`).
@@ -401,6 +411,21 @@ Rendered from the `#Preview`s on iPhone 18 Pro (iOS 27) in light and dark appear
 - `HackTimePickerView` wheel labels (`"\(m)m"`, `"%02ds"`) are neither localized nor pluralised; use `Text("\(m) min")` / `"\(s) s"` through the string catalog, or `Duration.UnitsFormatStyle`.
 - `FlightView` has no navigation bar; the only exits are the bottom buttons. Acceptable for a cockpit screen, but confirm VoiceOver's escape gesture (two-finger Z) reaches the End Flight confirmation, or add `.accessibilityAction(.escape)`.
 - The seeded `FlightsListView` preview renders the empty state because the seeding `ModelContext` is never saved; call `try? context.save()` so the list preview actually shows rows.
+
+### D-07 · iPad shows the iPhone layout stretched edge to edge
+- **Where:** `Features/Home/FlightsListView.swift`, `Features/FlightEditor/FlightEditorView.swift`, `Features/FlightView/FlightView.swift`, `Features/SettingsEditor/SettingsEditorView.swift`; found while capturing 13-inch screenshots on iPad Pro 13-inch (M5), iOS 27.
+- **What:** Every screen fills the full 1032 pt width. List rows are a short title with ~900 pt of nothing beside it; the TOT/Hack segmented control, Go Fly and the flight-screen buttons are ~950 pt pills; the time wheels spread into 312 pt (TOT) or 660 pt (hack) columns so the digits sit far apart. The Flights list fills the top ~30 % of the screen and the editor ends ~60 % down, leaving large empty areas. The Settings sheet opens at the default page size and cuts off at "Final Bearing". Screenshots also show the iPadOS window-resize grabber in the bottom-right corner and the app name in the status bar, because the app runs as a resizable window.
+- **Fix:** Constrain content to a readable width on regular size classes (`.frame(maxWidth: 600)` centred, or `.containerRelativeFrame` / `.scenePadding`) for the editor, settings and flight screen. Consider a `NavigationSplitView` for the Flights list → editor on iPad, and a two-column flight screen (Timing beside Instruments) in landscape. Give Settings `.presentationSizing(.form)` or a taller detent. Reshoot the iPad screenshots afterwards.
+
+### D-08 · Editor target thumbnail is mostly covered by the Maps "Legal" link
+- **Where:** `Features/FlightEditor/FlightEditorView.swift` target row (the small `Map` thumbnail, ~80×50 pt).
+- **What:** At that size the system "Legal" attribution, road shields and POI labels cover most of the map: on the Rose Bowl target "Legal" overprints "ROSE BOWL STADIUM", and on Lake Mead it covers most of the tile. There is also a grey strip down the thumbnail's right edge. Visible in both the iPhone and iPad screenshots.
+- **Fix:** Render the thumbnail with `MKMapSnapshotter` (static image, no interactive attribution overlay; keep attribution where the full map is shown) or make it larger, and hide POIs/labels with `.mapStyle(.standard(pointsOfInterest: .excludingAll))`. Investigate the right-edge strip (likely a clip/size mismatch between the map frame and its rounded container).
+
+### D-09 · Unit abbreviations disagree between Settings and the flight screen
+- **Where:** `Core/Domain/Settings.swift` (`SpeedUnit` / `DistanceUnit` raw values shown in the Settings pickers), `Core/UI Shared/MeasurementFormatters.swift` (`MeasurementFormatter` symbols).
+- **What:** Settings offers "kts" and "nm"; the flight screen renders the formatter's symbols "kn" and "nmi" ("140kn", "10.5nmi"). Pilots expect "kt" / "kts" and "NM".
+- **Fix:** Pick one vocabulary (aviation convention: "kt" and "NM") and use it in both places: display names for the setting enums, and a custom symbol for knots and nautical miles in the formatter (or a small hand-written format for those two units). Do it together with D-05's spacing fix and update `MeasurementFormatters_Tests`.
 
 ---
 
