@@ -1,3 +1,8 @@
+---
+title: Formation Flight Privacy Policy
+permalink: /privacy/
+---
+
 # Formation Flight Privacy Policy
 
 _Last updated: 7 October 2026_

@@ -12,7 +12,7 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 
 | Item | Priority | Summary | Blocking release? |
 |---|---|---|---|
-| R-08 | R | Host the privacy policy and support page; enter the URLs in App Store Connect. Drafts in `docs/AppStore/`. | Yes (owner action) |
+| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Remaining: enter the URLs (in `docs/AppStore/listing.md`), screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
 | B-42 | P1 | Required GS falls back to direct-to when the 400 m/s search ceiling puts the target inside the turn circle; up to 13 s late in the close-in orbit. | Yes |
 | B-43 | P1 | ETE / ETA / Δ / ORBIT caption flap when the turn detector toggles at its 1°/s threshold. | Yes |
 | B-44 | P2 | `TurnDetector` uses the wall clock instead of the fix timestamp. | No |

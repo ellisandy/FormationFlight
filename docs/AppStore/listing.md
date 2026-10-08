@@ -13,9 +13,9 @@ Working copy for the App Store Connect record (backlog item R-08). Everything he
 | Secondary category | Utilities |
 | Age rating | 4+ (questionnaire: no objectionable content, no unrestricted web access, no gambling) |
 | Bundle ID | cc.mnmlst.Formation-Flight |
-| Privacy policy URL | host `privacy-policy.md` from this folder (GitHub Pages or a static page) and paste the URL |
-| Support URL | same page or the repository's Issues page |
-| Marketing URL | optional; can match the support URL |
+| Privacy policy URL | https://ellisandy.github.io/FormationFlight/privacy/ (GitHub Pages, served from `docs/` on `main`) |
+| Support URL | https://ellisandy.github.io/FormationFlight/ |
+| Marketing URL | optional; https://ellisandy.github.io/FormationFlight/ |
 
 ## Privacy
 
