@@ -363,10 +363,11 @@ struct FlightView: View {
                         hackTime: Formatting.durationHMS(viewModel.hackTime),
                         tot: Formatting.timeHHmmss(viewModel.tot)
                     )
-                    
+
                 }
-                
+
             }
+            .readableScrollContent()
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
                     if viewModel.missionType == .hackTime {
@@ -405,6 +406,7 @@ struct FlightView: View {
                 }
                 .padding(.horizontal, Design.Padding.horizontal)
                 .padding(.vertical, 8)
+                .readableWidth()
                 .background(.thinMaterial)
             }
             // End Flight is destructive (D-02): red, and in the top-trailing corner, away from
@@ -423,6 +425,7 @@ struct FlightView: View {
                     .accessibilityHint("Stops tracking and closes out the current mission.")
                 }
                 .padding(.horizontal, Design.Padding.horizontal)
+                .readableWidth()
             }
             .sheet(isPresented: $viewModel.isEditingToT, onDismiss: viewModel.cancelEditToT, content: {
                 let _date: Binding<Date> = Binding {

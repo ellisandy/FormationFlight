@@ -61,7 +61,12 @@ final class FormattingTests {
         #expect(Formatting.signedDurationHMS(7) == "+00:00:07")
         #expect(Formatting.signedDurationHMS(-65) == "-00:01:05")
         #expect(Formatting.signedDurationHMS(-3661) == "-01:01:01")
-        #expect(Formatting.signedDurationHMS(0) == "+00:00:00")
+        // B-46: under a second either way is unsigned, matching the "ON TIME" caption.
+        #expect(Formatting.signedDurationHMS(0) == "00:00:00")
+        #expect(Formatting.signedDurationHMS(0.4) == "00:00:00")
+        #expect(Formatting.signedDurationHMS(-0.4) == "00:00:00")
+        #expect(Formatting.signedDurationHMS(1.2) == "+00:00:01")
+        #expect(Formatting.signedDurationHMS(-1.2) == "-00:00:01")
         #expect(Formatting.signedDurationHMS(nil) == "--:--:--")
     }
 

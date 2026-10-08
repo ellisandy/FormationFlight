@@ -303,8 +303,10 @@ final class FlightViewModel: ObservableObject {
 
         // Set Delta
         if let eta = self.eta, let tot = self.tot {
-            // Positive delta means ETA is after TOT (late). Negative means early.
-            self.delta = eta.timeIntervalSince(tot)
+            // Positive delta means ETA is after TOT (late). Negative means early. Truncated to
+            // the whole seconds the Δ readout shows (B-46): a ToT with a fractional second
+            // otherwise put "LATE +00:00:00" on screen for a sub-second miss.
+            self.delta = eta.timeIntervalSince(tot).rounded(.towardZero)
         } else {
             self.delta = nil
         }

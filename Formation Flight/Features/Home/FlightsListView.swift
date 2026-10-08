@@ -144,6 +144,8 @@ struct FlightsListView: View {
             viewModel.dismissSettings()
         }, content: {
             SettingsEditorView(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
+                // D-07: the default iPad page size cut the form off at "Final Bearing".
+                .presentationSizing(.form)
         })
         .fullScreenCover(isPresented: $showsSafetyDisclaimer) {
             SafetyDisclaimerView {
@@ -216,6 +218,7 @@ struct FlightsListView: View {
                 )
             }
         }
+        .readableScrollContent()
     }
 }
 

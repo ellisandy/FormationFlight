@@ -8,8 +8,6 @@ struct FlightEditorView: View {
     var onSave: (FlightEditorViewModel) -> Void = { _ in }
     var onCancel: () -> Void = {}
 
-    // B-33: the thumbnail camera is view state so it can follow a changed target.
-    @State private var thumbnailPosition: MapCameraPosition
     // B-21: Cancel on a dirty editor asks before discarding.
     @State private var showsDiscardConfirmation = false
     // B-16: the user may return from Settings after changing the location permission.
@@ -28,27 +26,8 @@ struct FlightEditorView: View {
          onCancel: @escaping () -> Void = {}) {
         let provider = UITestLocationAccessOverride.provider ?? locationProvider
         _viewModel = StateObject(wrappedValue: FlightEditorViewModel(flight: flight, locationProvider: provider))
-        _thumbnailPosition = State(initialValue: Self.thumbnailPosition(for: flight?.target?.getCLCoordinate()))
         self.onSave = onSave
         self.onCancel = onCancel
-    }
-
-    /// `CLLocationCoordinate2D` is not `Equatable`, so `onChange` observes this snapshot instead.
-    private struct CoordinateKey: Equatable {
-        let latitude: Double
-        let longitude: Double
-    }
-
-    private var selectedTargetKey: CoordinateKey? {
-        viewModel.selectedTargetLocation.map {
-            CoordinateKey(latitude: $0.latitude, longitude: $0.longitude)
-        }
-    }
-
-    private static func thumbnailPosition(for coordinate: CLLocationCoordinate2D?) -> MapCameraPosition {
-        guard let coordinate else { return .automatic }
-        return .region(MKCoordinateRegion(center: coordinate,
-                                          span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))
     }
 
     var body: some View {
@@ -133,19 +112,14 @@ struct FlightEditorView: View {
                             
                             // Right: Thumbnail map if we have a coordinate (fixed size)
                             if let coord = viewModel.selectedTargetLocation {
-                                Map(position: $thumbnailPosition) {
-                                    Annotation("", coordinate: coord, anchor: .bottom) {
-                                        Image(systemName: "mappin")
-                                            .font(.body)
-                                            .foregroundStyle(.red)
-                                    }
-                                }
-                                .accessibilityIdentifier("targetMapThumbnail")
-                                .mapStyle(.standard)
-                                .frame(width: 80, height: 50)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .allowsHitTesting(false)
-                                .accessibilityHidden(true)
+                                // D-08: a static snapshot. A live `Map` this small was mostly
+                                // covered by its "Legal" link and POI labels. B-33: it re-renders
+                                // whenever the target moves.
+                                TargetMapThumbnail(coordinate: coord)
+                                    .frame(width: 80, height: 50)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .accessibilityIdentifier("targetMapThumbnail")
+                                    .accessibilityHidden(true)
                             }
                         }
                         .contentShape(Rectangle())
@@ -171,6 +145,7 @@ struct FlightEditorView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             }
+            .readableScrollContent()
             
             
         }
@@ -183,9 +158,6 @@ struct FlightEditorView: View {
             if phase == .active {
                 viewModel.refreshLocationAccess()
             }
-        }
-        .onChange(of: selectedTargetKey) { _, _ in
-            thumbnailPosition = Self.thumbnailPosition(for: viewModel.selectedTargetLocation)
         }
         .toolbar {
             // B-21: Cancel is the single way out; the system back button is hidden below so

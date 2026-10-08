@@ -401,6 +401,16 @@ struct FlightViewModelTests {
         #expect(vm.delta == 0)
         #expect(vm.deltaLabel == "ON TIME")
 
+        // B-46: a ToT with a fractional second, under a second either way, is ON TIME with
+        // an unsigned zero, not "LATE +00:00:00" / "EARLY -00:00:00".
+        for (offset, label, shown) in [(9.6, "ON TIME", "00:00:00"), (10.4, "ON TIME", "00:00:00"),
+                                       (8.8, "LATE", "+00:00:01"), (11.2, "EARLY", "-00:00:01")] {
+            vm.tot = Self.fixedNow.addingTimeInterval(offset)
+            mockTimer.fire()
+            #expect(vm.deltaLabel == label, "ToT at +\(offset) s")
+            #expect(Formatting.signedDurationHMS(vm.delta) == shown, "ToT at +\(offset) s")
+        }
+
         // Losing the ToT loses the delta, and the label must go with it.
         vm.tot = nil
         mockTimer.fire()

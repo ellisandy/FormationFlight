@@ -79,11 +79,14 @@ public enum Formatting {
     /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
     ///   returns `--:--:--`.
     /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude prefixed with `+` or `-`
-    ///   (e.g. `+00:00:07`, `-00:01:05`). Zero renders as `+00:00:00`.
+    ///   (e.g. `+00:00:07`, `-00:01:05`). Anything under a whole second either way renders as
+    ///   an unsigned `00:00:00` (B-46): the sign follows the digits shown, not the fraction
+    ///   they drop.
     public static func signedDurationHMS(_ seconds: TimeInterval?) -> String {
         guard let seconds, let components = hmsComponents(seconds) else {
             return "--:--:--".uppercased()
         }
+        guard abs(seconds) >= 1 else { return components }
         let sign = seconds < 0 ? "-" : "+"
         return sign + components
     }

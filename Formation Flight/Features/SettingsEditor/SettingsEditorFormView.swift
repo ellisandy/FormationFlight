@@ -16,12 +16,12 @@ struct SettingsEditorFormView: View {
             Section("Units") {
                 Picker("Speed Unit", selection: $viewModel.settings.speedUnit) {
                     ForEach(Settings.SpeedUnit.allCases) { unit in
-                        Text(unit.rawValue)
+                        Text(unit.symbol)
                     }
                 }.pickerStyle(.automatic)
                 Picker("Distance Unit", selection: $viewModel.settings.distanceUnit) {
                     ForEach(Settings.DistanceUnit.allCases) { unit in
-                        Text(unit.rawValue)
+                        Text(unit.symbol)
                     }
                 }.pickerStyle(.automatic)
             }
@@ -81,6 +81,7 @@ struct SettingsEditorFormView: View {
                     .accessibilityIdentifier("settingsSafetyDisclaimerText")
             }
         }
+        .readableScrollContent()
         .sheet(isPresented: $showsSafetyDisclaimer) {
             // Read-only re-display: the pilot already acknowledged at first
             // launch, so the button simply dismisses.
