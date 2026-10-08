@@ -37,6 +37,11 @@ struct Formation_FlightApp: App {
                 context.insert(f2)
                 try? context.save()
             }
+
+            // Optional: realistic missions for App Store screenshots
+            if useInMemory, args.contains("-screenshotSeedFlights") {
+                ScreenshotSeed.insertFlights(into: ModelContext(result.container))
+            }
             // coverage:ignore-end
         } catch {
             AppLogger.data.fault("Could not create any ModelContainer: \(error.localizedDescription, privacy: .public)")
@@ -76,6 +81,46 @@ struct Formation_FlightApp: App {
         )
     }
 }
+
+// coverage:ignore-start
+/// Sample missions used when capturing App Store screenshots (`-uiTestsResetStore -screenshotSeedFlights`).
+///
+/// The headline mission's TOT is timed against a simulated route that starts at `routeStart` and
+/// flies straight at `routeSpeed`, so the flight screen reads on time when driven with:
+/// `xcrun simctl location booted start --speed=72 34.2000,-118.4200 34.1613,-118.1676`
+@MainActor
+enum ScreenshotSeed {
+    static let routeStart = CLLocation(latitude: 34.2000, longitude: -118.4200)
+    static let routeSpeed: CLLocationSpeed = 72 // m/s, about 140 kt
+
+    static func insertFlights(into context: ModelContext) {
+        let roseBowl = Target(longitude: -118.1676, latitude: 34.1613)
+        let timeToTarget = routeStart.distance(from: CLLocation(latitude: roseBowl.latitude, longitude: roseBowl.longitude)) / routeSpeed
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now) ?? .now
+        let nextWeek = calendar.date(byAdding: .day, value: 6, to: .now) ?? .now
+
+        let flights = [
+            Flight(missionName: "Rose Bowl Flyover", missionType: .tot,
+                   missionDate: Date.now.addingTimeInterval(timeToTarget + 2), target: roseBowl),
+            Flight(missionName: "Golden Gate Formation", missionType: .tot,
+                   missionDate: calendar.date(bySettingHour: 10, minute: 30, second: 0, of: tomorrow),
+                   target: Target(longitude: -122.4783, latitude: 37.8199)),
+            Flight(missionName: "Lake Mead Checkpoint", missionType: .hackTime,
+                   missionDate: calendar.date(bySettingHour: 7, minute: 45, second: 0, of: tomorrow),
+                   target: Target(longitude: -114.7377, latitude: 36.0161), hackTime: 270),
+            Flight(missionName: "Sun 'n Fun Arrival", missionType: .hackTime,
+                   missionDate: calendar.date(bySettingHour: 13, minute: 0, second: 0, of: nextWeek),
+                   target: Target(longitude: -82.0186, latitude: 27.9889), hackTime: 180),
+            Flight(missionName: "Oshkosh Fisk Arrival", missionType: .tot,
+                   missionDate: calendar.date(bySettingHour: 9, minute: 15, second: 0, of: nextWeek),
+                   target: Target(longitude: -88.9534, latitude: 43.9136)),
+        ]
+        flights.forEach(context.insert)
+        try? context.save()
+    }
+}
+// coverage:ignore-end
 
 /// Builds the SwiftData container that backs the app, recovering from stores that cannot be opened.
 @MainActor

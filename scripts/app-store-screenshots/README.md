@@ -1,0 +1,47 @@
+# App Store screenshots
+
+Required sizes: 6.9" iPhone (iPhone 18 Pro Max, 1320×2868) and 13" iPad (iPad Pro 13-inch, 2064×2752).
+
+## 1. Prepare the simulator
+
+```sh
+U=<simulator UDID>   # xcrun simctl list devices
+xcrun simctl status_bar $U override --batteryState charged --batteryLevel 100 --cellularMode active --cellularBars 4 --wifiBars 3 --operatorName ""
+xcrun simctl location $U set 34.2000,-118.4200
+```
+
+## 2. Launch with sample missions
+
+Run the app with these launch arguments (in-memory store, so nothing persists):
+
+```
+-uiTestsResetStore -screenshotSeedFlights -hasAcknowledgedSafetyDisclaimer YES
+```
+
+`ScreenshotSeed` in `Formation_FlightApp.swift` inserts five missions; "Rose Bowl Flyover" is the TOT mission used for the flight screen.
+
+## 3. Static screens
+
+Navigate to each screen and save it at full resolution:
+
+```sh
+xcrun simctl io $U screenshot 01-flights.png
+```
+
+Shots: Flights list, Rose Bowl editor, map picker (tap the Target row), Lake Mead (hack) editor, Settings.
+
+## 4. Live flight screen
+
+The flight screen is driven by real (simulated) GPS. Shoot it in dark mode — it reads much better.
+
+1. `xcrun simctl ui $U appearance dark`
+2. Relaunch with the arguments above, open "Rose Bowl Flyover", tap **Go Fly**, and note the **TOT** shown.
+3. Start the approach timed to arrive a few seconds early, wait for the readouts to settle, then capture:
+
+   ```sh
+   scripts/app-store-screenshots/fly-approach.py $U <TOT HH:MM:SS> 4 && sleep 14 && xcrun simctl io $U screenshot 06-flight-tot.png
+   ```
+
+Don't tap or capture through Xcode's device-interaction tools while the route is running — doing so interrupts the simulated location and the readouts drop to `--`. Use `simctl io` only.
+
+4. Clean up: `xcrun simctl location $U clear; xcrun simctl ui $U appearance light`
