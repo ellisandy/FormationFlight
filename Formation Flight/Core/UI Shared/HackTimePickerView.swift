@@ -6,12 +6,24 @@ struct HackTimePickerView: View {
     // Bind to total seconds for the hack duration
     @Binding var hackDurationSeconds: TimeInterval?
     
+    /// Largest duration the wheels can display: 180 minutes and 59 seconds.
+    private static let maxPickerSeconds = 180 * 60 + 59
+
+    /// Whole seconds safe to split into wheel positions.
+    ///
+    /// B-34: `Int(Double)` traps on `nan`/`±infinity`, so non-finite input reads as 0 and
+    /// finite input is clamped to the range the wheels can actually show.
+    private static func wholeSeconds(_ duration: TimeInterval?) -> Int {
+        guard let duration, duration.isFinite else { return 0 }
+        return Int(min(max(duration, 0), Double(maxPickerSeconds)))
+    }
+
     var body: some View {
         // Provide a non-optional proxy with a default of 0 when nil
-        let duration = hackDurationSeconds ?? 0
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        
+        let total = Self.wholeSeconds(hackDurationSeconds)
+        let minutes = total / 60
+        let seconds = total % 60
+
         HStack {
             // Minutes wheel 0-180
             Picker("Min", selection: Binding(
@@ -45,9 +57,6 @@ struct HackTimePickerView: View {
             .pickerStyle(.wheel)
             .frame(maxWidth: .infinity)
         }
-        .frame(height: 140)
-        .scaleEffect(0.8)
-        .clipped()
         .accessibilityElement(children: .contain)
     }
 }

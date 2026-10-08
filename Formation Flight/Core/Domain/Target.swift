@@ -1,5 +1,5 @@
 //
-//  Checkpoints.swift
+//  Target.swift
 //  Formation Flight
 //
 //  Created by Jack Ellis on 1/15/24.

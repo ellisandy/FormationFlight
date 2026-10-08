@@ -1,0 +1,285 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lldm" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add Flight" : {
+
+    },
+    "Add Item" : {
+
+    },
+    "Always fly the aircraft first, follow your unit's procedures and applicable regulations, and cross-check against primary instruments." : {
+      "comment" : "Safety disclaimer, paragraph 3: pilot responsibilities"
+    },
+    "Are you sure you want to delete %@? This action cannot be undone." : {
+
+    },
+    "Before You Fly" : {
+      "comment" : "Title of the aviation safety disclaimer shown on first launch"
+    },
+    "Cancel" : {
+
+    },
+    "Close" : {
+
+    },
+    "Create a new flight" : {
+
+    },
+    "Create your first flight" : {
+
+    },
+    "Create your first flight to get started." : {
+
+    },
+    "Date" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Flight?" : {
+
+    },
+    "Discard" : {
+
+    },
+    "Discard changes?" : {
+
+    },
+    "Distance Unit" : {
+
+    },
+    "Done" : {
+
+    },
+    "EARLY" : {
+      "comment" : "Flight Δ row: ETA is before ToT"
+    },
+    "EARLY · +%lld ORBIT" : {
+      "comment" : "Flight Δ row: early by at least this many full standard-rate orbits"
+    },
+    "Edit Hack" : {
+
+    },
+    "Edit TOT" : {
+
+    },
+    "End Flight" : {
+
+    },
+    "End Flight?" : {
+
+    },
+    "Failed to delete flight. Please try again." : {
+      "comment" : "Shown when persisting a flight deletion fails"
+    },
+    "Failed to save flight. Please try again." : {
+      "comment" : "Shown when persisting a new flight fails"
+    },
+    "Failed to update flight. Please try again." : {
+      "comment" : "Shown when persisting changes to an existing flight fails"
+    },
+    "Flight Editor" : {
+
+    },
+    "Flights" : {
+
+    },
+    "Formation Flight could not open its flight store. Please reinstall the app." : {
+
+    },
+    "Formation Flight is a supplemental timing aid for situational awareness only. It is not a substitute for primary navigation." : {
+      "comment" : "Persistent one-line safety disclaimer shown in Settings"
+    },
+    "Formation Flight is a supplemental timing aid. It helps you track time on target, distance, bearing, and required groundspeed using your device's GPS." : {
+      "comment" : "Safety disclaimer, paragraph 1: what the app does"
+    },
+    "Formation Flight needs your location to show distance, bearing, and groundspeed in flight." : {
+
+    },
+    "Go Fly" : {
+
+    },
+    "Hack" : {
+
+    },
+    "Hack!" : {
+
+    },
+    "Hour" : {
+
+    },
+    "I Understand" : {
+      "comment" : "Button that acknowledges the safety disclaimer"
+    },
+    "Instruments" : {
+
+    },
+    "It is not a certified navigation or flight-management system and must not be used as your primary means of navigation, terrain avoidance, or traffic separation. GPS data can be delayed, degraded, or unavailable." : {
+      "comment" : "Safety disclaimer, paragraph 2: what the app is not"
+    },
+    "Keep Editing" : {
+
+    },
+    "Lat: %@" : {
+
+    },
+    "LATE" : {
+      "comment" : "Flight Δ row: ETA is after ToT"
+    },
+    "Latitude" : {
+
+    },
+    "Latitude: %@" : {
+
+    },
+    "Location access is off" : {
+
+    },
+    "Lon: %@" : {
+
+    },
+    "Longitude" : {
+
+    },
+    "Longitude: %@" : {
+
+    },
+    "Min" : {
+
+    },
+    "Minute" : {
+
+    },
+    "Mission Details" : {
+
+    },
+    "Mission Name" : {
+
+    },
+    "No Flights Yet" : {
+
+    },
+    "No instruments available" : {
+
+    },
+    "OK" : {
+
+    },
+    "ON TIME" : {
+      "comment" : "Flight Δ row: ETA equals ToT"
+    },
+    "Open settings" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Pick Checkpoint" : {
+
+    },
+    "Please enter a hack time." : {
+      "comment" : "Validation message when a hack-time mission has no hack duration or a zero one"
+    },
+    "Please enter a mission date and time." : {
+      "comment" : "Validation message when a time-on-target mission has no date"
+    },
+    "Please enter a mission name." : {
+      "comment" : "Validation message when a flight has no mission name"
+    },
+    "Please enter a valid target location." : {
+      "comment" : "Validation message when a flight has no target selected"
+    },
+    "Precise location is off" : {
+
+    },
+    "Red ±%lld s" : {
+
+    },
+    "Safety" : {
+
+    },
+    "Save" : {
+
+    },
+    "Saved flights could not be read and were reset." : {
+
+    },
+    "Saved Flights Reset" : {
+
+    },
+    "Sec" : {
+
+    },
+    "Second" : {
+
+    },
+    "Seconds early or late before the time-on-target readout turns yellow, then red. Red is never below yellow." : {
+
+    },
+    "Select Target" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Show Safety Disclaimer" : {
+
+    },
+    "Speed Unit" : {
+
+    },
+    "Stops tracking and closes out the current mission." : {
+
+    },
+    "Storage Unavailable" : {
+
+    },
+    "Target" : {
+
+    },
+    "The time on target is in the past." : {
+      "comment" : "Validation message when a time-on-target mission is scheduled more than a minute ago"
+    },
+    "This will stop tracking and close out the current mission." : {
+
+    },
+    "Time Entry" : {
+
+    },
+    "Time on Target Drift Tolerance" : {
+
+    },
+    "Time Type" : {
+
+    },
+    "Timing" : {
+
+    },
+    "TOT" : {
+
+    },
+    "Turn on Precise Location in Settings for accurate distance and timing." : {
+
+    },
+    "Units" : {
+
+    },
+    "Validation" : {
+
+    },
+    "Yellow ±%lld s" : {
+
+    },
+    "Your changes to this flight will not be saved." : {
+
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,8 @@
+title: Formation Flight
+description: A time-on-target timing aid for pilots. Free on the App Store.
+theme: jekyll-theme-primer
+
+# Only the public pages are published. Internal notes stay in the repository.
+exclude:
+  - AppStore/listing.md
+  - decisions/

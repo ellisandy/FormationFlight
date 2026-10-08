@@ -13,8 +13,7 @@ final class FlightsListViewModel: ObservableObject {
     // Centralized loggers
     private let logger = AppLogger.viewModel
     private let dataLog = AppLogger.data
-    
-    // TODO: Consider abstracting LocationProvider behind a protocol for testability.
+
     let locationProvider: LocationProviding
     
     // Validation feedback
@@ -28,7 +27,15 @@ final class FlightsListViewModel: ObservableObject {
     @Published var settings: Settings = Settings.load(from: UserDefaults.standard)
     
     // Deletion coordination
-    @Published var pendingDeleteFlight: Flight?
+    @Published var pendingDeleteFlight: Flight? {
+        didSet { pendingDeleteFlightName = pendingDeleteFlight?.missionName }
+    }
+    /// Snapshot of the pending flight's name, captured when deletion is requested.
+    ///
+    /// The confirmation alert reads this instead of `pendingDeleteFlight.missionName`
+    /// so the dismiss animation never touches a model that has already been deleted
+    /// from the context.
+    @Published private(set) var pendingDeleteFlightName: String?
     @Published var showDeleteConfirmation: Bool = false
     
     init(validationMessage: String? = nil,
@@ -45,6 +52,8 @@ final class FlightsListViewModel: ObservableObject {
         self.selectedFlight = selectedFlight
         self.settings = settings
         self.pendingDeleteFlight = pendingDeleteFlight
+        // Property observers do not run inside the initializer.
+        self.pendingDeleteFlightName = pendingDeleteFlight?.missionName
         self.showDeleteConfirmation = showDeleteConfirmation
         self.locationProvider = locationProvider
     }
@@ -68,32 +77,33 @@ final class FlightsListViewModel: ObservableObject {
     }
     
     func presentEditFlight(_ flight: Flight) {
-        logger.debug("Present edit flight: \(flight.missionName, privacy: .public)")
+        logger.debug("Present edit flight: \(flight.missionName, privacy: .private)")
         selectedFlight = flight
         isPresentingEditFlight = true
     }
     
     // MARK: - Editor Actions (Closures from Child)
     func saveNewFlight(from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
-        guard !editorVM.missionName.isEmpty else {
-            validationMessage = "Please enter a mission name."
-            return
-        }
-        
+        // `Flight.init` needs a target, so a draft without one is reported through the shared
+        // rules before a model can be built; every other rule runs via `validFlight()` below.
         guard let location = editorVM.selectedTargetLocation else {
-            validationMessage = "Please enter a valid target location."
+            validationMessage = editorVM.goFlyValidationMessage ?? FlightValidation.missingTargetMessage
             return
         }
-        
-        validationMessage = nil
-        let missionType: MissionType = editorVM.useTOT ? .tot : .hackTime
-        let missionDate: Date? = editorVM.timeEntry
-        let hackDuration: Double? = Double(editorVM.hackDurationSeconds)
+
+        // B-14: only the field that belongs to the mission type is written; the other is nil.
         let flight = Flight(missionName: editorVM.missionName,
-                            missionType: missionType,
-                            missionDate: missionDate,
+                            missionType: editorVM.missionType,
+                            missionDate: editorVM.missionDateToSave,
                             target: Target(longitude: location.longitude, latitude: location.latitude),
-                            hackTime: hackDuration)
+                            hackTime: editorVM.hackTimeToSave)
+        let validation = flight.validFlight()
+        guard validation.valid else {
+            validationMessage = validation.message
+            return
+        }
+
+        validationMessage = nil
         modelContext.insert(flight)
         do {
             try modelContext.save()
@@ -101,41 +111,53 @@ final class FlightsListViewModel: ObservableObject {
             selectedFlight = nil
         } catch {
             dataLog.error("Failed to save new flight: \(String(describing: error), privacy: .public)")
-            validationMessage = "Failed to save flight. Please try again."
+            validationMessage = String(localized: "Failed to save flight. Please try again.",
+                                       comment: "Shown when persisting a new flight fails")
         }
     }
-    
+
     func updateFlight(_ flight: Flight, from editorVM: FlightEditorViewModel, modelContext: ModelContext) {
-        dataLog.info("Updating existing flight: \(flight.missionName, privacy: .public)")
-        guard !editorVM.missionName.isEmpty else {
-            validationMessage = "Please enter a mission name."
-            return
-        }
-        
+        dataLog.info("Updating existing flight: \(flight.missionName, privacy: .private)")
         guard let location = editorVM.selectedTargetLocation else {
-            validationMessage = "Please enter a valid target location."
+            validationMessage = editorVM.goFlyValidationMessage ?? FlightValidation.missingTargetMessage
             return
         }
-        
+
+        // B-14: validate the draft BEFORE touching the model. `ModelContext.rollback()` does
+        // not reliably revert values already cached on a fetched `@Model` instance, so a
+        // rejected edit applied first would linger on screen as a phantom change.
+        if let message = FlightValidation.message(missionName: editorVM.missionName,
+                                                  missionType: editorVM.missionType,
+                                                  missionDate: editorVM.missionDateToSave,
+                                                  hackTime: editorVM.hackTimeToSave,
+                                                  hasTarget: true) {
+            validationMessage = message
+            return
+        }
+
         flight.target = Target(longitude: location.longitude, latitude: location.latitude)
         flight.missionName = editorVM.missionName
-        flight.missionType = editorVM.useTOT ? .tot : .hackTime
-        flight.missionDate = editorVM.timeEntry
-        flight.hackTime = Double(editorVM.hackDurationSeconds)
+        flight.missionType = editorVM.missionType
+        // Only the field that belongs to the mission type is kept; the other is cleared.
+        flight.missionDate = editorVM.missionDateToSave
+        flight.hackTime = editorVM.hackTimeToSave
+
+        validationMessage = nil
         do {
             try modelContext.save()
             isPresentingEditFlight = false
             selectedFlight = nil
         } catch {
             dataLog.error("Failed to update flight: \(String(describing: error), privacy: .public)")
-            validationMessage = "Failed to update flight. Please try again."
-            
+            validationMessage = String(localized: "Failed to update flight. Please try again.",
+                                       comment: "Shown when persisting changes to an existing flight fails")
         }
     }
-    
+
+    /// The editor's Cancel action (B-21). Clearing `isPresentingEditFlight` pops the editor
+    /// through the `navigationDestination(isPresented:)` binding in `FlightsListView`.
     func cancelEditor() {
         logger.debug("Editor canceled by user")
-        // Reset any selection and close the editor
         selectedFlight = nil
         isPresentingEditFlight = false
     }
@@ -152,12 +174,6 @@ final class FlightsListViewModel: ObservableObject {
         isPresentingSettings = false
     }
     
-    // MARK: - Data Operations
-    func delete(_ flight: Flight, modelContext: ModelContext) {
-        dataLog.info("Deleting flight: \(flight.missionName, privacy: .public)")
-        modelContext.delete(flight)
-    }
-    
     // MARK: - Deletion Flow (Confirmation)
     func requestDelete(flight: Flight) {
         pendingDeleteFlight = flight
@@ -169,28 +185,23 @@ final class FlightsListViewModel: ObservableObject {
             showDeleteConfirmation = false
             return
         }
-        dataLog.info("Deleting flight (confirmed): \(flight.missionName, privacy: .public)")
+        dataLog.info("Deleting flight (confirmed): \(flight.missionName, privacy: .private)")
         modelContext.delete(flight)
+        do {
+            try modelContext.save()
+        } catch {
+            dataLog.error("Failed to delete flight: \(String(describing: error), privacy: .public)")
+            // Undo the staged deletion so the list keeps matching the store.
+            modelContext.rollback()
+            validationMessage = String(localized: "Failed to delete flight. Please try again.",
+                                       comment: "Shown when persisting a flight deletion fails")
+        }
         pendingDeleteFlight = nil
         showDeleteConfirmation = false
     }
-    
+
     func cancelDelete() {
         pendingDeleteFlight = nil
         showDeleteConfirmation = false
-    }
-    
-    func handleOnDelete(indexSet: IndexSet, flights: [Flight], modelContext: ModelContext) {
-        let items = indexSet.map { flights[$0] }
-        guard !items.isEmpty else { return }
-        
-        if items.count == 1, let first = items.first {
-            // Single item: go through confirmation flow
-            requestDelete(flight: first)
-        } else {
-            // Multiple selection: delete directly (or implement multi-confirmation if desired)
-            dataLog.info("Deleting \(items.count, privacy: .public) flights via onDelete")
-            items.forEach { modelContext.delete($0) }
-        }
     }
 }

@@ -1,0 +1,461 @@
+import Testing
+import CoreLocation
+import Foundation
+@testable import Formation_Flight
+import SwiftData
+
+@MainActor
+@Suite("FlightsListViewModel (Swift Testing) – Extended Coverage")
+struct FlightsListViewModel_SwiftTests_Extra {
+
+    // MARK: - Helpers
+    private func makeInMemoryContainer() throws -> ModelContainer {
+        let schema = Schema([Flight.self])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    /// Builds a view model that touches neither `UserDefaults.standard` nor
+    /// `LocationProvider.shared`, so tests are hermetic and never start Core Location.
+    ///
+    /// `MockLocationProvider` is the shared, top-level mock declared in
+    /// `FlightViewModelTests.swift` (same test module).
+    private func makeSUT(locationProvider: MockLocationProvider = MockLocationProvider()) -> FlightsListViewModel {
+        FlightsListViewModel(settings: .empty(), locationProvider: locationProvider)
+    }
+
+    // MARK: - Editor coordination
+    @Test("presentAddFlight sets editor presented and resets flight")
+    func presentAddFlight_setsPresented() async throws {
+        let sut = makeSUT()
+
+        sut.presentAddFlight()
+
+        #expect(sut.isPresentingEditFlight)
+    }
+
+    // MARK: - Editor coordination (edit / cancel)
+    @Test("presentEditFlight sets selectedFlight and presents editor")
+    func presentEditFlight_setsState() async throws {
+        let sut = makeSUT()
+        let flight = Flight(missionName: "Test", missionType: .hackTime, missionDate: .now, target: Target(longitude: 1, latitude: 2))
+
+        sut.presentEditFlight(flight)
+
+        #expect(sut.selectedFlight?.id == flight.id)
+        #expect(sut.isPresentingEditFlight)
+    }
+
+    @Test("cancelEditor resets selection and hides editor")
+    func cancelEditor_resetsState() async throws {
+        let sut = makeSUT()
+        sut.isPresentingEditFlight = true
+        sut.selectedFlight = Flight(missionName: "X", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+
+        sut.cancelEditor()
+
+        #expect(sut.selectedFlight == nil)
+        #expect(!sut.isPresentingEditFlight)
+    }
+
+    // MARK: - Settings coordination
+    @Test("presentSettings toggles presentation flag")
+    func presentSettings_setsFlag() async throws {
+        let sut = makeSUT()
+        sut.presentSettings()
+        #expect(sut.isPresentingSettings)
+    }
+
+    @Test("dismissSettings reloads settings and hides sheet")
+    func dismissSettings_hides() async throws {
+        let sut = makeSUT()
+        sut.isPresentingSettings = true
+        sut.dismissSettings()
+        #expect(!sut.isPresentingSettings)
+    }
+
+    // MARK: - Location monitoring
+    @Test("start/stop monitoring forwards to provider")
+    func monitoring_forwards() async throws {
+        let mock = MockLocationProvider()
+        let sut = makeSUT(locationProvider: mock)
+        sut.startMonitoring()
+        sut.stopMonitoring()
+        #expect(mock.startMonitoringCallCount == 1)
+        #expect(mock.stopMonitoringCallCount == 1)
+    }
+
+    // MARK: - Persistence helpers
+    private func insertSampleFlight(into context: ModelContext, name: String = "F1") -> Flight {
+        let f = Flight(missionName: name, missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        context.insert(f)
+        return f
+    }
+
+    // MARK: - Editor Actions: save new flight
+    @Test("saveNewFlight inserts and saves a flight")
+    func saveNewFlight_inserts() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "New Mission"
+        editor.useTOT = true
+        editor.timeEntry = Date()
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        // Fetch to verify persistence
+        let fetch = FetchDescriptor<Flight>()
+        let flights = try context.fetch(fetch)
+        #expect(flights.contains { $0.missionName == "New Mission" })
+        #expect(!sut.isPresentingEditFlight)
+        #expect(sut.selectedFlight == nil)
+    }
+
+    @Test("saveNewFlight with missing target sets validation and does not insert")
+    func saveNewFlight_missingTarget_setsValidation() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "No Target Mission"
+        editor.useTOT = false
+        editor.timeEntry = Date()
+        editor.selectedTargetLocation = nil // Explicitly missing
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        // No insertion should have occurred
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.isEmpty)
+        #expect(sut.validationMessage != nil)
+    }
+
+    // MARK: - Editor Actions: save goes through Flight.validFlight() (B-14)
+
+    @Test("saveNewFlight rejects a hack mission with a 0 s hack and does not insert")
+    func saveNewFlight_hackWithZeroDuration_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "Zero Hack"
+        editor.useTOT = false
+        editor.hackDurationSeconds = 0
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.isEmpty)
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("hack"))
+    }
+
+    @Test("saveNewFlight rejects an empty mission name and does not insert")
+    func saveNewFlight_emptyName_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = ""
+        editor.useTOT = true
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.isEmpty)
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("name"))
+    }
+
+    @Test("saveNewFlight rejects a whitespace-only mission name, matching Go Fly")
+    func saveNewFlight_whitespaceName_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "   "
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        #expect(try context.fetch(FetchDescriptor<Flight>()).isEmpty)
+        #expect(sut.validationMessage != nil)
+    }
+
+    @Test("saveNewFlight stores no missionDate for a hack mission")
+    func saveNewFlight_hackMission_hasNilMissionDate() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "Hack Mission"
+        editor.useTOT = false
+        editor.hackDurationSeconds = 90
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let saved = try #require(try context.fetch(FetchDescriptor<Flight>()).first)
+        #expect(saved.missionType == .hackTime)
+        #expect(saved.hackTime == 90)
+        #expect(saved.missionDate == nil)
+        #expect(sut.validationMessage == nil)
+    }
+
+    @Test("saveNewFlight stores no hackTime for a TOT mission")
+    func saveNewFlight_totMission_hasNilHackTime() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "TOT Mission"
+        editor.useTOT = true
+        editor.timeEntry = Date().addingTimeInterval(600)
+        // A stale hack duration left over from switching segments must not be persisted.
+        editor.hackDurationSeconds = 45
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        let saved = try #require(try context.fetch(FetchDescriptor<Flight>()).first)
+        #expect(saved.missionType == .tot)
+        #expect(saved.hackTime == nil)
+        #expect(saved.missionDate != nil)
+    }
+
+    @Test("saveNewFlight rejects a TOT in the past and does not insert")
+    func saveNewFlight_pastTOT_notInserted() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel()
+        editor.missionName = "Late"
+        editor.useTOT = true
+        editor.timeEntry = Date().addingTimeInterval(-3_600)
+        editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
+
+        sut.saveNewFlight(from: editor, modelContext: context)
+
+        #expect(try context.fetch(FetchDescriptor<Flight>()).isEmpty)
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("past"))
+    }
+
+    // MARK: - Editor Actions: update flight success and validation
+    @Test("updateFlight updates existing flight when target provided")
+    func updateFlight_success() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = insertSampleFlight(into: context, name: "Old")
+        try context.save()
+
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.missionName = "Updated"
+        editor.useTOT = false
+        editor.timeEntry = Date().addingTimeInterval(60)
+        editor.selectedTargetLocation = .init(latitude: 1, longitude: 2)
+        editor.hackDurationSeconds = 123
+
+        sut.updateFlight(existing, from: editor, modelContext: context)
+
+        #expect(existing.missionName == "Updated")
+        #expect(existing.missionType == .hackTime)
+        // B-14: a hack mission carries no mission date; the editor's time entry is not persisted.
+        #expect(existing.missionDate == nil)
+        #expect(existing.target != nil)
+        #expect(existing.hackTime == 123)
+        #expect(!sut.isPresentingEditFlight)
+        #expect(sut.selectedFlight == nil)
+    }
+
+    @Test("updateFlight switching to TOT clears the stored hackTime")
+    func updateFlight_switchToTOT_clearsHackTime() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = Flight(missionName: "Hack", missionType: .hackTime, missionDate: nil,
+                              target: Target(longitude: 0, latitude: 0), hackTime: 300)
+        context.insert(existing)
+        try context.save()
+
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.useTOT = true
+        editor.timeEntry = Date().addingTimeInterval(600)
+
+        sut.updateFlight(existing, from: editor, modelContext: context)
+
+        #expect(existing.missionType == .tot)
+        #expect(existing.hackTime == nil)
+        #expect(existing.missionDate != nil)
+        #expect(sut.validationMessage == nil)
+    }
+
+    @Test("updateFlight with a 0 s hack is refused and the stored flight is left untouched")
+    func updateFlight_hackWithZeroDuration_notSaved() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = Flight(missionName: "Keep Me", missionType: .hackTime, missionDate: nil,
+                              target: Target(longitude: 0, latitude: 0), hackTime: 300)
+        context.insert(existing)
+        try context.save()
+        let id = existing.id
+
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.missionName = "Renamed"
+        editor.hackDurationSeconds = 0
+
+        sut.updateFlight(existing, from: editor, modelContext: context)
+
+        let message = try #require(sut.validationMessage)
+        #expect(message.localizedCaseInsensitiveContains("hack"))
+
+        // Nothing reached the store...
+        let fresh = ModelContext(container)
+        let persisted = try #require(try fresh.fetch(FetchDescriptor<Flight>(predicate: #Predicate { $0.id == id })).first)
+        #expect(persisted.missionName == "Keep Me")
+        #expect(persisted.hackTime == 300)
+        // ...and the in-memory model was never mutated (validation runs before the edits are
+        // applied), so the list does not show a phantom edit.
+        #expect(existing.missionName == "Keep Me")
+        #expect(existing.hackTime == 300)
+    }
+
+    @Test("updateFlight without target sets validation message and does not save")
+    func updateFlight_missingTarget_setsValidation() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let existing = insertSampleFlight(into: context)
+        try context.save()
+
+        let sut = makeSUT()
+        let editor = FlightEditorViewModel(flight: existing)
+        editor.selectedTargetLocation = nil
+
+        sut.updateFlight(existing, from: editor, modelContext: context)
+
+        #expect(sut.validationMessage != nil)
+    }
+
+    // MARK: - Deletion flow
+    @Test("requestDelete sets pending and shows confirmation")
+    func requestDelete_setsState() async throws {
+        let sut = makeSUT()
+        let f = Flight(missionName: "ToDelete", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        sut.requestDelete(flight: f)
+        #expect(sut.pendingDeleteFlight?.id == f.id)
+        #expect(sut.showDeleteConfirmation)
+    }
+
+    @Test("confirmDelete deletes pending flight and resets state when present")
+    func confirmDelete_withPending_deletesAndResets() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Pending")
+        try context.save()
+
+        let sut = makeSUT()
+        sut.pendingDeleteFlight = f
+        sut.showDeleteConfirmation = true
+
+        sut.confirmDelete(modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(!flights.contains { $0.id == f.id })
+        #expect(sut.pendingDeleteFlight == nil)
+        #expect(!sut.showDeleteConfirmation)
+    }
+
+    /// B-30: `confirmDelete` must persist the deletion, not just stage it in the caller's
+    /// context. A plain `ModelContext` has autosave disabled, so a second context on the
+    /// same container only observes the deletion once `save()` has been called.
+    @Test("confirmDelete persists the deletion so a fresh context no longer sees the flight")
+    func confirmDelete_persistsDeletion() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Persisted")
+        try context.save()
+
+        let sut = makeSUT()
+        sut.requestDelete(flight: f)
+
+        sut.confirmDelete(modelContext: context)
+
+        let freshContext = ModelContext(container)
+        let flights = try freshContext.fetch(FetchDescriptor<Flight>())
+        #expect(!flights.contains { $0.id == f.id })
+        #expect(sut.validationMessage == nil)
+    }
+
+    @Test("confirmDelete with no pending hides confirmation and does nothing")
+    func confirmDelete_withoutPending_doesNothing() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Keep")
+        try context.save()
+
+        let sut = makeSUT()
+        sut.pendingDeleteFlight = nil
+        sut.showDeleteConfirmation = true
+
+        sut.confirmDelete(modelContext: context)
+
+        let flights = try context.fetch(FetchDescriptor<Flight>())
+        #expect(flights.contains { $0.id == f.id })
+        #expect(sut.pendingDeleteFlight == nil)
+        #expect(!sut.showDeleteConfirmation)
+    }
+
+    @Test("cancelDelete resets state without deleting")
+    func cancelDelete_resets() async throws {
+        let sut = makeSUT()
+        sut.pendingDeleteFlight = Flight(missionName: "X", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+        sut.showDeleteConfirmation = true
+
+        sut.cancelDelete()
+
+        #expect(sut.pendingDeleteFlight == nil)
+        #expect(!sut.showDeleteConfirmation)
+    }
+
+    // MARK: - Deletion flow: name snapshot (B-30)
+    @Test("requestDelete captures the pending flight's name for the alert")
+    func requestDelete_capturesName() async throws {
+        let sut = makeSUT()
+        let f = Flight(missionName: "Bravo Two", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0))
+
+        sut.requestDelete(flight: f)
+
+        #expect(sut.pendingDeleteFlightName == "Bravo Two")
+    }
+
+    @Test("cancelDelete clears the captured name")
+    func cancelDelete_clearsName() async throws {
+        let sut = makeSUT()
+        sut.requestDelete(flight: Flight(missionName: "Cancelled", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0, latitude: 0)))
+
+        sut.cancelDelete()
+
+        #expect(sut.pendingDeleteFlightName == nil)
+    }
+
+    @Test("confirmDelete clears the captured name")
+    func confirmDelete_clearsName() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let f = insertSampleFlight(into: context, name: "Confirmed")
+        try context.save()
+        let sut = makeSUT()
+        sut.requestDelete(flight: f)
+
+        sut.confirmDelete(modelContext: context)
+
+        #expect(sut.pendingDeleteFlightName == nil)
+    }
+}

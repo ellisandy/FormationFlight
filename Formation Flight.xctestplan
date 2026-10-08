@@ -11,9 +11,11 @@
   "defaultOptions" : {
     "defaultTestExecutionTimeAllowance" : 1200,
     "distributor" : "com.apple.TestFlight",
+    "language" : "en",
     "locationScenario" : {
-      "identifier" : "..\/..\/Formation Flight\/TestAssets\/TestFlight1.gpx"
+      "identifier" : "Formation FlightUITests\/TestAssets\/TestFlight1.gpx"
     },
+    "region" : "US",
     "targetForVariableExpansion" : {
       "containerPath" : "container:Formation Flight.xcodeproj",
       "identifier" : "C29255552B2D648C0064F41F",

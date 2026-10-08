@@ -25,53 +25,95 @@ final class FlightViewModel: ObservableObject {
     @Published var eta: Date?
     @Published var delta: TimeInterval?
     @Published var tot: Date?
-    @Published var statusColor: Status = .good
-    
+    @Published var statusColor: Status = .unknown
+    /// Textual early/late indicator shown beside the Δ value (B-11): "EARLY", "LATE",
+    /// "ON TIME", or nil when there is no delta to judge.
+    @Published private(set) var deltaLabel: String?
+    /// Seconds of the ETE spent in the roll-in turn (B-25), nil when ETE is nil or no turn is
+    /// needed. Lets the view explain why ETE exceeds distance / speed.
+    @Published private(set) var turnDuration: TimeInterval?
+    /// The orbit direction inferred from the GPS track rate, nil when flying straight. The
+    /// time-to-target path continues this turn rather than assuming a reversal.
+    @Published private(set) var turnDirection: TurnToTarget.Direction?
+
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
     @Published var requiredGroundSpeed: Measurement<UnitSpeed>?
     @Published var distance: Measurement<UnitLength>?
-    @Published var bearing: Measurement<UnitAngle>? // degrees
-    @Published var track: Measurement<UnitAngle>?   // degrees
+    /// Bearing to the target, TRUE north, degrees (B-26 decision, 2026-10-07).
+    ///
+    /// Both `bearing` and `track` come from GPS geometry and are deliberately left true with no
+    /// `°T` label: pilots steer so Trk matches Brg, so the only requirement is that the two share
+    /// one reference. Do not convert one of them to magnetic without converting the other.
+    @Published var bearing: Measurement<UnitAngle>?
+    /// Track over the ground, TRUE north, degrees. Same reference as `bearing`; see above.
+    @Published var track: Measurement<UnitAngle>?
     
     // MARK: - Published State (Mission Details)
     @Published var missionName: String
     @Published var target: CLLocationCoordinate2D
     
     // MARK: - Dependencies / Model Objects
-    var settings: Settings
+    // B-18: the view reads `settings` (units, instrument layout) and `missionType`, and the
+    // in-flight hack wheel binds to `hackTime`, so all three must publish or the view can
+    // render a stale value after an edit.
+    @Published var settings: Settings
     var locationProvider: LocationProviding
-    var missionType: MissionType
+    @Published var missionType: MissionType
     var missionDate: Date?
-    var hackTime: TimeInterval?
+    @Published var hackTime: TimeInterval?
     
     // MARK: - UI State
     @Published var isEditingToT: Bool = false
     @Published var isEditingHackTime: Bool = false
     
+    // MARK: - Staleness (B-07)
+    /// A fix older than this is no longer trusted for speed-derived readouts. GPS normally
+    /// reports at 1 Hz, so 15 s of silence means the receiver has lost the sky or the app
+    /// has stopped receiving updates; showing the last speed as if it were live would let
+    /// ETE/ETA keep counting down on a frozen number.
+    static let staleFixThreshold: TimeInterval = 15
+    /// Clock reading at the most recent location callback; nil until the first fix.
+    private var lastLocationUpdate: Date?
+    /// Tracks the sign of the heading rate across fixes to tell which way we are orbiting (B-25).
+    private var turnDetector = TurnDetector()
+
     // MARK: - Private
     private let timerScheduler: TimerScheduling
-    private var timerToken: AnyCancellableLike?
-    
+    /// Source of the current wall-clock time. Defaults to `Date()`; tests inject a
+    /// fixed clock so ETA/delta arithmetic is exact and status boundaries can be
+    /// asserted without tolerances (B-29).
+    private let now: () -> Date
+    /// Marked `nonisolated(unsafe)` solely so `deinit` (which is nonisolated under
+    /// Swift 6) can cancel a still-live timer as a safety net. All other access is
+    /// from MainActor-isolated methods, and the view's `.onDisappear` -> `stop()`
+    /// is the primary teardown path.
+    nonisolated(unsafe) private var timerToken: AnyCancellableLike?
+
     // MARK: - Initialization
     init(flight: Flight,
          settings: Settings,
          locationProvider: LocationProviding = LocationProvider.shared,
-         timerScheduler: TimerScheduling = DefaultTimerScheduler()) {
+         timerScheduler: TimerScheduling = DefaultTimerScheduler(),
+         now: @escaping () -> Date = { Date() }) {
         self.settings = settings
         self.locationProvider = locationProvider
         self.timerScheduler = timerScheduler
-        
+        self.now = now
+
         // Derived Data
         self.missionName = flight.missionName
         self.target = CLLocationCoordinate2D(latitude: flight.target?.latitude ?? 0.0, longitude: flight.target?.longitude ?? 0.0)
         self.missionType = flight.missionType
-        
-        if let missionDate = flight.missionDate {
-            self.tot = missionDate
+        self.missionDate = flight.missionDate
+        self.hackTime = flight.hackTime
+
+        // B-23: only a ToT mission starts with a ToT. A hack mission's ToT is set by
+        // startHack(); the editor may still have written a missionDate (B-14), and that
+        // must not show up as a ToT before Hack! is pressed.
+        if self.missionType == .tot {
+            self.tot = flight.missionDate
         }
-        
-        configure()
     }
     
     init(missionName: String = "",
@@ -81,33 +123,57 @@ final class FlightViewModel: ObservableObject {
          hackTime: TimeInterval? = nil,
          settings: Settings = Settings.empty(),
          locationProvider: LocationProviding = LocationProvider.shared,
-         timerScheduler: TimerScheduling = DefaultTimerScheduler()) {
+         timerScheduler: TimerScheduling = DefaultTimerScheduler(),
+         now: @escaping () -> Date = { Date() }) {
         self.settings = settings
         self.locationProvider = locationProvider
         self.timerScheduler = timerScheduler
-        
+        self.now = now
+
         self.missionName = missionName
         self.target = target
         self.missionType = missionType
-        
+        self.missionDate = missionDate
+        self.hackTime = hackTime
+
         if self.missionType == .tot {
-            if let missionDate {
-                self.tot = missionDate
-            }
+            self.tot = missionDate
         }
-        
-        if let hackTime {
-            self.hackTime = hackTime
+    }
+
+    /// Safety net only: if a started VM is released without `stop()`, make sure the
+    /// repeating timer does not outlive it. `deinit` is nonisolated under Swift 6, so
+    /// it must not touch `locationProvider` (MainActor state); clearing the delegate
+    /// and stopping GPS is the job of `stop()`, called from `FlightView.onDisappear`.
+    deinit {
+        timerToken?.cancel()
+    }
+
+    // MARK: - Lifecycle
+    /// Begins live updates: wires the location delegate, starts GPS monitoring, and
+    /// schedules the 1 Hz timing refresh. Idempotent; a second call is a no-op.
+    func start() {
+        guard timerToken == nil else { return }
+        locationProvider.updateDelegate = { [weak self] in
+            self?.onLocationUpdate()
         }
-        
-        configure()
+        locationProvider.startMonitoring()
+        currentTime = now()
+        timerToken = timerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
+            self?.updateTimings()
+        }
     }
-    
-    private func configure() {
-        self.locationProvider.updateDelegate = self.onLocationUpdate
-        startTimer()
+
+    /// Ends live updates: cancels the timer, detaches from the location provider,
+    /// and stops GPS monitoring. Safe to call when not started.
+    func stop() {
+        guard timerToken != nil else { return }
+        timerToken?.cancel()
+        timerToken = nil
+        locationProvider.updateDelegate = nil
+        locationProvider.stopMonitoring()
     }
-    
+
     // MARK: - Public API (UI Intents)
     func presentEditHackTime() {
         isEditingHackTime = true
@@ -125,47 +191,93 @@ final class FlightViewModel: ObservableObject {
         isEditingToT = false
     }
     
+    /// Anchors the ToT to the moment "Hack!" is pressed. Reads the clock directly rather than
+    /// the timer-sampled `currentTime` (B-09): that sample is nil before the first tick and up
+    /// to a second stale afterwards, in an app whose tolerances are whole seconds. The press
+    /// is truncated to the second so the ToT sits on the same whole-second basis as the
+    /// Time / ETE / ETA readouts (B-40).
     func startHack() {
-        guard let _hackTime = hackTime, let now = currentTime else { return }
-        tot = now.addingTimeInterval(_hackTime)
+        guard let _hackTime = hackTime else { return }
+        let pressed = Self.floorToSecond(now())
+        tot = pressed.addingTimeInterval(_hackTime)
     }
     
     // MARK: - Location Updates
     func onLocationUpdate() {
         AppLogger.viewModel.debug("Location update received from LocationProvider")
+        lastLocationUpdate = now()
         updateInstruments()
     }
     
-    // MARK: - Timer
-    private func startTimer() {
-        locationProvider.startMonitoring()
-        // Schedule 1-second updates using injected scheduler
-        timerToken = timerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
-            self?.updateTimings()
-        }
-    }
-    
     // MARK: - Update Pipelines
+    /// Whole-second policy (B-40): Time, ETE and ETA are each shown truncated to the second
+    /// (`Formatting.timeHHmmss` / `durationHMS` both drop fractions). If the clock and ETE were
+    /// kept fractional and truncated independently at display time, the Time and ETE readouts
+    /// could add up to one second less than the ETA readout. So the pipeline truncates (never
+    /// rounds) at the source: the clock is floored to the second, ETE is floored to the second,
+    /// and ETA is derived from those two floored values. Delta then inherits the same basis.
     private func updateTimings() {
-        self.currentTime = Date()
+        let wallClock = now()
+        let flooredClock = Self.floorToSecond(wallClock)
+        self.currentTime = flooredClock
 
-        // Set ETE
-        if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond),
-           let dist = self.distance?.converted(to: .meters),
-           gs.value > 0 {
-            self.ete = dist.value / gs.value // seconds
+        // Stale fix (B-07): once the newest fix is older than the threshold, the speed and
+        // course it carried are no longer live. Clearing them here makes ETE, ETA, delta and
+        // the status fall through to their "nothing to judge" branches below, so the pilot
+        // sees placeholders instead of numbers counting down on a frozen speed. Distance and
+        // bearing are kept: the last known position is still the best position estimate.
+        if let lastFix = lastLocationUpdate,
+           wallClock.timeIntervalSince(lastFix) > Self.staleFixThreshold {
+            self.currentGroundSpeed = nil
+            self.track = nil
+            turnDetector.reset()
+            turnDirection = nil
+        }
+
+        // Set ETE (B-25): the time to turn onto the target at standard rate, continuing the
+        // orbit already in progress, and then fly straight to it. Without a usable track or
+        // bearing this degrades to the direct-to figure, distance / speed. Truncated to a
+        // whole second so that it matches what durationHMS displays (B-40).
+        let geometry = turnGeometry()
+        if let gs = self.currentGroundSpeed?.converted(to: .metersPerSecond).value, gs > 0,
+           let dist = self.distance?.converted(to: .meters).value {
+            let rawETE: Double
+            if let geometry,
+               let solution = TurnToTarget.solve(distance: dist, bearing: geometry.bearing, track: geometry.track,
+                                                 groundSpeed: gs, preferredDirection: turnDirection) {
+                rawETE = solution.totalTime
+                self.turnDuration = solution.turnDuration > 0 ? solution.turnDuration.rounded(.down) : nil
+            } else {
+                rawETE = dist / gs
+                self.turnDuration = nil
+            }
+            self.ete = rawETE.isFinite ? rawETE.rounded(.down) : nil
         } else {
             self.ete = nil
+            self.turnDuration = nil
         }
-        
-        // Set ETA
+
+        // Set ETA from the floored clock and the truncated ETE so Time + ETE == ETA on screen.
         if let ete = self.ete {
-            let now = self.currentTime ?? Date()
-            self.eta = now.addingTimeInterval(ete)
+            self.eta = flooredClock.addingTimeInterval(ete)
         } else {
             self.eta = nil
         }
-        
+
+        // Set Required Ground Speed (B-24). Distance only changes with a fix, but the time
+        // left to ToT shrinks every second, so the value is recomputed here on every tick
+        // from the cached distance rather than only inside the location callback. Uses the
+        // floored clock so the time remaining is on the same whole-second basis as ToT.
+        // Turn-aware (B-25): the speed at which the turn-then-straight path arrives exactly at
+        // ToT, so it is the speed to set after rolling out. Direct-to when the geometry is unknown.
+        if let dist = self.distance, let tot = self.tot,
+           let rgs = computeRequiredGroundSpeed(distance: dist, arrivalTime: tot, now: flooredClock,
+                                                geometry: geometry) {
+            self.requiredGroundSpeed = rgs.converted(to: .knots)
+        } else {
+            self.requiredGroundSpeed = nil
+        }
+
         // Set Delta
         if let eta = self.eta, let tot = self.tot {
             // Positive delta means ETA is after TOT (late). Negative means early.
@@ -173,20 +285,44 @@ final class FlightViewModel: ObservableObject {
         } else {
             self.delta = nil
         }
-        
-        // Map absolute delta (seconds) to status using settings tolerances: < yellow = good, < red = bad, >= red = reallyBad.
+
+        // Spell out the sign of the delta (B-11). The tint alone is not a dependable cue in a
+        // cockpit, and "+00:00:07" still needs the reader to remember which way the sign runs.
+        if let _delta = delta {
+            if _delta < 0 {
+                // Orbit hint (B-25): while early by at least one full standard-rate orbit
+                // (120 s), a complete go-around still fits before the turn-in point.
+                let orbits = TurnToTarget.surplusOrbits(delta: _delta)
+                if orbits > 0 {
+                    deltaLabel = String(localized: "EARLY · +\(orbits) ORBIT",
+                                        comment: "Flight Δ row: early by at least this many full standard-rate orbits")
+                } else {
+                    deltaLabel = String(localized: "EARLY", comment: "Flight Δ row: ETA is before ToT")
+                }
+            } else if _delta > 0 {
+                deltaLabel = String(localized: "LATE", comment: "Flight Δ row: ETA is after ToT")
+            } else {
+                deltaLabel = String(localized: "ON TIME", comment: "Flight Δ row: ETA equals ToT")
+            }
+        } else {
+            deltaLabel = nil
+        }
+
+        // Map absolute delta (seconds) to status using settings tolerances: <= yellow = good, <= red = bad, > red = reallyBad.
+        // With no delta (no fix, no speed, or no ToT) there is nothing to judge, so fall back to .unknown
+        // rather than leaving a stale colour on screen.
         if let _delta = delta {
             let absDelta = abs(_delta)
-            
+
             if absDelta <= Double(settings.yellowTolerance) {
                 statusColor = .good
             } else if absDelta <= Double(settings.redTolerance) {
                 statusColor = .bad
-            } else if absDelta >= Double(settings.redTolerance) {
-                statusColor = .reallyBad
             } else {
-                statusColor = .unknown
+                statusColor = .reallyBad
             }
+        } else {
+            statusColor = .unknown
         }
     }
     
@@ -207,44 +343,64 @@ final class FlightViewModel: ObservableObject {
         self.distance = _currentLocation.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Bearing to Final
-        AppLogger.viewModel.debug("Calculating bearing to target: \(_currentLocation.coordinate.latitude.description)")
+        AppLogger.viewModel.debug("Calculating bearing from current location to target")
         self.bearing = _currentLocation.getBearing(to: CLLocation(latitude: target.latitude, longitude: target.longitude))
         
         // Set Historical Track
         self.track = locationProvider.course
-        
-        // If track is within tolerance of bearing, calculate the required ground speed.
-        if let _track = self.track, let _bearing = self.bearing, let _tot = self.tot {
-            
-            if let _distance = self.distance {
-                if let rgs = computeRequiredGroundSpeed(distance: _distance, arrivalTime: _tot, now: .now) {
-                    // Convert to your preferred display unit (knots)
-                    self.requiredGroundSpeed = rgs.converted(to: .knots)
-                } else {
-                    self.requiredGroundSpeed = nil
-                }
-            } else {
-                // Missing inputs; you can choose to clear or keep the previous value
-                self.requiredGroundSpeed = nil
-            }
+
+        // Orbit direction (B-25): a valid course feeds the detector; the sentinel (< 0) means
+        // the receiver has no course, so the detector forgets its history rather than
+        // measuring a bogus rate against a stale sample.
+        let course = locationProvider.course.converted(to: .degrees).value
+        if course >= 0 {
+            turnDirection = turnDetector.record(track: course, at: now())
         } else {
-            self.currentGroundSpeed = nil
-            self.requiredGroundSpeed = nil
+            turnDetector.reset()
+            turnDirection = nil
         }
+
+        // Required ground speed is not computed here (B-24): it depends on the time left to
+        // ToT, which changes every second, so `updateTimings()` derives it from the cached
+        // distance on each tick. This callback only refreshes what the fix itself provides.
     }
     
     // MARK: - Helpers
+    /// Drops the sub-second part of `date` (B-40 whole-second policy).
+    private static func floorToSecond(_ date: Date) -> Date {
+        Date(timeIntervalSinceReferenceDate: date.timeIntervalSinceReferenceDate.rounded(.down))
+    }
+
+    /// Track and bearing in true degrees when both are known and valid, for the turn model.
+    private func turnGeometry() -> (track: Double, bearing: Double)? {
+        guard let track = self.track?.converted(to: .degrees).value, track >= 0, track.isFinite,
+              let bearing = self.bearing?.converted(to: .degrees).value, bearing >= 0, bearing.isFinite
+        else { return nil }
+        return (track, bearing)
+    }
+
     private func computeRequiredGroundSpeed(distance: Measurement<UnitLength>,
                                             arrivalTime: Date,
-                                            now: Date) -> Measurement<UnitSpeed>? {
+                                            now: Date,
+                                            geometry: (track: Double, bearing: Double)?) -> Measurement<UnitSpeed>? {
         let timeRemaining = arrivalTime.timeIntervalSince(now) // seconds
         guard timeRemaining > 0 else {
             // Already at/after the arrival time; cannot compute a positive required speed
             return nil
         }
-        // Convert distance to meters, then speed = meters / second
         let meters = distance.converted(to: .meters).value
-        let mps = meters / timeRemaining
+        let mps: Double
+        if let geometry,
+           let turnAware = TurnToTarget.requiredGroundSpeed(distance: meters, bearing: geometry.bearing,
+                                                            track: geometry.track, timeRemaining: timeRemaining,
+                                                            preferredDirection: turnDirection) {
+            mps = turnAware
+        } else if geometry != nil {
+            // Turn geometry known but no speed in range can make the time.
+            return nil
+        } else {
+            mps = meters / timeRemaining
+        }
         guard mps.isFinite && mps > 0 else { return nil }
         return Measurement(value: mps, unit: UnitSpeed.metersPerSecond)
     }

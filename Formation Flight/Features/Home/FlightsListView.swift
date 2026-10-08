@@ -26,8 +26,9 @@ private struct FlightsListRowView: View {
         .contentShape(Rectangle())
         .swipeActions {
             Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
+                Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
             .accessibilityIdentifier("flightRowDelete_\(flight.id.uuidString)")
         }
         .accessibilityIdentifier("flightRow_\(flight.id.uuidString)")
@@ -40,7 +41,8 @@ private struct FlightsEmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "airplane")
-                .font(.system(size: 48))
+                .font(.largeTitle)
+                .imageScale(.large)
                 .foregroundStyle(.secondary)
             Text("No Flights Yet")
                 .font(.title2)
@@ -63,6 +65,9 @@ private struct FlightsEmptyStateView: View {
             .accessibilityIdentifier("emptyStateCreateFirstFlightButton")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // A plain VStack is not an accessibility element, so its identifier is
+        // invisible to UI tests unless it is made a container.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("emptyStateView")
     }
 }
@@ -72,10 +77,17 @@ struct FlightsListView: View {
     private let uiLog = AppLogger.ui
     
     @Environment(\.modelContext) private var modelContext
-    @Query var flights: [Flight]
+    // B-31: a stable order so rows do not shuffle between launches or after edits.
+    @Query(sort: [SortDescriptor(\Flight.missionDate), SortDescriptor(\Flight.missionName)])
+    var flights: [Flight]
     
     @StateObject private var viewModel = FlightsListViewModel()
-    
+
+    // R-07: the safety disclaimer is shown once, on first launch, and must be
+    // acknowledged before the app can be used.
+    private let safetyDisclaimerStore = SafetyDisclaimerStore()
+    @State private var showsSafetyDisclaimer = false
+
     var body: some View {
         NavigationStack {
             Group {
@@ -118,10 +130,8 @@ struct FlightsListView: View {
                 }
                 ToolbarItem {
                     Button {
-                        //                        withAnimation {
                         uiLog.debug("Presenting add flight")
                         viewModel.presentAddFlight()
-                        //                        }
                     } label: {
                         Label("Add Item", systemImage: "plus")
                     }
@@ -136,24 +146,45 @@ struct FlightsListView: View {
         }, content: {
             SettingsEditorView(viewModel: SettingsEditorViewModel(settings: viewModel.settings))
         })
+        .fullScreenCover(isPresented: $showsSafetyDisclaimer) {
+            SafetyDisclaimerView {
+                uiLog.debug("Safety disclaimer acknowledged")
+                safetyDisclaimerStore.acknowledge()
+                showsSafetyDisclaimer = false
+            }
+            // The only way out is the acknowledgement button.
+            .interactiveDismissDisabled()
+        }
         .onAppear {
             uiLog.debug("FlightsListView appeared")
             viewModel.startMonitoring()
+            if !safetyDisclaimerStore.hasAcknowledged {
+                uiLog.debug("Presenting safety disclaimer (first launch)")
+                showsSafetyDisclaimer = true
+            }
         }
         .alert(
             "Validation",
-            isPresented: .constant(viewModel.validationMessage != nil)
+            isPresented: Binding(
+                get: { viewModel.validationMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.validationMessage = nil
+                    }
+                }
+            )
         ) {
-            Button("OK") { viewModel.validationMessage = nil }
+            Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.validationMessage ?? "")
         }
-        // Deletion confirmation, driven by view model state
+        // Deletion confirmation, driven by view model state. The message reads the
+        // captured name string rather than the model so the dismiss animation never
+        // touches a `Flight` that has already been deleted from the context.
         .alert(
             "Delete Flight?",
-            isPresented: $viewModel.showDeleteConfirmation,
-            presenting: viewModel.pendingDeleteFlight
-        ) { _ in
+            isPresented: $viewModel.showDeleteConfirmation
+        ) {
             Button("Delete", role: .destructive) {
                 withAnimation {
                     viewModel.confirmDelete(modelContext: modelContext)
@@ -162,8 +193,8 @@ struct FlightsListView: View {
             Button("Cancel", role: .cancel) {
                 viewModel.cancelDelete()
             }
-        } message: { flight in
-            Text("Are you sure you want to delete \(flight.missionName)? This action cannot be undone.")
+        } message: {
+            Text("Are you sure you want to delete \(viewModel.pendingDeleteFlightName ?? "")? This action cannot be undone.")
         }
         .accessibilityIdentifier("FlightsListViewRoot")
     }
@@ -175,7 +206,7 @@ struct FlightsListView: View {
                     flight: flight,
                     onEdit: {
                         uiLog.debug(
-                            "Editing flight: \(flight.missionName, privacy: .public)"
+                            "Editing flight: \(flight.missionName, privacy: .private)"
                         )
                         viewModel.presentEditFlight(flight)
                     },
@@ -183,13 +214,6 @@ struct FlightsListView: View {
                         // Ask the view model to start the confirmation flow
                         viewModel.requestDelete(flight: flight)
                     }
-                )
-            }
-            .onDelete { indexSet in
-                viewModel.handleOnDelete(
-                    indexSet: indexSet,
-                    flights: flights,
-                    modelContext: modelContext
                 )
             }
         }

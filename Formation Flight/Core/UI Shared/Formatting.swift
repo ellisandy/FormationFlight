@@ -56,74 +56,133 @@ public enum Formatting {
     
     /// Formats a duration in seconds as `HH:mm:ss`.
     ///
-    /// - Parameter seconds: The duration in seconds. If `nil`, returns `--:--:--`.
-    /// - Returns: A zero-padded `HH:mm:ss` string.
+    /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
+    ///   returns `--:--:--`.
+    /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude. Negative durations are
+    ///   prefixed with `-` (e.g. `-00:01:05`); non-negative durations carry no sign.
     ///
-    /// Note: This implementation performs simple integer division and modulo operations and
-    /// does not round to the nearest second. Fractional seconds are truncated.
+    /// Note: Fractional seconds are truncated, not rounded. The sign follows the sign of the
+    /// input, so `-0.5` renders as `-00:00:00`.
     public static func durationHMS(_ seconds: TimeInterval?) -> String {
-        guard let seconds else { return "--:--:--".uppercased() }
-        let hours = Int(seconds / 3600)
-        let minutes = Int(seconds) % 3600 / 60
-        let secs = Int(seconds) % 60
-        
+        guard let seconds, let components = hmsComponents(seconds) else {
+            return "--:--:--".uppercased()
+        }
+        let sign = seconds < 0 ? "-" : ""
+        return sign + components
+    }
+
+    /// Formats a duration in seconds as `HH:mm:ss` with an explicit leading sign.
+    ///
+    /// Intended for early/late (Δ) readouts where the direction of the offset matters and
+    /// an unsigned value would be ambiguous.
+    ///
+    /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
+    ///   returns `--:--:--`.
+    /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude prefixed with `+` or `-`
+    ///   (e.g. `+00:00:07`, `-00:01:05`). Zero renders as `+00:00:00`.
+    public static func signedDurationHMS(_ seconds: TimeInterval?) -> String {
+        guard let seconds, let components = hmsComponents(seconds) else {
+            return "--:--:--".uppercased()
+        }
+        let sign = seconds < 0 ? "-" : "+"
+        return sign + components
+    }
+
+    /// Formats the magnitude of `seconds` as zero-padded `HH:mm:ss`, truncating fractional
+    /// seconds. Returns `nil` when the value is non-finite or too large to represent as `Int`.
+    private static func hmsComponents(_ seconds: TimeInterval) -> String? {
+        let magnitude = abs(seconds)
+        guard magnitude.isFinite, magnitude < Double(Int.max) else { return nil }
+        let total = Int(magnitude)
+        let hours = total / 3600
+        let minutes = total % 3600 / 60
+        let secs = total % 60
+
         return String(format: "%02d:%02d:%02d", hours, minutes, secs)
     }
-    
-    /// Formats an angle measurement as whole degrees with a trailing degree symbol (e.g., `42°`).
+
+    /// B-34: `Int(_:)` traps on NaN, ±infinity, and any magnitude at or beyond `Int.max`.
+    /// Every `Int(Double)` conversion in this file goes through this check first so bad
+    /// input degrades to a placeholder instead of taking the app down.
+    private static func isIntRepresentable(_ value: Double) -> Bool {
+        value.isFinite && abs(value) < Double(Int.max)
+    }
+
+    /// Formats an angle measurement as a three-digit compass bearing (e.g., `042°`).
     ///
-    /// - Parameter angle: The angle as a `Measurement<UnitAngle>`. If `nil` or non-positive, returns `--`.
-    /// - Returns: A rounded, integer degree string (e.g., `90°`) or `--` for invalid/unknown values.
+    /// - Parameter angle: The angle as a `Measurement<UnitAngle>`. If `nil`, negative (the
+    ///   CoreLocation "unknown" sentinel is `-1`), or non-finite (NaN, ±inf, or beyond `Int`
+    ///   range), returns `--`.
+    /// - Returns: A rounded, zero-padded degree string in `000°`...`359°`, or `--`.
     public static func angle(_ angle: Measurement<UnitAngle>?) -> String {
         guard let measurement = angle else { return "--" }
-        let degrees = measurement.converted(to: .degrees).value
-        let rounded = degrees.rounded()
-        if degrees <= 0 { return "--" }
-        return "\(Int(rounded).description.uppercased())°"
+        return formatDegrees(measurement.converted(to: .degrees).value)
     }
-    
-    /// Formats a degree value as whole degrees with a trailing degree symbol.
+
+    /// Formats a degree value as a three-digit compass bearing.
     ///
-    /// - Parameter degrees: Degrees as `Double`. `nil` or a sentinel value of `-1` yields `--`.
-    /// - Returns: A rounded, integer degree string (e.g., `270°`) or `--`.
+    /// - Parameter degrees: Degrees as `Double`. `nil`, a negative value (sentinel `-1`), or a
+    ///   non-finite value (NaN, ±inf, or beyond `Int` range) yields `--`.
+    /// - Returns: A rounded, zero-padded degree string (e.g., `270°`) or `--`.
     public static func angle(degrees: Double?) -> String {
         guard let value = degrees else { return "--" }
-        if value == -1 { return "--" }
-        return "\(Int(value.rounded()).description.uppercased())°"
+        return formatDegrees(value)
     }
-    
+
     /// Convenience overload for degree input.
     ///
     /// - Parameter angle: Degrees as `Double`.
-    /// - Returns: A rounded, integer degree string (e.g., `15°`).
+    /// - Returns: A rounded, zero-padded degree string (e.g., `015°`).
     public static func angle(degrees angle: Double) -> String {
-        self.angle(Measurement(value: angle, unit: .degrees)).uppercased()
+        formatDegrees(angle)
     }
-    
+
     /// Convenience overload for integer degree input.
     ///
     /// - Parameter angle: Degrees as `Int`.
-    /// - Returns: A rounded, integer degree string (e.g., `180°`).
-    ///
-    /// - Note: Internally converts the integer value to a `Measurement` and returns uppercase output.
+    /// - Returns: A zero-padded degree string (e.g., `180°`).
     public static func angle(degrees angle: Int) -> String {
-        return self.angle(Measurement(value: Double(angle), unit: .radians)).uppercased()
+        // B-10: this used to build the Measurement in radians, so 90 printed as "5157°".
+        self.angle(Measurement(value: Double(angle), unit: .degrees))
+    }
+
+    /// Shared body of the `angle` family (B-10).
+    ///
+    /// - `< 0` is the only sentinel: 0° (due north) is a real bearing and must render.
+    /// - Non-finite or absurdly large input is rejected before any `Int(_:)` conversion (B-34).
+    /// - The value is rounded first and then normalised into `0..<360`, so 359.6° becomes
+    ///   `000°` rather than `360°`.
+    /// - Output is always three digits, as read off a compass card.
+    private static func formatDegrees(_ degrees: Double) -> String {
+        guard isIntRepresentable(degrees) else { return "--" }
+        if degrees < 0 { return "--" }
+        let normalised = degrees.rounded().truncatingRemainder(dividingBy: 360)
+        return String(format: "%03d°", Int(normalised))
     }
     
     /// Formats a coordinate as degrees and decimal minutes with hemisphere prefixes.
     ///
     /// Output example: `N 37 46.50`, `W 122 25.10`.
     ///
-    /// - Parameter coordinate: The coordinate to format. If `nil`, returns empty strings.
+    /// - Parameter coordinate: The coordinate to format. If `nil`, or if either component is
+    ///   non-finite (NaN, ±inf, or beyond `Int` range), returns empty strings.
     /// - Returns: A tuple containing latitude and longitude strings.
     public static func dms(from coordinate: CLLocationCoordinate2D?) -> (lat: String, lon: String) {
         guard let target = coordinate else { return ("", "") }
+        // B-34: both components feed Int(absValue); a bad value in either makes the whole
+        // coordinate meaningless, so fall back to the same placeholder as a missing coordinate.
+        guard isIntRepresentable(target.latitude), isIntRepresentable(target.longitude) else {
+            return ("", "")
+        }
         func format(value: Double, positiveHemisphere: String, negativeHemisphere: String) -> String {
             let hemisphere = value >= 0 ? positiveHemisphere : negativeHemisphere
             let absValue = abs(value)
             let degrees = Int(absValue)
             let minutesDecimal = (absValue - Double(degrees)) * 60
-            let minutes = String(format: "%02.2f", minutesDecimal)
+            // B-10: `%05.2f` is the whole field width (two integer digits, point, two decimals),
+            // so minutes below 10 are zero-padded ("05.00"). `%02.2f` only promised two
+            // characters in total and never padded.
+            let minutes = String(format: "%05.2f", minutesDecimal)
             return "\(hemisphere) \(degrees) \(minutes)"
         }
         let lat = format(value: target.latitude, positiveHemisphere: "N", negativeHemisphere: "S")

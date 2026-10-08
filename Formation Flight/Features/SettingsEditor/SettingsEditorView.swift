@@ -9,13 +9,14 @@ import SwiftUI
 
 struct SettingsEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    // `@State` is the correct owner for an `@Observable` model created by the parent.
     @State var viewModel: SettingsEditorViewModel
-    
+
     var body: some View {
         NavigationStack {
             SettingsEditorFormView(viewModel: viewModel)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
+                    ToolbarItem(placement: .topBarLeading) {
                         Button {
                             viewModel.reset(userDefaults: UserDefaults.standard)
                             dismiss()
@@ -23,8 +24,14 @@ struct SettingsEditorView: View {
                             Text("Cancel")
                         }
                     }
-                    
-                    ToolbarItem(placement: .navigationBarTrailing) {
+
+                    // B-32: instrument reordering enters edit mode the normal way
+                    // instead of the form forcing `editMode = .active` permanently.
+                    ToolbarItem(placement: .topBarTrailing) {
+                        EditButton()
+                    }
+
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             viewModel.save(userDefaults: UserDefaults.standard)
                             dismiss()
@@ -32,10 +39,8 @@ struct SettingsEditorView: View {
                             Text("Save")
                         }
                     }
-                    
                 }
         }
-        
     }
 }
 

@@ -17,10 +17,3 @@ public enum InFlightInfo: String, CaseIterable {
     case expectedWindsDirection = "Wind Direction"
     case expectedWindsVelocity = "Wind Speed"
 }
-
-public enum InfoStatus {
-    case good
-    case bad
-    case reallyBad
-    case nutrual
-}

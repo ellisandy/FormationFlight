@@ -1,0 +1,203 @@
+//
+//  CLLocation+Conversions_Test.swift
+//  Formation FlightTests
+//
+//  Created by Jack Ellis on 12/31/23.
+//
+
+import XCTest
+import CoreLocation
+@testable import Formation_Flight
+
+final class CLLocation_Conversions_Test: XCTestCase {
+
+    let HOME_LOCATION = Target(id: UUID(), longitude: -122.379581, latitude: 48.425643)
+    let BVS_LOCATION = Target(id: UUID(), longitude: -122.41299, latitude: 48.46915)
+
+    // MARK: - getBearing(to:)
+    func testGetBearing_North() {
+        let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
+        let p2 = CLLocation(latitude: 1.0, longitude: 0.0)
+
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 0.0, accuracy: 0)
+    }
+
+    func testGetBearing_South() {
+        let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
+        let p2 = CLLocation(latitude: 1.0, longitude: 0.0)
+
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 180.0, accuracy: 0)
+    }
+
+    func testGetBearing_East() throws {
+        let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
+        let p2 = CLLocation(latitude: 0.0, longitude: 1.0)
+
+        // The bearing goes radians -> degrees inside getBearing, so compare the value with a
+        // tolerance rather than relying on exact Measurement equality after the round-trip.
+        let bearing = try XCTUnwrap(p1.getBearing(to: p2))
+        XCTAssertEqual(bearing.converted(to: .degrees).value, 90.0, accuracy: 1e-9)
+    }
+
+    func testGetBearing_West() {
+        let p1 = CLLocation(latitude: 0.0, longitude: 0.0)
+        let p2 = CLLocation(latitude: 0.0, longitude: 1.0)
+
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 270.0, accuracy: 0)
+    }
+
+    func testGetBearing_RealWorld_1() {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
+
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 0.0, accuracy: 1.0)
+    }
+
+    func testGetBearing_RealWorld_2() {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.42570, longitude: -122.36455)
+
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 90.0, accuracy: 1.0)
+    }
+
+    func testGetBearing_RealWorld_3() {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.42570, longitude: -122.36455)
+
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 270.0, accuracy: 1.0)
+    }
+
+    func testGetBearing_RealWorld_4() {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
+
+        XCTAssertEqual(p2.getBearing(to: p1)!.converted(to: .degrees).value, 180.0, accuracy: 1.0)
+    }
+
+    func testGetBearing_RealWorld_5() {
+        let p1 = HOME_LOCATION.getCLLocation()
+        let p2 = BVS_LOCATION.getCLLocation()
+
+        XCTAssertEqual(p1.getBearing(to: p2)!.converted(to: .degrees).value, 333.0, accuracy: 1.0)
+    }
+
+    // MARK: - getBearing(to:) edge cases
+
+    func testGetBearing_IdenticalCoordinatesReturnsNil() {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+
+        XCTAssertNil(p1.getBearing(to: p2), "Bearing between identical coordinates is undefined")
+    }
+
+    /// Crossing the antimeridian eastbound: dLon is -359°, whose sine equals sin(+1°), so the
+    /// short way round (due east) must win, not a 359° westward trip.
+    func testGetBearing_AcrossAntimeridianIsEast() throws {
+        let p1 = CLLocation(latitude: 0.0, longitude: 179.5)
+        let p2 = CLLocation(latitude: 0.0, longitude: -179.5)
+
+        let bearing = try XCTUnwrap(p1.getBearing(to: p2))
+        XCTAssertEqual(bearing.converted(to: .degrees).value, 90.0, accuracy: 1e-6)
+    }
+
+    /// Two points at 89°N on opposite meridians: the great circle runs straight over the pole.
+    /// By hand: y = sin(180°)·cos(89°) ≈ 0, x = 2·sin(89°)·cos(89°) = sin(178°) > 0, so
+    /// atan2 ≈ 0. The sign of y is pure floating-point noise, so a result a hair below 360°
+    /// is equally valid; assert the angular distance from north instead of the raw value.
+    func testGetBearing_OverThePoleIsNorth() throws {
+        let p1 = CLLocation(latitude: 89.0, longitude: 0.0)
+        let p2 = CLLocation(latitude: 89.0, longitude: 180.0)
+
+        let degrees = try XCTUnwrap(p1.getBearing(to: p2)).converted(to: .degrees).value
+        XCTAssertGreaterThanOrEqual(degrees, 0.0)
+        XCTAssertLessThan(degrees, 360.0)
+        let distanceFromNorth = min(degrees, 360.0 - degrees)
+        XCTAssertEqual(distanceFromNorth, 0.0, accuracy: 1e-6)
+    }
+
+    // MARK: - CLLocationCoordinate2D.initialBearing(to:) (B-36)
+
+    /// `getBearing(to:)` is a thin wrapper over the coordinate helper; the two must agree exactly
+    /// so that `LocationProvider`'s manual course estimate and the instrument bearing share one
+    /// forward-azimuth implementation.
+    func testCoordinateInitialBearingMatchesGetBearing() throws {
+        let p1 = CLLocation(latitude: 48.42583, longitude: -122.37916)
+        let p2 = CLLocation(latitude: 48.45335, longitude: -122.37849)
+
+        let viaLocation = try XCTUnwrap(p1.getBearing(to: p2))
+        let viaCoordinate = try XCTUnwrap(p1.coordinate.initialBearing(to: p2.coordinate))
+        XCTAssertEqual(viaCoordinate.value, viaLocation.value, accuracy: 0)
+        XCTAssertEqual(viaCoordinate.unit, UnitAngle.degrees)
+    }
+
+    func testCoordinateInitialBearing_IdenticalCoordinatesReturnsNil() {
+        let p = CLLocationCoordinate2D(latitude: 48.42583, longitude: -122.37916)
+        XCTAssertNil(p.initialBearing(to: p))
+    }
+
+    func testCoordinateInitialBearing_WestIsNormalisedInto0To360() throws {
+        let p1 = CLLocationCoordinate2D(latitude: 0.0, longitude: 1.0)
+        let p2 = CLLocationCoordinate2D(latitude: 0.0, longitude: 0.0)
+
+        let degrees = try XCTUnwrap(p1.initialBearing(to: p2)).value
+        XCTAssertEqual(degrees, 270.0, accuracy: 1e-9)
+    }
+
+    // MARK: Multiple Point Calculations
+    let STARTING_POINT = CLLocation(latitude: 48.75097, longitude: -121.94117)
+    let FIRST_CHECKPOINT = CLLocation(latitude: 48.75097, longitude: -121.125242) // 60_000 Meters away CONFIRM TO EAST
+    let SECOND_CHECKPOINT = CLLocation(latitude: 48.2114255, longitude: -121.125242) // 60_000 Meters away CONFIRM SOUTH
+    let FINAL_CHECKPOINT = CLLocation(latitude: 48.2114255, longitude: -121.9325625) // 60_000 Meters away CONFIRM WEST
+    let FINAL_CHECKPOINT_DOUBLE = CLLocation(latitude: 48.2114255, longitude: -122.739883) // 120_000 Meters away CONFIRM WEST
+
+    /// Resolves to the app's `distance(from: CLLocation?) -> Measurement<UnitLength>?` overload
+    /// (the explicit result type keeps it away from CoreLocation's native `CLLocationDistance` one).
+    private func legMeters(_ from: CLLocation, _ to: CLLocation) throws -> Double {
+        let leg: Measurement<UnitLength>? = from.distance(from: to)
+        return try XCTUnwrap(leg).converted(to: .meters).value
+    }
+
+    func testDistanceStartToFirst() throws {
+        let firstLeg = try legMeters(STARTING_POINT, FIRST_CHECKPOINT)
+        let secondLeg = try legMeters(FIRST_CHECKPOINT, SECOND_CHECKPOINT)
+        let thirdLeg = try legMeters(SECOND_CHECKPOINT, FINAL_CHECKPOINT)
+        let thirdLegLong = try legMeters(SECOND_CHECKPOINT, FINAL_CHECKPOINT_DOUBLE)
+
+        let firstLegCourse = STARTING_POINT.getBearing(to: FIRST_CHECKPOINT)
+        let secondLegCourse = FIRST_CHECKPOINT.getBearing(to: SECOND_CHECKPOINT)
+        let thirdLegCourse = SECOND_CHECKPOINT.getBearing(to: FINAL_CHECKPOINT)
+        let thirdLegLongCourse = SECOND_CHECKPOINT.getBearing(to: FINAL_CHECKPOINT_DOUBLE)
+
+        XCTAssertEqual(firstLeg, 60_000, accuracy: 0.01)
+        XCTAssertEqual(secondLeg, 60_000, accuracy: 0.01)
+        XCTAssertEqual(thirdLeg, 60_000, accuracy: 0.01)
+        XCTAssertEqual(thirdLegLong, 120_000, accuracy: 0.01)
+
+        XCTAssertEqual(firstLegCourse!.value, 90.0, accuracy: 0.5)
+        XCTAssertEqual(secondLegCourse!.value, 180.0, accuracy: 0.5)
+        XCTAssertEqual(thirdLegCourse!.value, 270.0, accuracy: 0.5)
+        XCTAssertEqual(thirdLegLongCourse!.value, 270.0, accuracy: 1)
+    }
+
+    // MARK: - distance(from location: CLLocation?)
+    func testDistanceFrom_NilReturnsNil() {
+        let here = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        let result = here.distance(from: (nil as CLLocation?))
+        XCTAssertNil(result)
+    }
+
+    func testDistanceFrom_SameCoordinateIsZero() throws {
+        let here = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        let result = here.distance(from: here)
+        XCTAssertEqual(result, 0.0, accuracy: 0.001)
+    }
+
+    func testDistanceFrom_KnownDistanceRoughlyMatches() throws {
+        // Apple Park Visitor Center to Apple Park main building are close; expect a small non-zero distance.
+        let p1 = CLLocation(latitude: 37.3349, longitude: -122.0090)
+        let p2 = CLLocation(latitude: 37.3346, longitude: -122.0090)
+        let result: Measurement<UnitLength>? = p1.distance(from: p2)
+        // Rough expected distance between these latitudes (~33 meters). Allow generous tolerance for geodesic differences.
+        XCTAssertEqual(result!.value, 33.0, accuracy: 10.0)
+    }
+}

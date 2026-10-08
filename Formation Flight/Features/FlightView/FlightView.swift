@@ -13,20 +13,42 @@ private struct LabelValueRow: View {
     let label: String
     let value: String?
     var valueColor: Color? = nil
-    
+    /// Short qualifier shown beside the value (e.g. "EARLY" next to the Δ readout, B-11).
+    /// Rendered in the value's colour so the word and the tint reinforce each other.
+    var caption: String? = nil
+    /// Accessibility identifier for the combined row, used by UI tests.
+    var identifier: String? = nil
+
     var body: some View {
         HStack {
             Text(label).font(.title)
             Spacer()
+            if let caption {
+                Text(caption)
+                    .font(.caption.bold())
+                    .foregroundStyle(valueColor ?? .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
             Text(value ?? "")
                 .font(.title)
                 .monospacedDigit()
                 .foregroundStyle(valueColor ?? .primary)
+                // Readouts must stay on one line at large Dynamic Type sizes;
+                // shrink the value rather than wrapping or clipping it.
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .padding(.horizontal, Design.Padding.horizontal)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier ?? "")
         .accessibilityLabel(label)
-        .accessibilityValue(value ?? "")
+        .accessibilityValue(accessibilityValueText)
+    }
+
+    /// The value followed by the caption, so VoiceOver reads "+00:00:07, LATE".
+    private var accessibilityValueText: String {
+        [value, caption].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }
 
@@ -37,7 +59,9 @@ private struct InstrumentCard: View {
     var verticalPadding: CGFloat = 10
     var titleFont: Font = .title2
     var valueFont: Font = .title
-    
+    /// Accessibility identifier for the combined card, used by UI tests.
+    var identifier: String? = nil
+
     var body: some View {
         VStack(spacing: 5) {
             Text(title).font(titleFont)
@@ -45,57 +69,52 @@ private struct InstrumentCard: View {
                 .font(valueFont)
                 .monospacedDigit()
                 .foregroundStyle(valueColor ?? .primary)
+                // Readouts must stay on one line at large Dynamic Type sizes;
+                // shrink the value rather than wrapping or clipping it.
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, verticalPadding)
         .cardBackground()
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier ?? "")
         .accessibilityLabel(title)
         .accessibilityValue(value ?? "---")
     }
 }
 
-// MARK: - Date Component Accessors
-private extension Date {
-    private var calendar: Calendar {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = .current
-        return cal
+// MARK: - Instrument layout (B-12)
+
+/// Pure mapping from the saved instrument settings to the cards the Instruments section shows.
+/// Kept free of SwiftUI so it can be unit-tested directly.
+enum InstrumentLayout {
+    /// The `InFlightInfo` cases that have an instrument card. ToT and drift live in the timing
+    /// section, and the wind cases no longer correspond to any data the app computes.
+    /// Computed rather than stored: `InFlightInfo` is a public enum without an explicit
+    /// `Sendable` conformance, so a stored static array is rejected under strict concurrency.
+    static var supported: [InFlightInfo] {
+        [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track]
     }
-    
-    var hourSetter: Int {
-        get { calendar.component(.hour, from: self) }
-        set {
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: self)
-            var newComps = comps
-            newComps.hour = newValue
-            if let newDate = calendar.date(from: newComps) {
-                self = newDate
-            }
-        }
+
+    /// Cards per row. Five supported instruments fall into rows of three and two, matching
+    /// the layout the view has always used.
+    static let cardsPerRow = 3
+
+    /// Enabled, supported instruments in the order the pilot saved them.
+    static func visibleInstruments(from settings: [InstrumentSetting]) -> [InFlightInfo] {
+        let supported = self.supported
+        return settings
+            .filter(\.isEnabled)
+            .map(\.type)
+            .filter { supported.contains($0) }
     }
-    
-    var minuteSetter: Int {
-        get { calendar.component(.minute, from: self) }
-        set {
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: self)
-            var newComps = comps
-            newComps.minute = newValue
-            if let newDate = calendar.date(from: newComps) {
-                self = newDate
-            }
-        }
-    }
-    
-    var secondSetter: Int {
-        get { calendar.component(.second, from: self) }
-        set {
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second, .nanosecond], from: self)
-            var newComps = comps
-            newComps.second = newValue
-            if let newDate = calendar.date(from: newComps) {
-                self = newDate
-            }
+
+    /// Splits the visible list into display rows of `cardsPerRow`, preserving order: with
+    /// five cards that is three on the first row and two on the second.
+    static func rows(for instruments: [InFlightInfo]) -> [[InFlightInfo]] {
+        stride(from: 0, to: instruments.count, by: cardsPerRow).map { start in
+            Array(instruments[start..<min(start + cardsPerRow, instruments.count)])
         }
     }
 }
@@ -107,18 +126,20 @@ private struct TimingSection: View {
     let ete: String
     let eta: String
     let delta: String
+    /// "EARLY" / "LATE" / "ON TIME", or nil when there is no delta (B-11).
+    let deltaLabel: String?
     let tot: String
     let emphasisColor: Color
-    
+
     var body: some View {
         VStack {
-            LabelValueRow(label: "Time", value: time)
+            LabelValueRow(label: "Time", value: time, identifier: "timingTimeRow")
                 .padding(.top, 10)
-            
-            LabelValueRow(label: "ETE", value: ete)
-            LabelValueRow(label: "ETA", value: eta, valueColor: emphasisColor)
-            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor)
-            LabelValueRow(label: "TOT", value: tot)
+
+            LabelValueRow(label: "ETE", value: ete, identifier: "timingETERow")
+            LabelValueRow(label: "ETA", value: eta, valueColor: emphasisColor, identifier: "timingETARow")
+            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor, caption: deltaLabel, identifier: "timingDeltaRow")
+            LabelValueRow(label: "TOT", value: tot, identifier: "timingTOTRow")
                 .padding(.bottom, 10)
         }
         .cardBackground()
@@ -127,31 +148,52 @@ private struct TimingSection: View {
 }
 
 private struct InstrumentsSection: View {
+    /// Which cards to show, in order (B-12): the enabled entries of
+    /// `settings.instrumentSettings`, mapped through `InstrumentLayout`.
+    let instruments: [InFlightInfo]
     let curGS: String
     let reqGS: String
     let dist: String
     let emphasisColor: Color
-    
+
     // Inputs for bearing/track
     let curBrg: String
     let curTrk: String
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 5) {
-                InstrumentCard(title: "Cur GS", value: curGS, valueColor: emphasisColor)
-                InstrumentCard(title: "Req GS", value: reqGS, valueColor: emphasisColor)
-                InstrumentCard(title: "Dist", value: dist)
+            // Rows are identified by their first instrument: each `InFlightInfo` appears at
+            // most once in the list, so that is unique per row.
+            ForEach(InstrumentLayout.rows(for: instruments), id: \.first) { row in
+                HStack(spacing: 5) {
+                    ForEach(row, id: \.self) { instrument in
+                        card(for: instrument)
+                    }
+                }
+                .padding(.horizontal, Design.Padding.horizontal)
+                .padding(.vertical, 5)
             }
-            .padding(.horizontal, Design.Padding.horizontal)
-            .padding(.vertical, 5)
-            
-            HStack(spacing: 5) {
-                InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title)
-                InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title)
-            }
-            .padding(.horizontal, Design.Padding.horizontal)
-            .padding(.vertical, 5)
+        }
+    }
+
+    /// The card for one instrument. Identifiers are stable regardless of position so UI
+    /// tests can find a card wherever the pilot has placed it.
+    @ViewBuilder
+    private func card(for instrument: InFlightInfo) -> some View {
+        switch instrument {
+        case .currentGroundSpeed:
+            InstrumentCard(title: "Cur GS", value: curGS, valueColor: emphasisColor, identifier: "instrumentCurGS")
+        case .requiredGroundSpeed:
+            InstrumentCard(title: "Req GS", value: reqGS, valueColor: emphasisColor, identifier: "instrumentReqGS")
+        case .distance:
+            InstrumentCard(title: "Dist", value: dist, identifier: "instrumentDist")
+        case .bearing:
+            InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentBrg")
+        case .track:
+            InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentTrk")
+        case .tot, .totDrift, .expectedWindsDirection, .expectedWindsVelocity:
+            // Filtered out by `InstrumentLayout.visibleInstruments`; nothing to draw.
+            EmptyView()
         }
     }
 }
@@ -190,8 +232,12 @@ struct FlightView: View {
     @State private var showEndFlightConfirm = false
     @Environment(\.dismiss) private var dismiss
     
-    init(viewModel: FlightViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModel)
+    /// Takes the view model as an autoclosure so construction is deferred into
+    /// `StateObject(wrappedValue:)`, which SwiftUI evaluates exactly once for the
+    /// lifetime of the view. Without this, every re-evaluation of the presenting
+    /// `fullScreenCover` closure would build a throwaway `FlightViewModel`.
+    init(viewModel: @autoclosure @escaping () -> FlightViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel())
     }
     var body: some View {
         ZStack {
@@ -210,7 +256,8 @@ struct FlightView: View {
                         time: Formatting.timeHHmmss(viewModel.currentTime),
                         ete: Formatting.durationHMS(viewModel.ete),
                         eta: Formatting.timeHHmmss(viewModel.eta),
-                        delta: Formatting.durationHMS(viewModel.delta),
+                        delta: Formatting.signedDurationHMS(viewModel.delta),
+                        deltaLabel: viewModel.deltaLabel,
                         tot: Formatting.timeHHmmss(viewModel.tot),
                         emphasisColor: viewModel.statusColor.color
                     )
@@ -229,6 +276,7 @@ struct FlightView: View {
                     }
                     
                     InstrumentsSection(
+                        instruments: InstrumentLayout.visibleInstruments(from: viewModel.settings.instrumentSettings),
                         curGS: speedStr(viewModel.currentGroundSpeed),
                         reqGS: speedStr(viewModel.requiredGroundSpeed),
                         dist: distanceStr(viewModel.distance),
@@ -263,12 +311,14 @@ struct FlightView: View {
                                 Text("Hack!").font(.title)
                                     .frame(maxWidth: .infinity)
                             }
+                            .accessibilityIdentifier("hackButton")
                             Button {
                                 viewModel.presentEditHackTime()
                             } label: {
                                 Text("Edit Hack").font(.title)
                                     .frame(maxWidth: .infinity)
                             }
+                            .accessibilityIdentifier("editHackButton")
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
@@ -280,6 +330,7 @@ struct FlightView: View {
                                 Text("Edit TOT").font(.title)
                                     .frame(maxWidth: .infinity)
                             }
+                            .accessibilityIdentifier("editTOTButton")
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
@@ -294,6 +345,7 @@ struct FlightView: View {
                     }
                     .controlSize(.large)
                     .buttonStyle(.glass)
+                    .accessibilityIdentifier("endFlightButton")
                     .accessibilityHint("Stops tracking and closes out the current mission.")
                 }
                 .padding(.horizontal, Design.Padding.horizontal)
@@ -308,7 +360,7 @@ struct FlightView: View {
                 }
                 
                 VStack {
-                    TOTTimePickerView(date: _date, hour: _date.hourSetter, minute: _date.minuteSetter, second: _date.secondSetter)
+                    TOTTimePickerView(date: _date, hour: _date.hourComponent, minute: _date.minuteComponent, second: _date.secondComponent)
                     Button {
                         viewModel.cancelEditToT()
                     } label: {
@@ -319,6 +371,7 @@ struct FlightView: View {
                     .padding(.horizontal, Design.Padding.horizontal)
                     .controlSize(.large)
                     .buttonStyle(.glass)
+                    .accessibilityIdentifier("editTOTDoneButton")
                 }
             })
             .sheet(isPresented: $viewModel.isEditingHackTime, content: {
@@ -334,6 +387,7 @@ struct FlightView: View {
                     .padding(.horizontal, Design.Padding.horizontal)
                     .controlSize(.large)
                     .buttonStyle(.glass)
+                    .accessibilityIdentifier("editHackDoneButton")
                 }
             })
             .confirmationDialog(
@@ -349,15 +403,25 @@ struct FlightView: View {
                 Text("This will stop tracking and close out the current mission.")
             }
         }
+        // A plain ZStack is not an accessibility element, so its identifier is
+        // invisible to UI tests unless it is made a container.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("flightViewRoot")
         // Keep the screen awake for the duration of the flight. Pilots need the
         // timing and instrument readouts visible without touching the device, so
         // the system idle timer must not dim or lock the display while this view
         // is on screen. Re-enabled on disappear so the rest of the app behaves normally.
+        //
+        // The view model's live updates (location delegate, GPS, 1 Hz timer) are
+        // bracketed by the same appear/disappear pair so End Flight actually stops
+        // tracking and releases the view model.
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
+            viewModel.start()
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
+            viewModel.stop()
         }
     }
 }
@@ -368,7 +432,7 @@ struct FlightView: View {
         missionName: "Training Hack",
         target: CLLocationCoordinate2D(latitude: 34.2000, longitude: -118.3500),
         missionType: .hackTime,
-        settings: Settings(speedUnit: .mph, distanceUnit: .mi, yellowTolerance: 80, redTolerance: 100, instrumentSettings: [])
+        settings: Settings(speedUnit: .mph, distanceUnit: .mi, yellowTolerance: 80, redTolerance: 100, instrumentSettings: Settings.empty().instrumentSettings)
     )
     vm.currentTime = Date()
     vm.hackTime = 90 // 1m30s
@@ -390,7 +454,7 @@ struct FlightView: View {
         missionName: "Night Sortie",
         target: CLLocationCoordinate2D(latitude: 36.0800, longitude: -115.1522),
         missionType: .tot,
-        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 20, redTolerance: 600, instrumentSettings: [])
+        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 20, redTolerance: 600, instrumentSettings: Settings.empty().instrumentSettings)
     )
     vm.currentTime = Date()
     vm.ete = 600
@@ -411,7 +475,7 @@ struct FlightView: View {
         missionName: "High Winds",
         target: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060),
         missionType: .tot,
-        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 80, redTolerance: 100, instrumentSettings: [])
+        settings: Settings(speedUnit: .kph, distanceUnit: .km, yellowTolerance: 80, redTolerance: 100, instrumentSettings: Settings.empty().instrumentSettings)
     )
     vm.currentTime = Date()
     vm.ete = 300

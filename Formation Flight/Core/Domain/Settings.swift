@@ -39,12 +39,22 @@ public struct Settings: Codable, Equatable {
         public var id: Self { self }
     }
     
+    /// Default ToT drift tolerances, in seconds. A fresh install must not treat every
+    /// non-zero delta as red, so these are deliberately non-zero with yellow <= red.
+    public static let defaultYellowTolerance = 10
+    public static let defaultRedTolerance = 30
+
+    /// The settings a fresh install starts with. Alias for `empty()`.
+    public static func defaults() -> Settings {
+        return empty()
+    }
+
     public static func empty() -> Settings {
         return Settings(
             speedUnit: .kts,
             distanceUnit: .nm,
-            yellowTolerance: 0,
-            redTolerance: 0,
+            yellowTolerance: defaultYellowTolerance,
+            redTolerance: defaultRedTolerance,
             instrumentSettings: [
                 InstrumentSetting(type: .currentGroundSpeed, isEnabled: true),
                 InstrumentSetting(type: .requiredGroundSpeed, isEnabled: true),
@@ -55,6 +65,18 @@ public struct Settings: Codable, Equatable {
         )
     }
     
+    /// Returns a copy with the tolerance pair made self-consistent: negative values are
+    /// clamped to 0 and, if yellow exceeds red, red is raised to match yellow.
+    public func validated() -> Settings {
+        var copy = self
+        copy.yellowTolerance = max(0, copy.yellowTolerance)
+        copy.redTolerance = max(0, copy.redTolerance)
+        if copy.yellowTolerance > copy.redTolerance {
+            copy.redTolerance = copy.yellowTolerance
+        }
+        return copy
+    }
+
     // Explicit CodingKeys to ensure stable Codable synthesis
     private enum CodingKeys: String, CodingKey {
         case speedUnit
@@ -123,25 +145,24 @@ extension Settings {
         let distanceUnitString = userDefaults.string(forKey: distanceUnitUDK) ?? DistanceUnit.nm.rawValue
         let distanceUnit = DistanceUnit(rawValue: distanceUnitString) ?? .nm
         
-        let yellowTolerance = userDefaults.integer(forKey: yellowToleranceUDK)
-        let redTolerance = userDefaults.integer(forKey: redToleranceUDK)
-        
+        // integer(forKey:) returns 0 for a never-set key, which would make every non-zero
+        // delta red on a fresh install. Only trust the stored value when the key exists;
+        // an explicitly saved 0 is still honoured.
+        let yellowTolerance = userDefaults.object(forKey: yellowToleranceUDK) != nil
+            ? userDefaults.integer(forKey: yellowToleranceUDK)
+            : defaultYellowTolerance
+        let redTolerance = userDefaults.object(forKey: redToleranceUDK) != nil
+            ? userDefaults.integer(forKey: redToleranceUDK)
+            : defaultRedTolerance
+
         let instrumentSettings: [InstrumentSetting] = {
             guard
                 let data = userDefaults.data(forKey: instrumentSettingsUDK),
-                let decoded = try? JSONDecoder().decode([InstrumentSetting].self, from: data)
+                let decoded = try? JSONDecoder().decode([LenientInstrumentSetting].self, from: data)
             else {
                 return Settings.empty().instrumentSettings
             }
-            // Merge logic: preserve saved isEnabled for saved types, add missing defaults enabled by default
-            let defaults = Settings.empty().instrumentSettings
-            var merged = defaults
-            for (index, def) in defaults.enumerated() {
-                if let saved = decoded.first(where: { $0.type == def.type }) {
-                    merged[index].isEnabled = saved.isEnabled
-                }
-            }
-            return merged
+            return mergeInstrumentSettings(saved: decoded.compactMap(\.setting))
         }()
         
         return Settings(
@@ -150,9 +171,41 @@ extension Settings {
             yellowTolerance: yellowTolerance,
             redTolerance: redTolerance,
             instrumentSettings: instrumentSettings
-        )
+        ).validated()
     }
     
+    /// Rebuilds the instrument list from what the user saved (B-12).
+    ///
+    /// The saved order is the user's order, so it is kept as-is. Any default instrument the
+    /// saved list lacks (a new instrument, or one that failed to decode) is appended enabled,
+    /// and anything that is not a default instrument, or repeats an earlier entry, is dropped.
+    static func mergeInstrumentSettings(saved: [InstrumentSetting]) -> [InstrumentSetting] {
+        let defaults = Settings.empty().instrumentSettings
+        let knownTypes = Set(defaults.map(\.type))
+        var merged: [InstrumentSetting] = []
+        var seen = Set<InFlightInfo>()
+        for setting in saved where knownTypes.contains(setting.type) && seen.insert(setting.type).inserted {
+            merged.append(setting)
+        }
+        for setting in defaults where !seen.contains(setting.type) {
+            merged.append(setting)
+        }
+        return merged
+    }
+
+    /// Decodes one saved instrument entry, yielding `nil` instead of failing the whole array.
+    ///
+    /// `InstrumentSetting.init(from:)` throws on a type string this build does not know (for
+    /// example one written by a newer or older build). Decoding the array as this wrapper lets
+    /// a single stale element be dropped while the user's remaining layout survives.
+    private struct LenientInstrumentSetting: Decodable {
+        let setting: InstrumentSetting?
+
+        init(from decoder: Decoder) throws {
+            setting = try? InstrumentSetting(from: decoder)
+        }
+    }
+
     public func save(to userDefaults: UserDefaults) {
         userDefaults.set(speedUnit.rawValue, forKey: Self.speedUnitUDK)
         userDefaults.set(distanceUnit.rawValue, forKey: Self.distanceUnitUDK)
