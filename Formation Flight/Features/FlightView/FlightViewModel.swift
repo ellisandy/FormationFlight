@@ -30,11 +30,29 @@ final class FlightViewModel: ObservableObject {
     /// "ON TIME", or nil when there is no delta to judge.
     @Published private(set) var deltaLabel: String?
     /// Seconds of the ETE spent in the roll-in turn (B-25), nil when ETE is nil or no turn is
-    /// needed. Lets the view explain why ETE exceeds distance / speed.
+    /// needed. Shown in the ETE row's caption (B-45) so the pilot can tell a short turn-in
+    /// from a continuation of most of the orbit.
     @Published private(set) var turnDuration: TimeInterval?
+    /// Which way the modelled path turns onto the target, nil whenever `turnDuration` is nil.
+    /// The detected orbit while turning, otherwise the shorter side.
+    @Published private(set) var turnInDirection: TurnToTarget.Direction?
     /// The orbit direction inferred from the GPS track rate, nil when flying straight. The
-    /// time-to-target path continues this turn rather than assuming a reversal.
+    /// time-to-target path continues this turn rather than assuming a reversal. Marked on the
+    /// Trk card (B-45).
     @Published private(set) var turnDirection: TurnToTarget.Direction?
+
+    /// ETE row caption (B-45): the turn the ETE assumes, e.g. "TURN 0:45 R"; nil with no turn.
+    var turnCaption: String? {
+        guard let turnDuration, let turnInDirection else { return nil }
+        let total = Int(turnDuration)
+        let time = String(format: "%d:%02d", total / 60, total % 60)
+        switch turnInDirection {
+        case .left:
+            return String(localized: "TURN \(time) L", comment: "Flight ETE row: modelled turn-in, minutes:seconds, to the left")
+        case .right:
+            return String(localized: "TURN \(time) R", comment: "Flight ETE row: modelled turn-in, minutes:seconds, to the right")
+        }
+    }
 
     // MARK: - Published State (Instruments)
     @Published var currentGroundSpeed: Measurement<UnitSpeed>?
@@ -246,15 +264,20 @@ final class FlightViewModel: ObservableObject {
                let solution = TurnToTarget.solve(distance: dist, bearing: geometry.bearing, track: geometry.track,
                                                  groundSpeed: gs, preferredDirection: turnDirection) {
                 rawETE = solution.totalTime
-                self.turnDuration = solution.turnDuration > 0 ? solution.turnDuration.rounded(.down) : nil
+                // Under a second of turn is "already pointed at it": no caption.
+                let turnSeconds = solution.turnDuration.rounded(.down)
+                self.turnDuration = turnSeconds >= 1 ? turnSeconds : nil
+                self.turnInDirection = turnSeconds >= 1 ? solution.direction : nil
             } else {
                 rawETE = dist / gs
                 self.turnDuration = nil
+                self.turnInDirection = nil
             }
             self.ete = rawETE.isFinite ? rawETE.rounded(.down) : nil
         } else {
             self.ete = nil
             self.turnDuration = nil
+            self.turnInDirection = nil
         }
 
         // Set ETA from the floored clock and the truncated ETE so Time + ETE == ETA on screen.
@@ -351,10 +374,14 @@ final class FlightViewModel: ObservableObject {
 
         // Orbit direction (B-25): a valid course feeds the detector; the sentinel (< 0) means
         // the receiver has no course, so the detector forgets its history rather than
-        // measuring a bogus rate against a stale sample.
+        // measuring a bogus rate against a stale sample. The rate is measured against the
+        // fix's own timestamp (B-44), not the receipt time: Core Location delivers late and in
+        // batches, which would otherwise read as a frozen or halved track rate.
         let course = locationProvider.course.converted(to: .degrees).value
         if course >= 0 {
-            turnDirection = turnDetector.record(track: course, at: now())
+            if let fixTime = locationProvider.lastFixTimestamp {
+                turnDirection = turnDetector.record(track: course, at: fixTime)
+            }
         } else {
             turnDetector.reset()
             turnDirection = nil

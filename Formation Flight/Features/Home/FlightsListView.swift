@@ -59,7 +59,6 @@ private struct FlightsEmptyStateView: View {
                 )
                 .font(.headline)
             }
-            .tint(.blue)
             .buttonStyle(.glassProminent)
 
             .accessibilityIdentifier("emptyStateCreateFirstFlightButton")
@@ -123,7 +122,7 @@ struct FlightsListView: View {
                         uiLog.debug("Presenting settings")
                         viewModel.presentSettings()
                     } label: {
-                        Label("Settings", systemImage: "gear")
+                        Label("Settings", systemImage: "gearshape")
                     }
                     .accessibilityLabel("Settings")
                     .accessibilityHint("Open settings")
@@ -239,6 +238,8 @@ struct FlightsListView: View {
         let f2 = Flight(missionName: "F2", missionType: .hackTime, missionDate: .now, target: Target(longitude: 0.0, latitude: 0.0))
         context.insert(f1)
         context.insert(f2)
+        // An unsaved context leaves the container empty, so the preview showed the empty state.
+        try? context.save()
         
         return container
     }

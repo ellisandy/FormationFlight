@@ -35,7 +35,7 @@ struct HackTimePickerView: View {
                 }
             )) {
                 ForEach(0..<181, id: \.self) { m in
-                    Text("\(m)m").tag(m)
+                    Text("\(m) min", comment: "Hack time wheel: minutes").tag(m)
                 }
             }
             .pickerStyle(.wheel)
@@ -51,7 +51,7 @@ struct HackTimePickerView: View {
                 }
             )) {
                 ForEach(0..<60, id: \.self) { s in
-                    Text(String(format: "%02ds", s)).tag(s)
+                    Text("\(s) s", comment: "Hack time wheel: seconds").tag(s)
                 }
             }
             .pickerStyle(.wheel)

@@ -1,11 +1,11 @@
 /// Helpers for formatting `Measurement` values (speed and distance) according to user unit preferences.
 ///
-/// Returns short, localized strings using `MeasurementFormatter`, with `--` placeholders for missing values.
+/// Returns localized strings using `MeasurementFormatter`, with `--` placeholders for missing values.
 import Foundation
 
 /// Namespace for measurement-formatting utilities.
 enum MeasurementFormatters {
-    /// Formats a speed measurement into a short, localized string using the specified unit preference.
+    /// Formats a speed measurement into a localized string using the specified unit preference.
     ///
     /// - Parameters:
     ///   - measurement: The speed to format. If `nil`, returns `"--"`.
@@ -15,7 +15,7 @@ enum MeasurementFormatters {
     /// Notes:
     /// - The measurement is converted to the provided unit before formatting.
     /// - Fractional digits are suppressed (0 minimum/maximum).
-    /// - The unit style is `.short` and the provided unit is preserved in output.
+    /// - The unit style is `.medium` (a space before the unit, D-05) and the provided unit is preserved in output.
     static func speedString(_ measurement: Measurement<UnitSpeed>?, unitPreference: Settings.SpeedUnit) -> String {
         guard let m = measurement else { return "--" }
         let unit: UnitSpeed
@@ -32,11 +32,11 @@ enum MeasurementFormatters {
         formatter.numberFormatter.maximumFractionDigits = 0
         formatter.numberFormatter.minimumFractionDigits = 0
         formatter.unitOptions = .providedUnit
-        formatter.unitStyle = .short
+        formatter.unitStyle = .medium
         return formatter.string(from: converted)
     }
     
-    /// Formats a distance measurement into a short, localized string using the specified unit preference.
+    /// Formats a distance measurement into a localized string using the specified unit preference.
     ///
     /// - Parameters:
     ///   - measurement: The distance to format. If `nil`, returns `"--"`.
@@ -46,7 +46,7 @@ enum MeasurementFormatters {
     /// Notes:
     /// - The measurement is converted to the provided unit before formatting.
     /// - Fractional digits are suppressed (0 minimum/maximum).
-    /// - The unit style is `.short` and the provided unit is preserved in output.
+    /// - The unit style is `.medium` (a space before the unit, D-05) and the provided unit is preserved in output.
     static func distanceString(_ measurement: Measurement<UnitLength>?, unitPreference: Settings.DistanceUnit) -> String {
         guard let m = measurement else { return "--" }
         let unit: UnitLength
@@ -63,7 +63,7 @@ enum MeasurementFormatters {
         formatter.numberFormatter.maximumFractionDigits = 1
         formatter.numberFormatter.minimumFractionDigits = 1
         formatter.unitOptions = .providedUnit
-        formatter.unitStyle = .short
+        formatter.unitStyle = .medium
         return formatter.string(from: converted)
     }
 }

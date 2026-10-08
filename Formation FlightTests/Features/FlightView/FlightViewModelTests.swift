@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreLocation
+import SwiftUI
 import Testing
 @testable import Formation_Flight
 
@@ -46,13 +47,16 @@ final class MockLocationProvider: LocationProviding {
     }
 
     /// Convenience to set location-related fields and optionally notify the delegate.
+    /// `fixTime` is the fix's own measurement time (`lastFixTimestamp`); left unchanged when nil.
     func setLocation(location: CLLocation?,
                      speed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .metersPerSecond),
                      course: Measurement<UnitAngle>? = nil,
+                     fixTime: Date? = nil,
                      notify: Bool = false) {
         self.currentLocation = location
         self.speed = speed
         if let course { self.course = course }
+        if let fixTime { self.lastFixTimestamp = fixTime }
         if notify { self.updateDelegate?() }
     }
 }
@@ -1077,6 +1081,7 @@ struct FlightViewModelTests {
             lp.setLocation(location: aircraft,
                            speed: Measurement(value: 100, unit: .metersPerSecond),
                            course: Measurement(value: course, unit: .degrees),
+                           fixTime: clock.now,
                            notify: true)
             clock.advance(by: 1)
         }
@@ -1094,6 +1099,78 @@ struct FlightViewModelTests {
         #expect(reversed.direction == .left)
         #expect(vm.ete == continued.totalTime.rounded(.down))
         #expect(try #require(vm.ete) > reversed.totalTime.rounded(.down))
+    }
+
+    @Test("Required ground speed for a close-in target abeam stays turn-aware (B-42)")
+    func requiredSpeedCloseInAbeam() async throws {
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(100)
+
+        // Flying north with the target 2 nm due east and 100 s to ToT. The pre-fix solver
+        // showed the direct-to 37 m/s here and the aircraft arrived 13 s late.
+        lp.setLocation(location: location(fromTarget: vm.target, bearingDegrees: 90, meters: 3_704),
+                       speed: Measurement(value: 40, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
+
+        let distance = try #require(vm.distance?.converted(to: .meters).value)
+        let bearing = try #require(vm.bearing?.converted(to: .degrees).value)
+        let required = try #require(vm.requiredGroundSpeed?.converted(to: .metersPerSecond).value)
+        let check = try #require(TurnToTarget.solve(distance: distance, bearing: bearing, track: 0, groundSpeed: required))
+        #expect(abs(check.totalTime - 100) < 0.01)
+        #expect(required > distance / 100 + 1, "must not fall back to the direct-to figure")
+    }
+
+    @Test("The turn detector runs on fix timestamps, not the wall clock (B-44)")
+    func turnDetectorUsesFixTimestamps() async throws {
+        let target = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+        let aircraft = location(fromTarget: target, bearingDegrees: 300, meters: 8_000)
+        let speed = Measurement<UnitSpeed>(value: 100, unit: .metersPerSecond)
+
+        // Fixes measured a second apart but delivered while the wall clock stands still (a
+        // batched delivery): the turn is still seen.
+        let lp = MockLocationProvider()
+        let vm = makeVM(settings: makeSettings(), target: target, locationProvider: lp, now: fixedClock)
+        for (i, course) in [354.0, 357.0, 0.0].enumerated() {
+            lp.setLocation(location: aircraft, speed: speed, course: Measurement(value: course, unit: .degrees),
+                           fixTime: Self.fixedNow.addingTimeInterval(Double(i)), notify: true)
+        }
+        #expect(vm.turnDirection == .right)
+
+        // The reverse: the wall clock advances but the fix timestamp is frozen (the same fix
+        // delivered again). No new samples, so no turn.
+        let lp2 = MockLocationProvider()
+        let clock = MutableClock(Self.fixedNow)
+        let vm2 = makeVM(settings: makeSettings(), target: target, locationProvider: lp2, now: { clock.now })
+        for course in [354.0, 357.0, 0.0] {
+            lp2.setLocation(location: aircraft, speed: speed, course: Measurement(value: course, unit: .degrees),
+                            fixTime: Self.fixedNow, notify: true)
+            clock.advance(by: 1)
+        }
+        #expect(vm2.turnDirection == nil)
+    }
+
+    @Test("Turn duration and direction are published for the ETE caption (B-45)")
+    func turnCaptionInputs() async throws {
+        let lp = MockLocationProvider()
+        let mockTimer = MockTimerScheduler()
+        let vm = makeVM(settings: makeSettings(), timerScheduler: mockTimer, locationProvider: lp, now: fixedClock)
+        vm.tot = Self.fixedNow.addingTimeInterval(600)
+
+        lp.setLocation(location: location(fromTarget: vm.target, bearingDegrees: 90, meters: 8_000),
+                       speed: Measurement(value: 100, unit: .metersPerSecond),
+                       course: Measurement(value: 0, unit: .degrees),
+                       notify: true)
+        mockTimer.fire()
+
+        // Straight flight with the target to the right: the shortest turn-in is right.
+        #expect(vm.turnInDirection == .right)
+        let caption = try #require(vm.turnCaption)
+        #expect(caption.hasPrefix("TURN "))
+        #expect(caption.hasSuffix(" R"))
     }
 
     @Test("Δ caption adds an orbit hint once early by a full standard-rate orbit")
@@ -1198,5 +1275,17 @@ struct InstrumentLayoutTests {
         #expect(InstrumentLayout.rows(for: two) == [[.bearing, .track]])
 
         #expect(InstrumentLayout.rows(for: []).isEmpty)
+    }
+
+    @Test("Accessibility text sizes give each card its own row (D-04)")
+    func accessibilitySizesUseOneCardPerRow() throws {
+        #expect(InstrumentLayout.cardsPerRow(for: .large) == 3)
+        #expect(InstrumentLayout.cardsPerRow(for: .xxxLarge) == 3)
+        #expect(InstrumentLayout.cardsPerRow(for: .accessibility1) == 1)
+        #expect(InstrumentLayout.cardsPerRow(for: .accessibility5) == 1)
+
+        let three: [InFlightInfo] = [.distance, .bearing, .track]
+        #expect(InstrumentLayout.rows(for: three, perRow: 1) == [[.distance], [.bearing], [.track]])
+        #expect(InstrumentLayout.rows(for: three, perRow: 0) == [[.distance], [.bearing], [.track]])
     }
 }

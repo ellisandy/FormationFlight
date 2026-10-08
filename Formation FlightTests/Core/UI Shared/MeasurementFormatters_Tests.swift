@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import Formation_Flight
 
-/// `MeasurementFormatters` uses a locale-sensitive `MeasurementFormatter` (short unit style),
+/// `MeasurementFormatters` uses a locale-sensitive `MeasurementFormatter` (medium unit style, D-05),
 /// so the unit abbreviations and decimal separator below depend on the test process locale.
 /// `Formation Flight.xctestplan` pins `language: en` / `region: US` for that reason (T-05);
-/// for reference, de_DE renders 12 nautical miles as `12,0sm`.
+/// for reference, de_DE renders 12 nautical miles as `12,0 sm`.
 ///
 /// The conversion tests compare against a reference formatter configured identically to the
 /// production one so a Foundation change to the abbreviation table does not fail them, while
@@ -20,7 +20,7 @@ struct MeasurementFormattersTests {
         formatter.numberFormatter.maximumFractionDigits = fractionDigits
         formatter.numberFormatter.minimumFractionDigits = fractionDigits
         formatter.unitOptions = .providedUnit
-        formatter.unitStyle = .short
+        formatter.unitStyle = .medium
         return formatter.string(from: measurement)
     }
 
@@ -35,8 +35,8 @@ struct MeasurementFormattersTests {
     func speed_knots() async throws {
         let speed = Measurement(value: 250, unit: UnitSpeed.knots)
         let result = MeasurementFormatters.speedString(speed, unitPreference: .kts)
-        // Literal on purpose (locale canary): en_US short style for knots is "kn", no space.
-        #expect(result == "250kn")
+        // Literal on purpose (locale canary): en_US medium style for knots is "kn" after a space.
+        #expect(result == "250 kn")
     }
 
     @Test("Speed: mph conversion")
@@ -68,9 +68,9 @@ struct MeasurementFormattersTests {
     func distance_nauticalMiles() async throws {
         let distance = Measurement(value: 12, unit: UnitLength.nauticalMiles)
         let result = MeasurementFormatters.distanceString(distance, unitPreference: .nm)
-        // Literal on purpose (locale canary): en_US short style for nautical miles is "nmi",
-        // decimal separator ".", no space.
-        #expect(result == "12.0nmi")
+        // Literal on purpose (locale canary): en_US medium style for nautical miles is "nmi",
+        // decimal separator ".", a space before the unit.
+        #expect(result == "12.0 nmi")
     }
 
     @Test("Distance: miles conversion")
