@@ -13,17 +13,7 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 | Item | Priority | Summary | Blocking release? |
 |---|---|---|---|
 | R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Screenshots captured 2026-10-07 (6.9-inch iPhone and 13-inch iPad, six each; reproducible with `scripts/app-store-screenshots/`). Remaining: enter the URLs (in `docs/AppStore/listing.md`), upload the screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
-| B-46 | P1 | Δ shows "LATE +00:00:00" (or "EARLY -00:00:00") when under a second off. | Should |
-| B-42 | P1 | Required GS falls back to direct-to when the 400 m/s search ceiling puts the target inside the turn circle; up to 13 s late in the close-in orbit. | Yes |
-| B-43 | P1 | ETE / ETA / Δ / ORBIT caption flap when the turn detector toggles at its 1°/s threshold. | Yes |
-| B-44 | P2 | `TurnDetector` uses the wall clock instead of the fix timestamp. | No |
-| B-45 | P2 | `turnDuration` / `turnDirection` are published but never shown. Product call. | No |
-| D-01 | D | Flight screen background inverts the colour scheme and fails contrast. | Should |
-| D-02 | D | End Flight is destructive but looks like Edit TOT / Edit Hack. | Should |
-| D-03 – D-06 | D | Settings title, AX Dynamic Type cards, unit spacing, smaller HIG items. | No |
-| D-07 | D | iPad shows the iPhone layout stretched edge to edge with large empty areas. | No |
-| D-08 | D | Editor target thumbnail is mostly covered by the Maps "Legal" link. | No |
-| D-09 | D | Unit abbreviations disagree: Settings says "kts" / "nm", flight screen shows "kn" / "nmi". | No |
+| R-08 follow-up | R | Reshoot the flight-screen, editor (thumbnail) and iPad screenshots: D-01, D-02, D-05, D-07, D-08 and D-09 changed what they show. | Yes (owner action) |
 
 Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full UI suite passes on iPad Pro 13-inch, so 13-inch screenshots are required); an Icon Composer `.icon` for the full Liquid Glass treatment needs layered artwork and ships later.
 
@@ -37,6 +27,8 @@ Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full 
 - **P2 B-27 – B-40** (B-17 landed with B-28).
 - **P3 T-01 – T-13** and all listed "tests to add". Two residual T-07 touches remain in production code: `FlightEditorViewModel()` owns a real `CLLocationManager` (B-16) and `LocationProvider` still allocates a default manager even when one is injected.
 - **P4 H-01 – H-08**, including the string catalog, `.gitignore`, and the committed Xcode Cloud manifest.
+- **B-42 – B-46** (`feature/release-polish`). B-42: Required GS scans 0.5–400 m/s in 2 m/s steps for the first bracket on one turn direction and bisects inside it; the three failing rows now land on time and a seeded random round-trip test covers the rest. B-43: median of the last five rates with 1.5°/s enter / 0.5°/s exit hysteresis. B-44: the detector runs on `lastFixTimestamp` and ignores non-advancing samples. B-45 (product call: surface it): ETE caption "TURN m:ss L/R" and an L/R badge on the Trk card; unit-tested, not UI-tested, because the caption depends on live GPS geometry. B-46: Δ is truncated to whole seconds before classification, and `signedDurationHMS` prints sub-second values unsigned.
+- **D-01 – D-09** (`feature/release-polish`). D-01: AccentColor is the icon navy (#0B3462, #7FA8E0 dark); `FlightBackground`, `StatusGood` / `StatusWarning` / `StatusBad` colour sets with darker light-mode variants (≥ 4.5:1 by calculation); the Δ row carries a status symbol. Increase Contrast variants were not added. D-02: End Flight is a red `.glassProminent` button top-trailing. D-04: one card per row at accessibility sizes, UI test at AX L. D-05/D-09: "250 kt", "12.0 NM" from `Settings.*Unit.symbol`, shared with the Settings pickers. D-07: content held to a 700 pt column on wide screens and Settings uses `.presentationSizing(.form)`; `NavigationSplitView` and a two-column landscape flight screen were not done. D-08: `MKMapSnapshotter` thumbnail without POIs.
 
 ---
 
