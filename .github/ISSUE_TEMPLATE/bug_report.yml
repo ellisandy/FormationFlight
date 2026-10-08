@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in the app is wrong or broken.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems should be reported privately; see SECURITY.md.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a TOT flight...
+        2. Tap Go Fly...
+        3. ...
+  - type: dropdown
+    id: mission-type
+    attributes:
+      label: Mission type
+      options:
+        - TOT
+        - Hack time
+        - Not applicable
+  - type: input
+    id: device
+    attributes:
+      label: Device and iOS version
+      placeholder: iPhone 16 Pro, iOS 26.1
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      placeholder: "1.0 (App Store), or a commit hash if built from source"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or other context
+      description: Screenshots of the readouts are especially helpful. Note if you were turning, and roughly how far from the target you were.
