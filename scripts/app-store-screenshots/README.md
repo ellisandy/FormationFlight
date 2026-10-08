@@ -45,3 +45,23 @@ The flight screen is driven by real (simulated) GPS. Shoot it in dark mode — i
 Don't tap or capture through Xcode's device-interaction tools while the route is running — doing so interrupts the simulated location and the readouts drop to `--`. Use `simctl io` only.
 
 4. Clean up: `xcrun simctl location $U clear; xcrun simctl ui $U appearance light`
+
+## 5. Prepare for upload
+
+`simctl io` writes PNGs with an alpha channel, and the iPhone and iPad sets use the same file names, which makes it easy to drop a file into the wrong size slot in App Store Connect ("File dimensions are invalid"). Flatten and prefix them before uploading:
+
+```sh
+python3 - <<'EOF'
+from PIL import Image
+import glob, os
+for dev, prefix in (("iPhone-6.9", "iPhone69"), ("iPad-13", "iPad13")):
+    os.makedirs(f"upload/{dev}", exist_ok=True)
+    for src in sorted(glob.glob(f"{dev}/*.png")):
+        im = Image.open(src).convert("RGBA")
+        flat = Image.new("RGB", im.size, (0, 0, 0))
+        flat.paste(im, mask=im.split()[3])
+        flat.save(f"upload/{dev}/{prefix}-{os.path.basename(src)}", "PNG", optimize=True)
+EOF
+```
+
+Upload `upload/iPhone-6.9/` to the 6.9-inch iPhone slot (1320×2868) and `upload/iPad-13/` to the 13-inch iPad slot (2064×2752).
