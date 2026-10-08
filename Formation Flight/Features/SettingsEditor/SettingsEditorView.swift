@@ -15,6 +15,9 @@ struct SettingsEditorView: View {
     var body: some View {
         NavigationStack {
             SettingsEditorFormView(viewModel: viewModel)
+                // D-03: name the screen for VoiceOver and for the user.
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {

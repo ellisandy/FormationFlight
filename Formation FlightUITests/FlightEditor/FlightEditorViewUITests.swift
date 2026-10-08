@@ -58,8 +58,9 @@ final class FlightEditorViewUITests: XCTestCase {
     /// The safety disclaimer (R-07) is pre-acknowledged through the
     /// `-hasAcknowledgedSafetyDisclaimer YES` launch argument, which
     /// `UserDefaults` honours directly, so it never blocks these tests.
-    private func launch(seeded: Bool = false, locationDenied: Bool = false) {
+    private func launch(seeded: Bool = false, locationDenied: Bool = false, extraArguments: [String] = []) {
         app.launchArguments += ["-uiTestsResetStore", "-hasAcknowledgedSafetyDisclaimer", "YES"]
+        app.launchArguments += extraArguments
         if seeded {
             app.launchArguments += ["-uiTestsSeedFlights"]
         }
@@ -274,6 +275,33 @@ final class FlightEditorViewUITests: XCTestCase {
             "Confirming End Flight should dismiss FlightView and return to the editor"
         )
         XCTAssertFalse(flightRoot.exists, "flightViewRoot should be gone after ending the flight")
+    }
+
+    /// D-04: at accessibility text sizes the instrument cards get a row each, and the
+    /// flight screen still exposes every card and a reachable End Flight button.
+    func testFlightViewAtAccessibilityTextSize() throws {
+        launch(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"])
+        openNewFlightEditor()
+
+        enterMissionName("Large Text")
+        selectTarget()
+
+        let goFly = app.buttons["goFlyButton"]
+        revealInEditorForm(goFly, "goFlyButton")
+        goFly.tap()
+
+        XCTAssertTrue(app.otherElements["flightViewRoot"].waitForExistence(timeout: 5), "Go Fly should present FlightView")
+        let endFlight = app.buttons["endFlightButton"]
+        XCTAssertTrue(endFlight.waitForExistence(timeout: 5), "endFlightButton should be on the flight screen")
+        XCTAssertTrue(endFlight.isHittable, "endFlightButton should stay reachable at accessibility sizes")
+
+        for id in ["instrumentCurGS", "instrumentReqGS", "instrumentDist", "instrumentBrg", "instrumentTrk"] {
+            XCTAssertTrue(app.descendants(matching: .any)[id].exists, "\(id) should exist at accessibility sizes")
+        }
+        // One card per row: Cur GS and Req GS no longer share a row.
+        let curGS = app.descendants(matching: .any)["instrumentCurGS"].frame
+        let reqGS = app.descendants(matching: .any)["instrumentReqGS"].frame
+        XCTAssertGreaterThanOrEqual(reqGS.minY, curGS.maxY - 1, "Req GS should sit below Cur GS, not beside it")
     }
 
     // MARK: - Cancel (B-21)

@@ -1,21 +1,21 @@
 /// Helpers for formatting `Measurement` values (speed and distance) according to user unit preferences.
 ///
-/// Returns short, localized strings using `MeasurementFormatter`, with `--` placeholders for missing values.
+/// Returns localized numbers followed by the unit symbol the Settings screen uses, with `--`
+/// placeholders for missing values.
 import Foundation
 
 /// Namespace for measurement-formatting utilities.
 enum MeasurementFormatters {
-    /// Formats a speed measurement into a short, localized string using the specified unit preference.
+    /// Formats a speed measurement in the preferred unit, e.g. `250 kt`, `140 mph`, `200 km/h`.
     ///
     /// - Parameters:
     ///   - measurement: The speed to format. If `nil`, returns `"--"`.
     ///   - unitPreference: The preferred speed unit (knots, mph, or kph).
-    /// - Returns: A string like `250 kt`, `140 mph`, or `200 km/h` with zero fractional digits.
+    /// - Returns: The converted value with zero fractional digits, a space, and the unit symbol.
     ///
-    /// Notes:
-    /// - The measurement is converted to the provided unit before formatting.
-    /// - Fractional digits are suppressed (0 minimum/maximum).
-    /// - The unit style is `.short` and the provided unit is preserved in output.
+    /// The symbol comes from `Settings.SpeedUnit.symbol` rather than `MeasurementFormatter`,
+    /// whose "kn" disagreed with the "kt" pilots expect and Settings shows (D-09). The space
+    /// before the unit follows system convention (D-05).
     static func speedString(_ measurement: Measurement<UnitSpeed>?, unitPreference: Settings.SpeedUnit) -> String {
         guard let m = measurement else { return "--" }
         let unit: UnitSpeed
@@ -27,26 +27,17 @@ enum MeasurementFormatters {
         case .kph:
             unit = .kilometersPerHour
         }
-        let converted = m.converted(to: unit)
-        let formatter = MeasurementFormatter()
-        formatter.numberFormatter.maximumFractionDigits = 0
-        formatter.numberFormatter.minimumFractionDigits = 0
-        formatter.unitOptions = .providedUnit
-        formatter.unitStyle = .short
-        return formatter.string(from: converted)
+        return format(m.converted(to: unit).value, fractionDigits: 0, symbol: unitPreference.symbol)
     }
-    
-    /// Formats a distance measurement into a short, localized string using the specified unit preference.
+
+    /// Formats a distance measurement in the preferred unit, e.g. `12.0 NM`, `8.0 mi`, `15.0 km`.
     ///
     /// - Parameters:
     ///   - measurement: The distance to format. If `nil`, returns `"--"`.
     ///   - unitPreference: The preferred distance unit (nautical miles, miles, or kilometers).
-    /// - Returns: A string like `12 nm`, `8 mi`, or `15 km` with zero fractional digits.
+    /// - Returns: The converted value with one fractional digit, a space, and the unit symbol.
     ///
-    /// Notes:
-    /// - The measurement is converted to the provided unit before formatting.
-    /// - Fractional digits are suppressed (0 minimum/maximum).
-    /// - The unit style is `.short` and the provided unit is preserved in output.
+    /// The symbol comes from `Settings.DistanceUnit.symbol` (D-09); see `speedString`.
     static func distanceString(_ measurement: Measurement<UnitLength>?, unitPreference: Settings.DistanceUnit) -> String {
         guard let m = measurement else { return "--" }
         let unit: UnitLength
@@ -58,13 +49,12 @@ enum MeasurementFormatters {
         case .km:
             unit = .kilometers
         }
-        let converted = m.converted(to: unit)
-        let formatter = MeasurementFormatter()
-        formatter.numberFormatter.maximumFractionDigits = 1
-        formatter.numberFormatter.minimumFractionDigits = 1
-        formatter.unitOptions = .providedUnit
-        formatter.unitStyle = .short
-        return formatter.string(from: converted)
+        return format(m.converted(to: unit).value, fractionDigits: 1, symbol: unitPreference.symbol)
+    }
+
+    /// Locale-aware number (grouping and decimal separator) followed by a space and `symbol`.
+    private static func format(_ value: Double, fractionDigits: Int, symbol: String) -> String {
+        let number = value.formatted(.number.precision(.fractionLength(fractionDigits)))
+        return "\(number) \(symbol)"
     }
 }
-

@@ -148,10 +148,17 @@ enum TurnToTarget {
     }
 
     /// The groundspeed at which the turn-then-straight path arrives exactly `timeRemaining`
-    /// seconds from now, or `nil` if no speed in the searched range can.
+    /// seconds from now. Falls back to the straight-line figure when no speed in the searched
+    /// range can make the time; `nil` only for invalid inputs or no time remaining.
     ///
     /// The turn radius grows with speed, so the path length depends on the speed being solved
-    /// for; this is a bisection on `solve(...).totalTime`, which falls with speed.
+    /// for. `solve(...).totalTime` is *not* monotonic in speed (B-42): once the radius is large
+    /// enough that the near-side turn circle contains the target, that turn becomes infeasible
+    /// and the time jumps up to the long way round. A single bisection over the whole range
+    /// therefore misses close-in targets. Instead the range is scanned upward from the slowest
+    /// speed for the first bracket in which the time crosses `timeRemaining` on one continuous
+    /// branch (same turn direction at both ends), and the answer is bisected inside it. The
+    /// slowest matching speed is returned: it is the continuation of the turn being flown.
     static func requiredGroundSpeed(distance: Double,
                                     bearing: Double,
                                     track: Double,
@@ -159,25 +166,42 @@ enum TurnToTarget {
                                     preferredDirection: Direction? = nil,
                                     turnRate: Double = standardRateDegreesPerSecond) -> Double? {
         guard timeRemaining.isFinite, timeRemaining > 0, distance.isFinite, distance > 0 else { return nil }
-        // 0.5 m/s ... 400 m/s (≈ 1 kt ... 780 kt): wide enough for anything that formation-flies.
-        var low = 0.5, high = 400.0
-        func time(at speed: Double) -> Double? {
+        func solution(at speed: Double) -> Solution? {
             solve(distance: distance, bearing: bearing, track: track, groundSpeed: speed,
-                  preferredDirection: preferredDirection, turnRate: turnRate)?.totalTime
+                  preferredDirection: preferredDirection, turnRate: turnRate)
         }
-        guard let tHigh = time(at: high), let tLow = time(at: low) else { return nil }
-        // Outside the searched range the turn model has nothing useful to add: above it the
-        // turn radius dwarfs the geometry, below it the answer is "slower than anything that
-        // flies". Fall back to the straight-line figure so the readout is never blank while
-        // time remains; an absurd number reads as "impossible", a blank reads as "unknown".
-        if tHigh > timeRemaining || tLow < timeRemaining { return distance / timeRemaining }
-        for _ in 0..<60 {
-            let mid = (low + high) / 2
-            guard let t = time(at: mid) else { return nil }
-            if t > timeRemaining { low = mid } else { high = mid }
-            if high - low < 1e-4 { break }
+
+        // 0.5 m/s ... 400 m/s (≈ 1 kt ... 780 kt): wide enough for anything that formation-flies.
+        let low = 0.5, high = 400.0, step = 2.0
+        guard var previous = solution(at: low) else { return nil }
+        var previousSpeed = low
+        var speed = low
+        while speed < high {
+            speed = min(speed + step, high)
+            guard let current = solution(at: speed) else { return nil }
+            defer { previous = current; previousSpeed = speed }
+            guard previous.totalTime >= timeRemaining, current.totalTime <= timeRemaining,
+                  previous.direction == current.direction else { continue }
+
+            var lo = previousSpeed, hi = speed
+            for _ in 0..<60 {
+                let mid = (lo + hi) / 2
+                guard let t = solution(at: mid)?.totalTime else { return nil }
+                if t > timeRemaining { lo = mid } else { hi = mid }
+                if hi - lo < 1e-4 { break }
+            }
+            let result = (lo + hi) / 2
+            // A branch switch inside the bracket (it would have to switch and switch back
+            // within one step) leaves the bisection on a jump rather than a root; skip it.
+            if let t = solution(at: result)?.totalTime, abs(t - timeRemaining) < 0.05 {
+                return result
+            }
         }
-        return (low + high) / 2
+        // No speed in the searched range arrives on time: either faster than anything that
+        // flies or slower than 0.5 m/s. Fall back to the straight-line figure so the readout is
+        // never blank while time remains; an absurd number reads as "impossible", a blank
+        // reads as "unknown".
+        return distance / timeRemaining
     }
 
     /// Number of complete standard-rate orbits that fit before the turn-in point, given how
@@ -190,34 +214,50 @@ enum TurnToTarget {
 
 /// Infers which way the aircraft is turning from successive GPS track samples.
 ///
-/// A sustained track rate above `turningThresholdDegreesPerSecond` is a turn; below it the
-/// aircraft is treated as flying straight. The rate is smoothed over the last few samples so
-/// GPS course jitter does not flip the direction between fixes.
+/// The rate is the median of the last few per-sample track rates, so GPS course jitter and a
+/// single wild sample do not move it. A turn starts once that rate reaches
+/// `enterTurnDegreesPerSecond` and ends only when it falls to `exitTurnDegreesPerSecond`
+/// (B-43). The gap between the two thresholds stops a rate that jitters around one threshold
+/// from toggling the direction, and with it ETE, ETA, Δ and the ORBIT caption, at 1 Hz.
 struct TurnDetector: Equatable, Sendable {
     /// Standard rate is 3°/s; straight-flight course jitter is well under 1°/s.
-    static let turningThresholdDegreesPerSecond: Double = 1.0
+    static let enterTurnDegreesPerSecond: Double = 1.5
+    /// Below this, in the direction of the turn, the aircraft has rolled out.
+    static let exitTurnDegreesPerSecond: Double = 0.5
+    /// Number of recent rates the median is taken over. Five 1 Hz fixes: a roll-out is
+    /// recognised about three seconds after the track stops changing.
+    static let rateWindow = 5
     /// Samples further apart than this do not describe the same turn.
     static let maxSampleGap: TimeInterval = 10
 
     private var lastTrack: Double?
     private var lastTime: Date?
-    private var smoothedRate: Double = 0
+    private var recentRates: [Double] = []
 
     /// The detected turn, or `nil` while flying straight or before two usable samples.
     private(set) var direction: TurnToTarget.Direction?
 
     init() {}
 
-    /// Records a track sample and returns the current detected direction.
+    /// Records a track sample measured at `time` and returns the current detected direction.
+    ///
+    /// `time` must be when the fix was measured (its Core Location timestamp), not when it was
+    /// delivered (B-44). A sample whose time has not advanced past the previous one (a
+    /// duplicate or out-of-order delivery) is ignored rather than treated as a reset.
     @discardableResult
     mutating func record(track: Double, at time: Date) -> TurnToTarget.Direction? {
-        defer { lastTrack = track; lastTime = time }
-        guard track.isFinite, let previousTrack = lastTrack, let previousTime = lastTime else {
+        guard track.isFinite else { return direction }
+        guard let previousTrack = lastTrack, let previousTime = lastTime else {
+            lastTrack = track
+            lastTime = time
             return direction
         }
         let dt = time.timeIntervalSince(previousTime)
-        guard dt > 0, dt <= Self.maxSampleGap else {
-            smoothedRate = 0
+        guard dt > 0 else { return direction }
+        lastTrack = track
+        lastTime = time
+        guard dt <= Self.maxSampleGap else {
+            recentRates = []
             direction = nil
             return nil
         }
@@ -225,13 +265,19 @@ struct TurnDetector: Equatable, Sendable {
         var change = (track - previousTrack).truncatingRemainder(dividingBy: 360)
         if change > 180 { change -= 360 }
         if change <= -180 { change += 360 }
-        let rate = change / dt
-        smoothedRate = smoothedRate == 0 ? rate : 0.5 * smoothedRate + 0.5 * rate
+        recentRates.append(change / dt)
+        if recentRates.count > Self.rateWindow { recentRates.removeFirst() }
 
-        if abs(smoothedRate) >= Self.turningThresholdDegreesPerSecond {
-            direction = smoothedRate > 0 ? .right : .left
-        } else {
-            direction = nil
+        let rate = Self.median(recentRates)
+        // Leave the current turn only once the rate in its direction has decayed.
+        switch direction {
+        case .right where rate <= Self.exitTurnDegreesPerSecond: direction = nil
+        case .left where rate >= -Self.exitTurnDegreesPerSecond: direction = nil
+        default: break
+        }
+        // Enter a turn (or reverse straight into the other one) on a clear rate.
+        if direction == nil, abs(rate) >= Self.enterTurnDegreesPerSecond {
+            direction = rate > 0 ? .right : .left
         }
         return direction
     }
@@ -240,7 +286,14 @@ struct TurnDetector: Equatable, Sendable {
     mutating func reset() {
         lastTrack = nil
         lastTime = nil
-        smoothedRate = 0
+        recentRates = []
         direction = nil
+    }
+
+    private static func median(_ values: [Double]) -> Double {
+        let sorted = values.sorted()
+        guard !sorted.isEmpty else { return 0 }
+        let mid = sorted.count / 2
+        return sorted.count.isMultiple(of: 2) ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
     }
 }

@@ -29,14 +29,36 @@ public struct Settings: Codable, Equatable {
         }
     }
     
+    /// Raw values are the persisted encoding and must not change; `symbol` is what the UI shows.
     public enum SpeedUnit: String, CaseIterable, Identifiable, Codable, Equatable {
         case kts, kph, mph
         public var id: Self { self }
+
+        /// Displayed unit symbol, shared by Settings and the flight screen (D-09). Aviation
+        /// convention for knots is "kt".
+        public var symbol: String {
+            switch self {
+            case .kts: return "kt"
+            case .kph: return "km/h"
+            case .mph: return "mph"
+            }
+        }
     }
-    
+
+    /// Raw values are the persisted encoding and must not change; `symbol` is what the UI shows.
     public enum DistanceUnit: String, CaseIterable, Identifiable, Codable, Equatable {
         case km, mi, nm
         public var id: Self { self }
+
+        /// Displayed unit symbol, shared by Settings and the flight screen (D-09). Aviation
+        /// convention for nautical miles is "NM".
+        public var symbol: String {
+            switch self {
+            case .km: return "km"
+            case .mi: return "mi"
+            case .nm: return "NM"
+            }
+        }
     }
     
     /// Default ToT drift tolerances, in seconds. A fresh install must not treat every

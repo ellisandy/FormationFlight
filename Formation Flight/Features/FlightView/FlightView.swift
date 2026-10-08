@@ -16,6 +16,11 @@ private struct LabelValueRow: View {
     /// Short qualifier shown beside the value (e.g. "EARLY" next to the Δ readout, B-11).
     /// Rendered in the value's colour so the word and the tint reinforce each other.
     var caption: String? = nil
+    /// SF Symbol shown before the caption: a shape cue for the status so it does not rely on
+    /// the tint alone (D-01).
+    var symbol: String? = nil
+    /// Spoken equivalent of `symbol`.
+    var symbolDescription: String? = nil
     /// Accessibility identifier for the combined row, used by UI tests.
     var identifier: String? = nil
 
@@ -23,6 +28,12 @@ private struct LabelValueRow: View {
         HStack {
             Text(label).font(.title)
             Spacer()
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.title3)
+                    .foregroundStyle(valueColor ?? .primary)
+                    .accessibilityHidden(true)
+            }
             if let caption {
                 Text(caption)
                     .font(.caption.bold())
@@ -46,9 +57,10 @@ private struct LabelValueRow: View {
         .accessibilityValue(accessibilityValueText)
     }
 
-    /// The value followed by the caption, so VoiceOver reads "+00:00:07, LATE".
+    /// The value followed by the caption and status, so VoiceOver reads
+    /// "+00:00:07, LATE, Outside tolerance".
     private var accessibilityValueText: String {
-        [value, caption].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+        [value, caption, symbolDescription].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }
 
@@ -56,23 +68,39 @@ private struct InstrumentCard: View {
     let title: String
     let value: String?
     var valueColor: Color? = nil
+    /// Short marker beside the title (B-45: the orbit direction on the Trk card).
+    var badge: String? = nil
+    /// Spoken equivalent of `badge`.
+    var badgeDescription: String? = nil
     var verticalPadding: CGFloat = 10
     var titleFont: Font = .title2
     var valueFont: Font = .title
     /// Accessibility identifier for the combined card, used by UI tests.
     var identifier: String? = nil
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(spacing: 5) {
-            Text(title).font(titleFont)
+            HStack(spacing: 4) {
+                Text(title).font(titleFont)
+                if let badge {
+                    Text(badge)
+                        .font(.caption.bold())
+                        .padding(.horizontal, 4)
+                        .background(.quaternary, in: Capsule())
+                        .accessibilityIdentifier("\(identifier ?? "")Badge")
+                }
+            }
             Text(value ?? "---")
                 .font(valueFont)
                 .monospacedDigit()
                 .foregroundStyle(valueColor ?? .primary)
-                // Readouts must stay on one line at large Dynamic Type sizes;
-                // shrink the value rather than wrapping or clipping it.
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                // At standard sizes three cards share a row, so a long value shrinks rather
+                // than clipping. At accessibility sizes the cards get their own row (D-04) and
+                // the value must not shrink: the pilot asked for larger text.
+                .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.6)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, verticalPadding)
@@ -80,7 +108,7 @@ private struct InstrumentCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier ?? "")
         .accessibilityLabel(title)
-        .accessibilityValue(value ?? "---")
+        .accessibilityValue([value ?? "---", badgeDescription].compactMap { $0 }.joined(separator: ", "))
     }
 }
 
@@ -97,9 +125,15 @@ enum InstrumentLayout {
         [.currentGroundSpeed, .requiredGroundSpeed, .distance, .bearing, .track]
     }
 
-    /// Cards per row. Five supported instruments fall into rows of three and two, matching
-    /// the layout the view has always used.
+    /// Cards per row at standard text sizes. Five supported instruments fall into rows of
+    /// three and two, matching the layout the view has always used.
     static let cardsPerRow = 3
+
+    /// Cards per row for a Dynamic Type size (D-04). At accessibility sizes three cards per
+    /// row wrapped the titles and shrank the values, so each card gets the full width.
+    static func cardsPerRow(for size: DynamicTypeSize) -> Int {
+        size.isAccessibilitySize ? 1 : cardsPerRow
+    }
 
     /// Enabled, supported instruments in the order the pilot saved them.
     static func visibleInstruments(from settings: [InstrumentSetting]) -> [InFlightInfo] {
@@ -110,11 +144,12 @@ enum InstrumentLayout {
             .filter { supported.contains($0) }
     }
 
-    /// Splits the visible list into display rows of `cardsPerRow`, preserving order: with
-    /// five cards that is three on the first row and two on the second.
-    static func rows(for instruments: [InFlightInfo]) -> [[InFlightInfo]] {
-        stride(from: 0, to: instruments.count, by: cardsPerRow).map { start in
-            Array(instruments[start..<min(start + cardsPerRow, instruments.count)])
+    /// Splits the visible list into display rows of `perRow`, preserving order: with five
+    /// cards and three per row that is three on the first row and two on the second.
+    static func rows(for instruments: [InFlightInfo], perRow: Int = cardsPerRow) -> [[InFlightInfo]] {
+        let perRow = max(1, perRow)
+        return stride(from: 0, to: instruments.count, by: perRow).map { start in
+            Array(instruments[start..<min(start + perRow, instruments.count)])
         }
     }
 }
@@ -124,21 +159,25 @@ enum InstrumentLayout {
 private struct TimingSection: View {
     let time: String
     let ete: String
+    /// The turn the ETE assumes, e.g. "TURN 0:45 R" (B-45), or nil with no turn.
+    let eteCaption: String?
     let eta: String
     let delta: String
     /// "EARLY" / "LATE" / "ON TIME", or nil when there is no delta (B-11).
     let deltaLabel: String?
     let tot: String
-    let emphasisColor: Color
+    let status: FlightViewModel.Status
 
     var body: some View {
         VStack {
             LabelValueRow(label: "Time", value: time, identifier: "timingTimeRow")
                 .padding(.top, 10)
 
-            LabelValueRow(label: "ETE", value: ete, identifier: "timingETERow")
-            LabelValueRow(label: "ETA", value: eta, valueColor: emphasisColor, identifier: "timingETARow")
-            LabelValueRow(label: "Δ", value: delta, valueColor: emphasisColor, caption: deltaLabel, identifier: "timingDeltaRow")
+            LabelValueRow(label: "ETE", value: ete, caption: eteCaption, identifier: "timingETERow")
+            LabelValueRow(label: "ETA", value: eta, valueColor: status.color, identifier: "timingETARow")
+            LabelValueRow(label: "Δ", value: delta, valueColor: status.color, caption: deltaLabel,
+                          symbol: status.symbolName, symbolDescription: status.accessibilityDescription,
+                          identifier: "timingDeltaRow")
             LabelValueRow(label: "TOT", value: tot, identifier: "timingTOTRow")
                 .padding(.bottom, 10)
         }
@@ -159,12 +198,17 @@ private struct InstrumentsSection: View {
     // Inputs for bearing/track
     let curBrg: String
     let curTrk: String
+    /// The orbit in progress, marked on the Trk card (B-45); nil while flying straight.
+    let orbitDirection: TurnToTarget.Direction?
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(spacing: 0) {
             // Rows are identified by their first instrument: each `InFlightInfo` appears at
             // most once in the list, so that is unique per row.
-            ForEach(InstrumentLayout.rows(for: instruments), id: \.first) { row in
+            ForEach(InstrumentLayout.rows(for: instruments, perRow: InstrumentLayout.cardsPerRow(for: dynamicTypeSize)),
+                    id: \.first) { row in
                 HStack(spacing: 5) {
                     ForEach(row, id: \.self) { instrument in
                         card(for: instrument)
@@ -190,10 +234,27 @@ private struct InstrumentsSection: View {
         case .bearing:
             InstrumentCard(title: "Brg", value: curBrg, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentBrg")
         case .track:
-            InstrumentCard(title: "Trk", value: curTrk, verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentTrk")
+            InstrumentCard(title: "Trk", value: curTrk, badge: orbitBadge, badgeDescription: orbitDescription,
+                           verticalPadding: 5, titleFont: .title2, valueFont: .title, identifier: "instrumentTrk")
         case .tot, .totDrift, .expectedWindsDirection, .expectedWindsVelocity:
             // Filtered out by `InstrumentLayout.visibleInstruments`; nothing to draw.
             EmptyView()
+        }
+    }
+
+    private var orbitBadge: String? {
+        switch orbitDirection {
+        case .left: String(localized: "L", comment: "Trk card: orbiting left")
+        case .right: String(localized: "R", comment: "Trk card: orbiting right")
+        case nil: nil
+        }
+    }
+
+    private var orbitDescription: String? {
+        switch orbitDirection {
+        case .left: String(localized: "Turning left", comment: "Trk card, VoiceOver: orbiting left")
+        case .right: String(localized: "Turning right", comment: "Trk card, VoiceOver: orbiting right")
+        case nil: nil
         }
     }
 }
@@ -241,9 +302,12 @@ struct FlightView: View {
     }
     var body: some View {
         ZStack {
-            LinearGradient(gradient: Gradient(colors: [Color.accentColor.opacity(0.5), Color.accentColor.opacity(0.8)]), startPoint: .top, endPoint: .bottom)
+            // A dedicated background with light and dark variants (D-01). It used to be a
+            // gradient of the accent colour, which was the label colour, so it inverted the
+            // colour scheme and put `.primary` text at under 2:1.
+            Color(.flightBackground)
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack {
                     HStack {
@@ -251,15 +315,16 @@ struct FlightView: View {
                     }
                     .padding(.horizontal, Design.Padding.horizontal)
                     .padding(.bottom, 10)
-                    
+
                     TimingSection(
                         time: Formatting.timeHHmmss(viewModel.currentTime),
                         ete: Formatting.durationHMS(viewModel.ete),
+                        eteCaption: viewModel.turnCaption,
                         eta: Formatting.timeHHmmss(viewModel.eta),
                         delta: Formatting.signedDurationHMS(viewModel.delta),
                         deltaLabel: viewModel.deltaLabel,
                         tot: Formatting.timeHHmmss(viewModel.tot),
-                        emphasisColor: viewModel.statusColor.color
+                        status: viewModel.statusColor
                     )
                     
                     HStack {
@@ -282,7 +347,8 @@ struct FlightView: View {
                         dist: distanceStr(viewModel.distance),
                         emphasisColor: viewModel.statusColor.color,
                         curBrg: Formatting.angle(viewModel.bearing),
-                        curTrk: Formatting.angle(viewModel.track)
+                        curTrk: Formatting.angle(viewModel.track),
+                        orbitDirection: viewModel.turnDirection
                     )
                     
                     Text("Mission Details").font(.largeTitle.bold())
@@ -297,10 +363,11 @@ struct FlightView: View {
                         hackTime: Formatting.durationHMS(viewModel.hackTime),
                         tot: Formatting.timeHHmmss(viewModel.tot)
                     )
-                    
+
                 }
-                
+
             }
+            .readableScrollContent()
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
                     if viewModel.missionType == .hackTime {
@@ -334,23 +401,31 @@ struct FlightView: View {
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
-                        
+
                     }
-                    
+                }
+                .padding(.horizontal, Design.Padding.horizontal)
+                .padding(.vertical, 8)
+                .readableWidth()
+                .background(.thinMaterial)
+            }
+            // End Flight is destructive (D-02): red, and in the top-trailing corner, away from
+            // Hack! / Edit at the bottom that the pilot taps most. Still confirmed below.
+            .safeAreaInset(edge: .top) {
+                HStack {
+                    Spacer()
                     Button(role: .destructive) {
                         showEndFlightConfirm = true
                     } label: {
-                        Text("End Flight").font(.title)
-                            .frame(maxWidth: .infinity)
+                        Label("End Flight", systemImage: "xmark")
                     }
-                    .controlSize(.large)
-                    .buttonStyle(.glass)
+                    .buttonStyle(.glassProminent)
+                    .tint(.red)
                     .accessibilityIdentifier("endFlightButton")
                     .accessibilityHint("Stops tracking and closes out the current mission.")
                 }
                 .padding(.horizontal, Design.Padding.horizontal)
-                .padding(.vertical, 8)
-                .background(.thinMaterial)
+                .readableWidth()
             }
             .sheet(isPresented: $viewModel.isEditingToT, onDismiss: viewModel.cancelEditToT, content: {
                 let _date: Binding<Date> = Binding {
@@ -358,8 +433,11 @@ struct FlightView: View {
                 } set: { d in
                     $viewModel.tot.wrappedValue = d
                 }
-                
+
                 VStack {
+                    Text("Edit TOT").font(.headline)
+                        .padding(.top)
+                        .accessibilityAddTraits(.isHeader)
                     TOTTimePickerView(date: _date, hour: _date.hourComponent, minute: _date.minuteComponent, second: _date.secondComponent)
                     Button {
                         viewModel.cancelEditToT()
@@ -373,9 +451,15 @@ struct FlightView: View {
                     .buttonStyle(.glass)
                     .accessibilityIdentifier("editTOTDoneButton")
                 }
+                // A wheel picker needs half the screen at most (D-06).
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             })
             .sheet(isPresented: $viewModel.isEditingHackTime, content: {
                 VStack {
+                    Text("Edit Hack").font(.headline)
+                        .padding(.top)
+                        .accessibilityAddTraits(.isHeader)
                     HackTimePickerView(hackDurationSeconds: $viewModel.hackTime)
                     Button {
                         viewModel.cancelHackTimeEdit()
@@ -389,6 +473,8 @@ struct FlightView: View {
                     .buttonStyle(.glass)
                     .accessibilityIdentifier("editHackDoneButton")
                 }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             })
             .confirmationDialog(
                 "End Flight?",
@@ -407,6 +493,9 @@ struct FlightView: View {
         // invisible to UI tests unless it is made a container.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("flightViewRoot")
+        // There is no navigation bar, so route VoiceOver's escape gesture (two-finger Z) to
+        // the End Flight confirmation (D-06).
+        .accessibilityAction(.escape) { showEndFlightConfirm = true }
         // Keep the screen awake for the duration of the flight. Pilots need the
         // timing and instrument readouts visible without touching the device, so
         // the system idle timer must not dim or lock the display while this view

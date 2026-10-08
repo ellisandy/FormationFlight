@@ -50,7 +50,6 @@ struct SafetyDisclaimerView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }
-            .tint(.blue)
             .buttonStyle(.glassProminent)
             .controlSize(.large)
             .padding(.horizontal, 24)
