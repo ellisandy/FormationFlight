@@ -12,7 +12,7 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 
 | Item | Priority | Summary | Blocking release? |
 |---|---|---|---|
-| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Screenshots reshot 2026-10-07 after PR #11 (6.9-inch iPhone and 13-inch iPad, seven each including a dark-appearance flight screen; reproducible with `scripts/app-store-screenshots/`). Remaining: enter the URLs (in `docs/AppStore/listing.md`), upload the screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
+| R-08 | R | GitHub Pages is configured to serve `docs/` from `main`; the privacy policy and support page go live when this branch merges. Screenshots reshot 2026-10-07 after PR #11 (6.3-inch iPhone 1206×2622 and 13-inch iPad, seven each including a dark-appearance flight screen; reproducible with `scripts/app-store-screenshots/`). Remaining: enter the URLs (in `docs/AppStore/listing.md`), upload the screenshots, and the rest of the checklist in App Store Connect. | Yes (owner action) |
 | D-10 | D | Go Fly, the editor's primary action, is a pale neutral glass pill. | No |
 | D-11 | D | iPad: window-resize grabber in every screenshot; large empty area below the 700 pt column. | No |
 | D-12 | D | Map thumbnail clips a highway shield at its edge. | No |
@@ -31,7 +31,7 @@ Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full 
 - **P4 H-01 – H-08**, including the string catalog, `.gitignore`, and the committed Xcode Cloud manifest.
 - **B-42 – B-46** (`feature/release-polish`). B-42: Required GS scans 0.5–400 m/s in 2 m/s steps for the first bracket on one turn direction and bisects inside it; the three failing rows now land on time and a seeded random round-trip test covers the rest. B-43: median of the last five rates with 1.5°/s enter / 0.5°/s exit hysteresis. B-44: the detector runs on `lastFixTimestamp` and ignores non-advancing samples. B-45 (product call: surface it): ETE caption "TURN m:ss L/R" and an L/R badge on the Trk card; unit-tested, not UI-tested, because the caption depends on live GPS geometry. B-46: Δ is truncated to whole seconds before classification, and `signedDurationHMS` prints sub-second values unsigned.
 - **D-01 – D-09** (`feature/release-polish`). D-01: AccentColor is the icon navy (#0B3462, #7FA8E0 dark); `FlightBackground`, `StatusGood` / `StatusWarning` / `StatusBad` colour sets with darker light-mode variants (≥ 4.5:1 by calculation); the Δ row carries a status symbol. Increase Contrast variants were not added. D-02: End Flight is a red `.glassProminent` button top-trailing. D-04: one card per row at accessibility sizes, UI test at AX L. D-05/D-09: "250 kt", "12.0 NM" from `Settings.*Unit.symbol`, shared with the Settings pickers. D-07: content held to a 700 pt column on wide screens and Settings uses `.presentationSizing(.form)`; `NavigationSplitView` and a two-column landscape flight screen were not done. D-08: `MKMapSnapshotter` thumbnail without POIs.
-- **R-08 screenshot reshoot.** All seven screens per device recaptured on iPhone 18 Pro Max and iPad Pro 13-inch (M5) after the D-01 – D-09 changes, light appearance plus a dark flight screen; the reshoot surfaced D-10 – D-12.
+- **R-08 screenshot reshoot.** All seven screens per device recaptured on iPhone 18 Pro and iPad Pro 13-inch (M5) after the D-01 – D-09 changes, light appearance plus a dark flight screen; the reshoot surfaced D-10 – D-12. App Store Connect's iPhone slot is now "iPhone with Dynamic Island (medium display)" and rejects 6.9-inch (1320×2868) files, so the iPhone set is shot at 1206×2622.
 
 ---
 
@@ -115,7 +115,7 @@ The app will ship **free** on the App Store, so no StoreKit, in-app purchase, or
 - Support URL and marketing URL (can be the same page).
 - Category: currently `public.app-category.utilities`; consider **Navigation** as primary.
 - Age rating questionnaire (expect 4+).
-- Screenshots: 6.9-inch iPhone required; 13-inch iPad required while R-06 keeps iPad enabled.
+- Screenshots: iPhone with Dynamic Island, medium display (1206×2622 or 1179×2556) required; 13-inch iPad required while R-06 keeps iPad enabled; iPhone Duo not yet required.
 - Accessibility Nutrition Labels (optional, new in 2025): only claim VoiceOver / Dynamic Type after H-04 and the missing `FlightView` identifiers are addressed.
 - Review notes: explain the TOT/hack-time workflow and that location simulation (the GPX in the test plan) can be used to exercise the flight screen without flying.
 

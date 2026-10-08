@@ -1,6 +1,15 @@
 # App Store screenshots
 
-Required sizes: 6.9" iPhone (iPhone 18 Pro Max, 1320×2868) and 13" iPad (iPad Pro 13-inch, 2064×2752).
+Required sizes (App Store Connect, October 2026):
+
+| Slot | Simulator | Size |
+|---|---|---|
+| iPhone with Dynamic Island (medium display) | iPhone 18 Pro | 1206×2622 |
+| iPad 13" display | iPad Pro 13-inch (M5) | 2064×2752 |
+
+The 6.9-inch size (1320×2868) is rejected by the iPhone slot ("File dimensions are invalid"). iPhone Duo screenshots are not required yet. Check the size list under each tab in App Store Connect before a reshoot; Apple changes it.
+
+The Rose Bowl editor's TOT wheels show launch time + ~5 min; avoid shooting the editor just before the top of the hour, when the minute wheel sits at 58–59 with blank space under it.
 
 ## 1. Prepare the simulator
 
@@ -54,7 +63,7 @@ Don't tap or capture through Xcode's device-interaction tools while the route is
 python3 - <<'EOF'
 from PIL import Image
 import glob, os
-for dev, prefix in (("iPhone-6.9", "iPhone69"), ("iPad-13", "iPad13")):
+for dev, prefix in (("iPhone-6.3", "iPhone63"), ("iPad-13", "iPad13")):
     os.makedirs(f"upload/{dev}", exist_ok=True)
     for src in sorted(glob.glob(f"{dev}/*.png")):
         im = Image.open(src).convert("RGBA")
@@ -64,4 +73,4 @@ for dev, prefix in (("iPhone-6.9", "iPhone69"), ("iPad-13", "iPad13")):
 EOF
 ```
 
-Upload `upload/iPhone-6.9/` to the 6.9-inch iPhone slot (1320×2868) and `upload/iPad-13/` to the 13-inch iPad slot (2064×2752).
+Upload `upload/iPhone-6.3/` to the "iPhone with Dynamic Island (medium display)" slot (1206×2622) and `upload/iPad-13/` to the "iPad 13" display" slot (2064×2752).
