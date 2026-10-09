@@ -218,7 +218,8 @@ struct FlightEditorView: View {
                                                       missionDate: viewModel.timeEntry,
                                                       hackTime: Double(viewModel.hackDurationSeconds),
                                                       settings: Settings.load(from: UserDefaults.standard),
-                                                      speaker: SystemCalloutSpeaker()
+                                                      speaker: SystemCalloutSpeaker(),
+                                                      mirrors: FlightMirrors.makeDefault()
                                                      ))
             } else {
                 // Safety net: the cover must never be empty and undismissable.

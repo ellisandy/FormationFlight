@@ -11,6 +11,6 @@ import SwiftUI
 @main
 struct FormationFlightWidgetsBundle: WidgetBundle {
     var body: some Widget {
-        FormationFlightWidgets()
+        FlightLiveActivity()
     }
 }

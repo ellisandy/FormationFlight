@@ -25,7 +25,7 @@ public struct Callout: Equatable, Sendable, Codable {
     }
 
     /// Which side of the ToT a drift callout reports.
-    public enum DriftRelation: String, Codable, Sendable {
+    public enum DriftRelation: String, Codable, Hashable, Sendable {
         case early
         case late
         case onTime
@@ -36,7 +36,7 @@ public struct Callout: Equatable, Sendable, Codable {
     /// Codable because it travels to the watch; the synthesized encoding is part of the
     /// payload contract (`CorePayload.version`), so renaming a case or an
     /// associated-value label is a breaking change.
-    public enum Event: Equatable, Sendable, Codable {
+    public enum Event: Hashable, Sendable, Codable {
         /// A countdown mark: whole seconds left to ToT. 0 is "Mark".
         case countdown(secondsToToT: Int)
         /// Start the turn onto the target now, this way.
