@@ -23,6 +23,13 @@ struct Formation_FlightApp: App {
         let args = ProcessInfo.processInfo.arguments
         let useInMemory = args.contains("-uiTestsResetStore")
 
+        // F-02: WatchConnectivity activates asynchronously; starting it at launch means the
+        // pairing state is known (and a watch app opened mid-flight is served) by the time a
+        // flight screen opens. Skipped where the flight screen gets no mirrors.
+        if !FlightMirrors.isUITestOrScreenshotRun(arguments: args) {
+            PhoneWatchSession.shared.activate()
+        }
+
         do {
             let result = try PersistenceController.makeContainer(inMemory: useInMemory)
             sharedModelContainer = result.container

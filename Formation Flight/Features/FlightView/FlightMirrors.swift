@@ -9,15 +9,16 @@
 import Foundation
 
 enum FlightMirrors {
-    /// The production mirrors: the Live Activity (F-02). The watch companion joins here.
+    /// The production mirrors (F-02): the Live Activity and the Apple Watch companion.
     ///
     /// Empty under UI tests and App Store screenshot runs (`-uiTestsResetStore`,
     /// `-uiTestsSeedFlights`): a Live Activity would put a Dynamic Island in the screenshots
-    /// and outlive a test run that is killed rather than ended.
+    /// and outlive a test run that is killed rather than ended, and a paired simulator watch
+    /// would be sent a flight no one is watching.
     @MainActor
     static func makeDefault(arguments: [String] = ProcessInfo.processInfo.arguments) -> [any FlightMirroring] {
         if isUITestOrScreenshotRun(arguments: arguments) { return [] }
-        return [LiveActivityMirror()]
+        return [LiveActivityMirror(), WatchMirror()]
     }
 
     static func isUITestOrScreenshotRun(arguments: [String]) -> Bool {

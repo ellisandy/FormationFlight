@@ -45,16 +45,9 @@ final class FlightViewModel: ObservableObject {
     static let calloutBannerDuration: TimeInterval = 4
 
     /// ETE row caption (B-45): the turn the ETE assumes, e.g. "TURN 0:45 R"; nil with no turn.
+    /// Shared with the watch companion (F-02).
     var turnCaption: String? {
-        guard let turnDuration, let turnInDirection else { return nil }
-        let total = Int(turnDuration)
-        let time = String(format: "%d:%02d", total / 60, total % 60)
-        switch turnInDirection {
-        case .left:
-            return String(localized: "TURN \(time) L", comment: "Flight ETE row: modelled turn-in, minutes:seconds, to the left")
-        case .right:
-            return String(localized: "TURN \(time) R", comment: "Flight ETE row: modelled turn-in, minutes:seconds, to the right")
-        }
+        FlightFormatting.turnCaption(duration: turnDuration, direction: turnInDirection)
     }
 
     // MARK: - Published State (Instruments)

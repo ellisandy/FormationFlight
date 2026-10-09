@@ -34,6 +34,12 @@
     "Roll out now." : {
       "comment" : "Callout: stop turning, now pointed at the target"
     },
+    "TURN %@ L" : {
+      "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the left"
+    },
+    "TURN %@ R" : {
+      "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the right"
+    },
     "Ten." : {
       "comment" : "Callout: ten seconds to ToT"
     },

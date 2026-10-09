@@ -18,17 +18,8 @@ enum MeasurementFormatters {
     /// whose "kn" disagreed with the "kt" pilots expect and Settings shows (D-09). The space
     /// before the unit follows system convention (D-05).
     static func speedString(_ measurement: Measurement<UnitSpeed>?, unitPreference: Settings.SpeedUnit) -> String {
-        guard let m = measurement else { return "--" }
-        let unit: UnitSpeed
-        switch unitPreference {
-        case .kts:
-            unit = .knots
-        case .mph:
-            unit = .milesPerHour
-        case .kph:
-            unit = .kilometersPerHour
-        }
-        return format(m.converted(to: unit).value, fractionDigits: 0, symbol: unitPreference.symbol)
+        // Shared with the watch companion (F-02).
+        FlightFormatting.speed(measurement, unit: unitPreference)
     }
 
     /// Formats a distance measurement in the preferred unit, e.g. `12.0 NM`, `8.0 mi`, `15.0 km`.
@@ -40,22 +31,6 @@ enum MeasurementFormatters {
     ///
     /// The symbol comes from `Settings.DistanceUnit.symbol` (D-09); see `speedString`.
     static func distanceString(_ measurement: Measurement<UnitLength>?, unitPreference: Settings.DistanceUnit) -> String {
-        guard let m = measurement else { return "--" }
-        let unit: UnitLength
-        switch unitPreference {
-        case .nm:
-            unit = .nauticalMiles
-        case .mi:
-            unit = .miles
-        case .km:
-            unit = .kilometers
-        }
-        return format(m.converted(to: unit).value, fractionDigits: 1, symbol: unitPreference.symbol)
-    }
-
-    /// Locale-aware number (grouping and decimal separator) followed by a space and `symbol`.
-    private static func format(_ value: Double, fractionDigits: Int, symbol: String) -> String {
-        let number = value.formatted(.number.precision(.fractionLength(fractionDigits)))
-        return "\(number) \(symbol)"
+        FlightFormatting.distance(measurement, unit: unitPreference)
     }
 }

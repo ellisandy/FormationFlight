@@ -305,12 +305,6 @@
     "ToT Countdown" : {
 
     },
-    "TURN %@ L" : {
-      "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the left"
-    },
-    "TURN %@ R" : {
-      "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the right"
-    },
     "Turn on Precise Location in Settings for accurate distance and timing." : {
 
     },

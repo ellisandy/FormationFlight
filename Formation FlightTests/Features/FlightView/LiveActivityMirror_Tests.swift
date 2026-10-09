@@ -200,6 +200,9 @@ struct LiveActivityMirrorTests {
     func noMirrorsUnderUITests() {
         #expect(FlightMirrors.makeDefault(arguments: ["app", "-uiTestsResetStore"]).isEmpty)
         #expect(FlightMirrors.makeDefault(arguments: ["app", "-uiTestsSeedFlights"]).isEmpty)
-        #expect(FlightMirrors.makeDefault(arguments: ["app"]).count == 1)
+        let mirrors = FlightMirrors.makeDefault(arguments: ["app"])
+        #expect(mirrors.count == 2)
+        #expect(mirrors.contains { $0 is LiveActivityMirror })
+        #expect(mirrors.contains { $0 is WatchMirror })
     }
 }

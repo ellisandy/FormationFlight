@@ -133,10 +133,8 @@ public struct FlightSnapshot: Codable, Sendable, Equatable {
     }
 
     // MARK: - Codec
-
-    /// Key under which the encoded snapshot travels in a WatchConnectivity message or
-    /// application context (`[transferKey: snapshot.encoded()]`).
-    public static let transferKey = "flightSnapshot"
+    // On the WatchConnectivity wire a snapshot travels inside `WatchMessage` (F-02), which
+    // carries the dictionary key; these encode the snapshot on its own.
 
     public enum CodecError: Error, Equatable {
         /// The payload was written by a build with a different `payloadVersion`.

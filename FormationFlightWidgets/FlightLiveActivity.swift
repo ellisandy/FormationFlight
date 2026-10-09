@@ -114,8 +114,8 @@ struct FlightActivityModel {
     /// Signed Δ as `+0:07` / `-1:05` / `0:00`, or `--:--` when unknown or stale.
     var deltaText: String {
         guard let delta else { return "--:--" }
-        let sign = delta > 0 ? "+" : (delta < 0 ? "-" : "")
-        return sign + Self.minutesSeconds(abs(delta))
+        // Shared with the watch companion (F-02) so both read Δ the same way.
+        return FlightFormatting.compactDuration(TimeInterval(delta), signed: true)
     }
 
     var deltaAccessibilityLabel: String {
@@ -160,13 +160,6 @@ struct FlightActivityModel {
 
     private static let timeStyle = Date.FormatStyle(date: .omitted, time: .standard)
         .locale(Locale(identifier: "en_GB"))
-
-    static func minutesSeconds(_ seconds: Int) -> String {
-        let hours = seconds / 3600, minutes = seconds % 3600 / 60, secs = seconds % 60
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, secs)
-            : String(format: "%d:%02d", minutes, secs)
-    }
 }
 
 // MARK: - Lock screen, banner and Smart Stack
