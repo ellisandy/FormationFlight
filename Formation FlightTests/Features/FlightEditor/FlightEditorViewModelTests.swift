@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CoreLocation
 @testable import Formation_Flight
+import FormationFlightCore
 
 @Suite("FlightEditorViewModelTests")
 @MainActor

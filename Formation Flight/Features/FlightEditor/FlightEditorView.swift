@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreLocation
 import MapKit
+import FormationFlightCore
 
 @MainActor
 struct FlightEditorView: View {

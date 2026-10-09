@@ -1,28 +1,11 @@
 //
 //  CalloutEngine.swift
-//  Formation Flight
+//  FormationFlightCore
 //
 //  F-01: decides which in-flight callout, if any, to give on each 1 Hz tick.
 //
 
 import Foundation
-
-/// One banner / spoken callout.
-struct Callout: Equatable, Sendable {
-    /// Event type, in priority order: when several are due on the same tick the first wins
-    /// and the others are re-evaluated on later ticks (or dropped if no longer true).
-    enum Kind: Sendable {
-        case countdown
-        case turnIn
-        case gps
-        case drift
-        case speed
-    }
-
-    let kind: Kind
-    /// Short radio-style phrase, used for both the banner and speech.
-    let text: String
-}
 
 /// Turns the flight screen's derived state into callouts, keeping them sparse.
 ///
@@ -39,45 +22,74 @@ struct Callout: Equatable, Sendable {
 ///   After ToT, only GPS callouts remain.
 /// - Level conditions (drift, speed) that are blocked are not queued: they are re-checked on
 ///   the next tick, so nothing stale is ever spoken.
-struct CalloutEngine {
-    struct Input {
-        var now: Date
-        var tot: Date?
+public struct CalloutEngine {
+    public struct Input: Sendable {
+        public var now: Date
+        public var tot: Date?
         /// Positive late, negative early (whole seconds), as shown in the Δ row.
-        var delta: TimeInterval?
-        var yellowTolerance: Int
-        var redTolerance: Int
+        public var delta: TimeInterval?
+        public var yellowTolerance: Int
+        public var redTolerance: Int
         /// Orbit in progress from the track rate; nil while straight.
-        var turnDirection: TurnToTarget.Direction?
+        public var turnDirection: TurnToTarget.Direction?
         /// Direction of the modelled turn onto the target.
-        var turnInDirection: TurnToTarget.Direction?
+        public var turnInDirection: TurnToTarget.Direction?
         /// Seconds of turn left before pointing at the target; nil when the geometry is unknown.
-        var turnRemaining: TimeInterval?
-        var currentGroundSpeed: Measurement<UnitSpeed>?
-        var requiredGroundSpeed: Measurement<UnitSpeed>?
+        public var turnRemaining: TimeInterval?
+        public var currentGroundSpeed: Measurement<UnitSpeed>?
+        public var requiredGroundSpeed: Measurement<UnitSpeed>?
         /// The last fix is older than the staleness threshold.
-        var isFixStale: Bool
-        var settings: CalloutSettings
-        var speedUnit: Settings.SpeedUnit
+        public var isFixStale: Bool
+        public var settings: CalloutSettings
+        /// The pilot's display unit, for the target speed in a speed advisory.
+        public var speedUnit: SpeedUnit
+
+        public init(now: Date,
+                    tot: Date?,
+                    delta: TimeInterval?,
+                    yellowTolerance: Int,
+                    redTolerance: Int,
+                    turnDirection: TurnToTarget.Direction?,
+                    turnInDirection: TurnToTarget.Direction?,
+                    turnRemaining: TimeInterval?,
+                    currentGroundSpeed: Measurement<UnitSpeed>?,
+                    requiredGroundSpeed: Measurement<UnitSpeed>?,
+                    isFixStale: Bool,
+                    settings: CalloutSettings,
+                    speedUnit: SpeedUnit) {
+            self.now = now
+            self.tot = tot
+            self.delta = delta
+            self.yellowTolerance = yellowTolerance
+            self.redTolerance = redTolerance
+            self.turnDirection = turnDirection
+            self.turnInDirection = turnInDirection
+            self.turnRemaining = turnRemaining
+            self.currentGroundSpeed = currentGroundSpeed
+            self.requiredGroundSpeed = requiredGroundSpeed
+            self.isFixStale = isFixStale
+            self.settings = settings
+            self.speedUnit = speedUnit
+        }
     }
 
     // MARK: - Tuning
 
     /// Seconds before ToT that get a callout. 0 is "Mark".
-    static let countdownMarks = [300, 60, 30, 10, 5, 4, 3, 2, 1, 0]
-    static let advisoryGap: TimeInterval = 5
-    static let driftHold: TimeInterval = 3
-    static let driftCooldown: TimeInterval = 15
-    static let speedHold: TimeInterval = 3
-    static let speedInterval: TimeInterval = 30
-    static let finalRunWindow = 15
+    public static let countdownMarks = [300, 60, 30, 10, 5, 4, 3, 2, 1, 0]
+    public static let advisoryGap: TimeInterval = 5
+    public static let driftHold: TimeInterval = 3
+    public static let driftCooldown: TimeInterval = 15
+    public static let speedHold: TimeInterval = 3
+    public static let speedInterval: TimeInterval = 30
+    public static let finalRunWindow = 15
     /// A pending turn shorter than this is "already pointed at it": no start-turn cue.
-    static let minimumTurnForCue: TimeInterval = 5
+    public static let minimumTurnForCue: TimeInterval = 5
     /// Roll-out cue lead: about 9° of standard-rate turn before pointing at the target.
-    static let rollOutLead: TimeInterval = 3
+    public static let rollOutLead: TimeInterval = 3
     /// The roll-out cue arms only once the turn has at least this much left, so it fires once
     /// per approach to the target rather than on every tick near it.
-    static let rollOutArmTurn: TimeInterval = 10
+    public static let rollOutArmTurn: TimeInterval = 10
 
     // MARK: - State
 
@@ -104,12 +116,12 @@ struct CalloutEngine {
     private var gpsLostAnnounced = false
     private var pendingGPS: Callout?
 
-    init() {}
+    public init() {}
 
     // MARK: - Evaluation
 
     /// Updates the trackers with this tick's state and returns the callout to give, if any.
-    mutating func evaluate(_ input: Input) -> Callout? {
+    public mutating func evaluate(_ input: Input) -> Callout? {
         let settings = input.settings
         let now = input.now
         // Whole seconds to ToT, rounded up so "Mark" lands on the first tick at or after ToT.
@@ -127,7 +139,7 @@ struct CalloutEngine {
         //    for a late timer), so editing the ToT never replays marks already passed.
         if settings.countdownEnabled, let remaining, let previous = lastRemaining,
            let mark = Self.countdownMarks.first(where: { previous > $0 && remaining <= $0 && remaining >= $0 - 1 }) {
-            return emit(Callout(kind: .countdown, text: Self.countdownText(mark)), at: now)
+            return emit(Callout(.countdown(secondsToToT: mark)), at: now)
         }
 
         // 2. Turn cues.
@@ -168,10 +180,10 @@ struct CalloutEngine {
         // GPS edges. A recovery is announced only if the loss was.
         if input.isFixStale != wasStale {
             if input.isFixStale {
-                pendingGPS = Callout(kind: .gps, text: String(localized: "GPS lost.", comment: "Callout: the GPS fix has gone stale"))
+                pendingGPS = Callout(.gpsLost)
             } else {
                 pendingGPS = gpsLostAnnounced
-                    ? Callout(kind: .gps, text: String(localized: "GPS restored.", comment: "Callout: GPS fixes are arriving again"))
+                    ? Callout(.gpsRestored)
                     : nil
                 gpsLostAnnounced = false
             }
@@ -218,10 +230,7 @@ struct CalloutEngine {
            delta >= -Double(input.yellowTolerance), let direction = input.turnInDirection {
             startTurnArmed = false
             suppressDriftAnnouncement(band, at: input.now)
-            switch direction {
-            case .left: return Callout(kind: .turnIn, text: String(localized: "Turn left now.", comment: "Callout: start the turn onto the target, to the left"))
-            case .right: return Callout(kind: .turnIn, text: String(localized: "Turn right now.", comment: "Callout: start the turn onto the target, to the right"))
-            }
+            return Callout(.turnIn(direction))
         }
 
         // Orbiting: about to point at the target with no full orbit to spare.
@@ -229,7 +238,7 @@ struct CalloutEngine {
            TurnToTarget.surplusOrbits(delta: delta) == 0 {
             rollOutArmed = false
             suppressDriftAnnouncement(band, at: input.now)
-            return Callout(kind: .turnIn, text: String(localized: "Roll out now.", comment: "Callout: stop turning, now pointed at the target"))
+            return Callout(.rollOut)
         }
         return nil
     }
@@ -262,27 +271,25 @@ struct CalloutEngine {
         announcedBand = band
         if isFirstReading && band == .onTime { return nil }
         lastDriftAt = input.now
-        return Callout(kind: .drift, text: Self.driftText(delta: delta, isOnTime: band == .onTime))
+        return Callout(Self.driftEvent(delta: delta, isOnTime: band == .onTime))
+    }
+
+    /// The drift event for a whole-second Δ: on time inside the yellow tolerance (or at a
+    /// zero magnitude), otherwise early or late by `|Δ|`.
+    public static func driftEvent(delta: TimeInterval, isOnTime: Bool) -> Callout.Event {
+        let seconds = Int(abs(delta))
+        let relation: Callout.DriftRelation
+        if isOnTime || seconds == 0 {
+            relation = .onTime
+        } else {
+            relation = delta < 0 ? .early : .late
+        }
+        return .drift(seconds: seconds, relation: relation)
     }
 
     /// "On time." inside the yellow tolerance, otherwise "Early, 12." / "Late, 1 minute, 5 seconds."
-    static func driftText(delta: TimeInterval, isOnTime: Bool) -> String {
-        let seconds = Int(abs(delta))
-        if isOnTime || seconds == 0 {
-            return String(localized: "On time.", comment: "Callout: Δ is within the yellow tolerance")
-        }
-        let amount: String
-        if seconds < 60 {
-            amount = "\(seconds)"
-        } else {
-            let formatter = DateComponentsFormatter()
-            formatter.allowedUnits = [.minute, .second]
-            formatter.unitsStyle = .full
-            amount = formatter.string(from: TimeInterval(seconds)) ?? "\(seconds)"
-        }
-        return delta < 0
-            ? String(localized: "Early, \(amount).", comment: "Callout: early by this many seconds, or minutes and seconds")
-            : String(localized: "Late, \(amount).", comment: "Callout: late by this many seconds, or minutes and seconds")
+    public static func driftText(delta: TimeInterval, isOnTime: Bool) -> String {
+        driftEvent(delta: delta, isOnTime: isOnTime).text
     }
 
     // MARK: - Speed
@@ -315,28 +322,13 @@ struct CalloutEngine {
         lastSpeedTargetKnots = requiredKnots
         lastSpeedIncrease = increase
 
-        let unit: UnitSpeed
-        switch input.speedUnit {
-        case .kts: unit = .knots
-        case .mph: unit = .milesPerHour
-        case .kph: unit = .kilometersPerHour
-        }
-        let value = Int(required.converted(to: unit).value.rounded())
-        return increase
-            ? Callout(kind: .speed, text: String(localized: "Increase, \(value).", comment: "Callout: speed up to this ground speed, in the pilot's unit"))
-            : Callout(kind: .speed, text: String(localized: "Reduce, \(value).", comment: "Callout: slow down to this ground speed, in the pilot's unit"))
+        let value = Int(required.converted(to: input.speedUnit.unitSpeed).value.rounded())
+        return Callout(.speed(increase: increase, target: value, unit: input.speedUnit))
     }
 
     // MARK: - Countdown
 
-    static func countdownText(_ mark: Int) -> String {
-        switch mark {
-        case 300: String(localized: "Five minutes.", comment: "Callout: five minutes to ToT")
-        case 60: String(localized: "One minute.", comment: "Callout: one minute to ToT")
-        case 30: String(localized: "Thirty seconds.", comment: "Callout: thirty seconds to ToT")
-        case 10: String(localized: "Ten.", comment: "Callout: ten seconds to ToT")
-        case 0: String(localized: "Mark.", comment: "Callout: now at ToT")
-        default: "\(mark)."
-        }
+    public static func countdownText(_ mark: Int) -> String {
+        Callout.Event.countdownText(mark)
     }
 }

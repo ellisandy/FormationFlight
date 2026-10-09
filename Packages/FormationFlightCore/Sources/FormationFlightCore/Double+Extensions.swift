@@ -1,6 +1,6 @@
 //
 //  Double+Extensions.swift
-//  Formation Flight
+//  FormationFlightCore
 //
 //  Created by Jack Ellis on 12/31/23.
 //

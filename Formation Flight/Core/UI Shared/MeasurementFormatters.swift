@@ -3,6 +3,7 @@
 /// Returns localized numbers followed by the unit symbol the Settings screen uses, with `--`
 /// placeholders for missing values.
 import Foundation
+import FormationFlightCore
 
 /// Namespace for measurement-formatting utilities.
 enum MeasurementFormatters {

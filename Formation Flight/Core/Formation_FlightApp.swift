@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import CoreData
 import CoreLocation
+import FormationFlightCore
 
 @main
 struct Formation_FlightApp: App {

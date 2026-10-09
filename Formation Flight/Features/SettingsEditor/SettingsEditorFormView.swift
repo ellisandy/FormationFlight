@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FormationFlightCore
 
 struct SettingsEditorFormView: View {
     @Bindable var viewModel: SettingsEditorViewModel

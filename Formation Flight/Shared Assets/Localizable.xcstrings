@@ -76,9 +76,6 @@
     "EARLY · +%lld ORBIT" : {
       "comment" : "Flight Δ row: early by at least this many full standard-rate orbits"
     },
-    "Early, %@." : {
-      "comment" : "Callout: early by this many seconds, or minutes and seconds"
-    },
     "Edit Hack" : {
 
     },
@@ -103,9 +100,6 @@
     "Far outside tolerance" : {
       "comment" : "Flight status: delta beyond the red tolerance"
     },
-    "Five minutes." : {
-      "comment" : "Callout: five minutes to ToT"
-    },
     "Flight Editor" : {
 
     },
@@ -127,12 +121,6 @@
     "Go Fly" : {
 
     },
-    "GPS lost." : {
-      "comment" : "Callout: the GPS fix has gone stale"
-    },
-    "GPS restored." : {
-      "comment" : "Callout: GPS fixes are arriving again"
-    },
     "Hack" : {
 
     },
@@ -144,9 +132,6 @@
     },
     "I Understand" : {
       "comment" : "Button that acknowledges the safety disclaimer"
-    },
-    "Increase, %lld." : {
-      "comment" : "Callout: speed up to this ground speed, in the pilot's unit"
     },
     "Instruments" : {
 
@@ -166,9 +151,6 @@
     "LATE" : {
       "comment" : "Flight Δ row: ETA is after ToT"
     },
-    "Late, %@." : {
-      "comment" : "Callout: late by this many seconds, or minutes and seconds"
-    },
     "Latitude" : {
 
     },
@@ -186,9 +168,6 @@
     },
     "Longitude: %@" : {
 
-    },
-    "Mark." : {
-      "comment" : "Callout: now at ToT"
     },
     "Min" : {
 
@@ -213,12 +192,6 @@
     },
     "ON TIME" : {
       "comment" : "Flight Δ row: ETA equals ToT"
-    },
-    "On time." : {
-      "comment" : "Callout: Δ is within the yellow tolerance"
-    },
-    "One minute." : {
-      "comment" : "Callout: one minute to ToT"
     },
     "Open settings" : {
 
@@ -252,12 +225,6 @@
     },
     "Red ±%lld s" : {
 
-    },
-    "Reduce, %lld." : {
-      "comment" : "Callout: slow down to this ground speed, in the pilot's unit"
-    },
-    "Roll out now." : {
-      "comment" : "Callout: stop turning, now pointed at the target"
     },
     "Safety" : {
 
@@ -314,14 +281,8 @@
     "Target" : {
 
     },
-    "Ten." : {
-      "comment" : "Callout: ten seconds to ToT"
-    },
     "The time on target is in the past." : {
       "comment" : "Validation message when a time-on-target mission is scheduled more than a minute ago"
-    },
-    "Thirty seconds." : {
-      "comment" : "Callout: thirty seconds to ToT"
     },
     "This will stop tracking and close out the current mission." : {
 
@@ -350,14 +311,8 @@
     "TURN %@ R" : {
       "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the right"
     },
-    "Turn left now." : {
-      "comment" : "Callout: start the turn onto the target, to the left"
-    },
     "Turn on Precise Location in Settings for accurate distance and timing." : {
 
-    },
-    "Turn right now." : {
-      "comment" : "Callout: start the turn onto the target, to the right"
     },
     "Turn-In Cue" : {
 

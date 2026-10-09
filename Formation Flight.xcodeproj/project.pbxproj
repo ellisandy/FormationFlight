@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C2F0F16230795B2400BCA3AC /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C2F0F16130795B2400BCA3AC /* WidgetKit.framework */; };
+		C2F0F16430795B2400BCA3AC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C2F0F16330795B2400BCA3AC /* SwiftUI.framework */; };
+		C2F0F16F30795B2400BCA3AC /* FormationFlightWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C2F0F15F30795B2400BCA3AC /* FormationFlightWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C2F0F19730795BE600BCA3AC /* Formation Flight Watch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2F0F17930795BE500BCA3AC /* Formation Flight Watch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C2F0F1A430795C0800BCA3AC /* FormationFlightCore in Frameworks */ = {isa = PBXBuildFile; productRef = C2F0F1A330795C0800BCA3AC /* FormationFlightCore */; };
+		C2F0F1A630795C3C00BCA3AC /* FormationFlightCore in Frameworks */ = {isa = PBXBuildFile; productRef = C2F0F1A530795C3C00BCA3AC /* FormationFlightCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		C292556B2B2D648D0064F41F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +30,72 @@
 			remoteGlobalIDString = C29255552B2D648C0064F41F;
 			remoteInfo = "Formation Flight";
 		};
+		C2F0F16D30795B2400BCA3AC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C292554E2B2D648C0064F41F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2F0F15E30795B2400BCA3AC;
+			remoteInfo = FormationFlightWidgetsExtension;
+		};
+		C2F0F18630795BE600BCA3AC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C292554E2B2D648C0064F41F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2F0F17830795BE500BCA3AC;
+			remoteInfo = "Formation Flight Watch Watch App";
+		};
+		C2F0F19030795BE600BCA3AC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C292554E2B2D648C0064F41F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2F0F17830795BE500BCA3AC;
+			remoteInfo = "Formation Flight Watch Watch App";
+		};
+		C2F0F19530795BE600BCA3AC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C292554E2B2D648C0064F41F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2F0F17830795BE500BCA3AC;
+			remoteInfo = "Formation Flight Watch Watch App";
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C2F0F17030795B2400BCA3AC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C2F0F16F30795B2400BCA3AC /* FormationFlightWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F19B30795BE600BCA3AC /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				C2F0F19730795BE600BCA3AC /* Formation Flight Watch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		C2218E7B2B3F3D7000D5D569 /* Formation Flight.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Formation Flight.xctestplan"; sourceTree = "<group>"; };
 		C29255562B2D648C0064F41F /* Formation Flight.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Formation Flight.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C292556A2B2D648D0064F41F /* Formation FlightTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Formation FlightTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C29255742B2D648D0064F41F /* Formation FlightUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Formation FlightUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F0F15F30795B2400BCA3AC /* FormationFlightWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FormationFlightWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F0F16130795B2400BCA3AC /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = /System/Library/Frameworks/WidgetKit.framework; sourceTree = "<absolute>"; };
+		C2F0F16330795B2400BCA3AC /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
+		C2F0F17930795BE500BCA3AC /* Formation Flight Watch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Formation Flight Watch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F0F18530795BE600BCA3AC /* Formation Flight Watch Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Formation Flight Watch Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C2F0F18F30795BE600BCA3AC /* Formation Flight Watch Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Formation Flight Watch Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -37,6 +105,13 @@
 				"Shared Assets/Info.plist",
 			);
 			target = C29255552B2D648C0064F41F /* Formation Flight */;
+		};
+		C2F0F17430795B2400BCA3AC /* Exceptions for "FormationFlightWidgets" folder in "FormationFlightWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C2F0F15E30795B2400BCA3AC /* FormationFlightWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -59,6 +134,29 @@
 			path = "Formation FlightUITests";
 			sourceTree = "<group>";
 		};
+		C2F0F16530795B2400BCA3AC /* FormationFlightWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C2F0F17430795B2400BCA3AC /* Exceptions for "FormationFlightWidgets" folder in "FormationFlightWidgetsExtension" target */,
+			);
+			path = FormationFlightWidgets;
+			sourceTree = "<group>";
+		};
+		C2F0F17A30795BE500BCA3AC /* Formation Flight Watch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Formation Flight Watch Watch App";
+			sourceTree = "<group>";
+		};
+		C2F0F18830795BE600BCA3AC /* Formation Flight Watch Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Formation Flight Watch Watch AppTests";
+			sourceTree = "<group>";
+		};
+		C2F0F19230795BE600BCA3AC /* Formation Flight Watch Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Formation Flight Watch Watch AppUITests";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +164,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C2F0F1A430795C0800BCA3AC /* FormationFlightCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +182,37 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C2F0F15C30795B2400BCA3AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C2F0F16430795B2400BCA3AC /* SwiftUI.framework in Frameworks */,
+				C2F0F1A630795C3C00BCA3AC /* FormationFlightCore in Frameworks */,
+				C2F0F16230795B2400BCA3AC /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F17630795BE500BCA3AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F18230795BE600BCA3AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F18C30795BE600BCA3AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -93,6 +223,11 @@
 				C2E5A2012EE1B00000A5F0D1 /* Formation Flight */,
 				C2E5A2022EE1B00000A5F0D1 /* Formation FlightTests */,
 				C2E5A2032EE1B00000A5F0D1 /* Formation FlightUITests */,
+				C2F0F16530795B2400BCA3AC /* FormationFlightWidgets */,
+				C2F0F17A30795BE500BCA3AC /* Formation Flight Watch Watch App */,
+				C2F0F18830795BE600BCA3AC /* Formation Flight Watch Watch AppTests */,
+				C2F0F19230795BE600BCA3AC /* Formation Flight Watch Watch AppUITests */,
+				C2F0F16030795B2400BCA3AC /* Frameworks */,
 				C29255572B2D648C0064F41F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -103,8 +238,21 @@
 				C29255562B2D648C0064F41F /* Formation Flight.app */,
 				C292556A2B2D648D0064F41F /* Formation FlightTests.xctest */,
 				C29255742B2D648D0064F41F /* Formation FlightUITests.xctest */,
+				C2F0F15F30795B2400BCA3AC /* FormationFlightWidgetsExtension.appex */,
+				C2F0F17930795BE500BCA3AC /* Formation Flight Watch Watch App.app */,
+				C2F0F18530795BE600BCA3AC /* Formation Flight Watch Watch AppTests.xctest */,
+				C2F0F18F30795BE600BCA3AC /* Formation Flight Watch Watch AppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C2F0F16030795B2400BCA3AC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C2F0F16130795B2400BCA3AC /* WidgetKit.framework */,
+				C2F0F16330795B2400BCA3AC /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -117,15 +265,22 @@
 				C29255522B2D648C0064F41F /* Sources */,
 				C29255532B2D648C0064F41F /* Frameworks */,
 				C29255542B2D648C0064F41F /* Resources */,
+				C2F0F17030795B2400BCA3AC /* Embed Foundation Extensions */,
+				C2F0F19B30795BE600BCA3AC /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C2F0F16E30795B2400BCA3AC /* PBXTargetDependency */,
+				C2F0F19630795BE600BCA3AC /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				C2E5A2012EE1B00000A5F0D1 /* Formation Flight */,
 			);
 			name = "Formation Flight";
+			packageProductDependencies = (
+				C2F0F1A330795C0800BCA3AC /* FormationFlightCore */,
+			);
 			productName = "Formation Flight";
 			productReference = C29255562B2D648C0064F41F /* Formation Flight.app */;
 			productType = "com.apple.product-type.application";
@@ -172,6 +327,97 @@
 			productReference = C29255742B2D648D0064F41F /* Formation FlightUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		C2F0F15E30795B2400BCA3AC /* FormationFlightWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C2F0F17330795B2400BCA3AC /* Build configuration list for PBXNativeTarget "FormationFlightWidgetsExtension" */;
+			buildPhases = (
+				C2F0F15B30795B2400BCA3AC /* Sources */,
+				C2F0F15C30795B2400BCA3AC /* Frameworks */,
+				C2F0F15D30795B2400BCA3AC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C2F0F16530795B2400BCA3AC /* FormationFlightWidgets */,
+			);
+			name = FormationFlightWidgetsExtension;
+			packageProductDependencies = (
+				C2F0F1A530795C3C00BCA3AC /* FormationFlightCore */,
+			);
+			productName = FormationFlightWidgetsExtension;
+			productReference = C2F0F15F30795B2400BCA3AC /* FormationFlightWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C2F0F17830795BE500BCA3AC /* Formation Flight Watch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C2F0F19830795BE600BCA3AC /* Build configuration list for PBXNativeTarget "Formation Flight Watch Watch App" */;
+			buildPhases = (
+				C2F0F17530795BE500BCA3AC /* Sources */,
+				C2F0F17630795BE500BCA3AC /* Frameworks */,
+				C2F0F17730795BE500BCA3AC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C2F0F17A30795BE500BCA3AC /* Formation Flight Watch Watch App */,
+			);
+			name = "Formation Flight Watch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "Formation Flight Watch Watch App";
+			productReference = C2F0F17930795BE500BCA3AC /* Formation Flight Watch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C2F0F18430795BE600BCA3AC /* Formation Flight Watch Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C2F0F19C30795BE600BCA3AC /* Build configuration list for PBXNativeTarget "Formation Flight Watch Watch AppTests" */;
+			buildPhases = (
+				C2F0F18130795BE600BCA3AC /* Sources */,
+				C2F0F18230795BE600BCA3AC /* Frameworks */,
+				C2F0F18330795BE600BCA3AC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C2F0F18730795BE600BCA3AC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C2F0F18830795BE600BCA3AC /* Formation Flight Watch Watch AppTests */,
+			);
+			name = "Formation Flight Watch Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "Formation Flight Watch Watch AppTests";
+			productReference = C2F0F18530795BE600BCA3AC /* Formation Flight Watch Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C2F0F18E30795BE600BCA3AC /* Formation Flight Watch Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C2F0F19F30795BE600BCA3AC /* Build configuration list for PBXNativeTarget "Formation Flight Watch Watch AppUITests" */;
+			buildPhases = (
+				C2F0F18B30795BE600BCA3AC /* Sources */,
+				C2F0F18C30795BE600BCA3AC /* Frameworks */,
+				C2F0F18D30795BE600BCA3AC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C2F0F19130795BE600BCA3AC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C2F0F19230795BE600BCA3AC /* Formation Flight Watch Watch AppUITests */,
+			);
+			name = "Formation Flight Watch Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "Formation Flight Watch Watch AppUITests";
+			productReference = C2F0F18F30795BE600BCA3AC /* Formation Flight Watch Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -179,7 +425,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1510;
+				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					C29255552B2D648C0064F41F = {
@@ -193,6 +439,20 @@
 						CreatedOnToolsVersion = 15.1;
 						TestTargetID = C29255552B2D648C0064F41F;
 					};
+					C2F0F15E30795B2400BCA3AC = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					C2F0F17830795BE500BCA3AC = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					C2F0F18430795BE600BCA3AC = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = C2F0F17830795BE500BCA3AC;
+					};
+					C2F0F18E30795BE600BCA3AC = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = C2F0F17830795BE500BCA3AC;
+					};
 				};
 			};
 			buildConfigurationList = C29255512B2D648C0064F41F /* Build configuration list for PBXProject "Formation Flight" */;
@@ -204,6 +464,9 @@
 			);
 			mainGroup = C292554D2B2D648C0064F41F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C2F0F1A230795C0800BCA3AC /* XCLocalSwiftPackageReference "Packages/FormationFlightCore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C29255572B2D648C0064F41F /* Products */;
 			projectDirPath = "";
@@ -212,6 +475,10 @@
 				C29255552B2D648C0064F41F /* Formation Flight */,
 				C29255692B2D648D0064F41F /* Formation FlightTests */,
 				C29255732B2D648D0064F41F /* Formation FlightUITests */,
+				C2F0F15E30795B2400BCA3AC /* FormationFlightWidgetsExtension */,
+				C2F0F17830795BE500BCA3AC /* Formation Flight Watch Watch App */,
+				C2F0F18430795BE600BCA3AC /* Formation Flight Watch Watch AppTests */,
+				C2F0F18E30795BE600BCA3AC /* Formation Flight Watch Watch AppUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -232,6 +499,34 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C29255722B2D648D0064F41F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F15D30795B2400BCA3AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F17730795BE500BCA3AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F18330795BE600BCA3AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F18D30795BE600BCA3AC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -262,6 +557,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C2F0F15B30795B2400BCA3AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F17530795BE500BCA3AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F18130795BE600BCA3AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2F0F18B30795BE600BCA3AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -274,6 +597,26 @@
 			isa = PBXTargetDependency;
 			target = C29255552B2D648C0064F41F /* Formation Flight */;
 			targetProxy = C29255752B2D648D0064F41F /* PBXContainerItemProxy */;
+		};
+		C2F0F16E30795B2400BCA3AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2F0F15E30795B2400BCA3AC /* FormationFlightWidgetsExtension */;
+			targetProxy = C2F0F16D30795B2400BCA3AC /* PBXContainerItemProxy */;
+		};
+		C2F0F18730795BE600BCA3AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2F0F17830795BE500BCA3AC /* Formation Flight Watch Watch App */;
+			targetProxy = C2F0F18630795BE600BCA3AC /* PBXContainerItemProxy */;
+		};
+		C2F0F19130795BE600BCA3AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2F0F17830795BE500BCA3AC /* Formation Flight Watch Watch App */;
+			targetProxy = C2F0F19030795BE600BCA3AC /* PBXContainerItemProxy */;
+		};
+		C2F0F19630795BE600BCA3AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2F0F17830795BE500BCA3AC /* Formation Flight Watch Watch App */;
+			targetProxy = C2F0F19530795BE600BCA3AC /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -422,8 +765,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Formation Flight/Shared Assets/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Formation Flight";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Formation Flight uses your location to compute distance, bearing, groundspeed, and time to your target while you fly. Location never leaves your device.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
@@ -461,8 +806,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Formation Flight/Shared Assets/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Formation Flight";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Formation Flight uses your location to compute distance, bearing, groundspeed, and time to your target while you fly. Location never leaves your device.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
@@ -552,6 +899,244 @@
 			};
 			name = Release;
 		};
+		C2F0F17130795B2400BCA3AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FormationFlightWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Formation Flight";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight.FormationFlightWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		C2F0F17230795B2400BCA3AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FormationFlightWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Formation Flight";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight.FormationFlightWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
+		C2F0F19930795BE600BCA3AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Formation Flight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "cc.mnmlst.Formation-Flight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		C2F0F19A30795BE600BCA3AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Formation Flight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "cc.mnmlst.Formation-Flight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		C2F0F19D30795BE600BCA3AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YJBSSS9C6C;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight-Watch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Formation Flight Watch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Formation Flight Watch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		C2F0F19E30795BE600BCA3AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YJBSSS9C6C;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight-Watch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Formation Flight Watch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Formation Flight Watch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
+		C2F0F1A030795BE600BCA3AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YJBSSS9C6C;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight-Watch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Formation Flight Watch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		C2F0F1A130795BE600BCA3AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YJBSSS9C6C;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cc.mnmlst.Formation-Flight-Watch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Formation Flight Watch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -591,7 +1176,62 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		C2F0F17330795B2400BCA3AC /* Build configuration list for PBXNativeTarget "FormationFlightWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2F0F17130795B2400BCA3AC /* Debug */,
+				C2F0F17230795B2400BCA3AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C2F0F19830795BE600BCA3AC /* Build configuration list for PBXNativeTarget "Formation Flight Watch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2F0F19930795BE600BCA3AC /* Debug */,
+				C2F0F19A30795BE600BCA3AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C2F0F19C30795BE600BCA3AC /* Build configuration list for PBXNativeTarget "Formation Flight Watch Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2F0F19D30795BE600BCA3AC /* Debug */,
+				C2F0F19E30795BE600BCA3AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C2F0F19F30795BE600BCA3AC /* Build configuration list for PBXNativeTarget "Formation Flight Watch Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2F0F1A030795BE600BCA3AC /* Debug */,
+				C2F0F1A130795BE600BCA3AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		C2F0F1A230795C0800BCA3AC /* XCLocalSwiftPackageReference "Packages/FormationFlightCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/FormationFlightCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C2F0F1A330795C0800BCA3AC /* FormationFlightCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FormationFlightCore;
+		};
+		C2F0F1A530795C3C00BCA3AC /* FormationFlightCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C2F0F1A230795C0800BCA3AC /* XCLocalSwiftPackageReference "Packages/FormationFlightCore" */;
+			productName = FormationFlightCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C292554E2B2D648C0064F41F /* Project object */;
 }

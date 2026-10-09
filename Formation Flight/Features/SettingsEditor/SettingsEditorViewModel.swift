@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import FormationFlightCore
 
 @Observable
 final class SettingsEditorViewModel {

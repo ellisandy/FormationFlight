@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import Formation_Flight
+import FormationFlightCore
 
 @Suite("Settings Tests")
 struct SettingsTests {

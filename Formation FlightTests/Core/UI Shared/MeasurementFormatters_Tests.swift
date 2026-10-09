@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import Formation_Flight
+import FormationFlightCore
 
 /// `MeasurementFormatters` prints a locale-formatted number, a space (D-05), and the unit
 /// symbol from `Settings` (D-09). The decimal separator depends on the test process locale;

@@ -1,4 +1,5 @@
 import Foundation
+import FormationFlightCore
 
 public struct Settings: Codable, Equatable {
     public var speedUnit: SpeedUnit
@@ -31,37 +32,11 @@ public struct Settings: Codable, Equatable {
         }
     }
     
-    /// Raw values are the persisted encoding and must not change; `symbol` is what the UI shows.
-    public enum SpeedUnit: String, CaseIterable, Identifiable, Codable, Equatable {
-        case kts, kph, mph
-        public var id: Self { self }
-
-        /// Displayed unit symbol, shared by Settings and the flight screen (D-09). Aviation
-        /// convention for knots is "kt".
-        public var symbol: String {
-            switch self {
-            case .kts: return "kt"
-            case .kph: return "km/h"
-            case .mph: return "mph"
-            }
-        }
-    }
-
-    /// Raw values are the persisted encoding and must not change; `symbol` is what the UI shows.
-    public enum DistanceUnit: String, CaseIterable, Identifiable, Codable, Equatable {
-        case km, mi, nm
-        public var id: Self { self }
-
-        /// Displayed unit symbol, shared by Settings and the flight screen (D-09). Aviation
-        /// convention for nautical miles is "NM".
-        public var symbol: String {
-            switch self {
-            case .km: return "km"
-            case .mi: return "mi"
-            case .nm: return "NM"
-            }
-        }
-    }
+    /// The display units live in FormationFlightCore so the callout engine, the Live Activity
+    /// and the watch can use them; these aliases keep `Settings.SpeedUnit` working at call
+    /// sites. Raw values and Codable shape are unchanged, so saved settings still decode.
+    public typealias SpeedUnit = FormationFlightCore.SpeedUnit
+    public typealias DistanceUnit = FormationFlightCore.DistanceUnit
     
     /// Default ToT drift tolerances, in seconds. A fresh install must not treat every
     /// non-zero delta as red, so these are deliberately non-zero with yellow <= red.

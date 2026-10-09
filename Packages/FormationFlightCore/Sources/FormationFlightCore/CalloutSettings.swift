@@ -1,6 +1,6 @@
 //
 //  CalloutSettings.swift
-//  Formation Flight
+//  FormationFlightCore
 //
 //  F-01: which in-flight callouts the pilot wants, and whether they are spoken.
 //

@@ -8,6 +8,7 @@
 import os
 import SwiftData
 import SwiftUI
+import FormationFlightCore
 
 private struct FlightsListRowView: View {
     let flight: Flight

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import Formation_Flight
+import FormationFlightCore
 
 @MainActor
 private final class MockCalloutSpeaker: CalloutSpeaking {

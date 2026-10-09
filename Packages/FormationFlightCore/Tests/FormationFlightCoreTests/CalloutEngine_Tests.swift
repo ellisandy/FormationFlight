@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Formation_Flight
+@testable import FormationFlightCore
 
 /// F-01 callout rules, driven one simulated 1 Hz tick at a time.
 @Suite("CalloutEngine")
@@ -18,7 +18,7 @@ struct CalloutEngineTests {
                        requiredKnots: Double? = nil,
                        isFixStale: Bool = false,
                        settings: CalloutSettings = .defaults,
-                       speedUnit: Settings.SpeedUnit = .kts) -> CalloutEngine.Input {
+                       speedUnit: SpeedUnit = .kts) -> CalloutEngine.Input {
         CalloutEngine.Input(
             now: Self.start.addingTimeInterval(TimeInterval(second)),
             tot: tot,
@@ -150,6 +150,25 @@ struct CalloutEngineTests {
         }
         #expect(out.map(\.second) == [3, 33])
         #expect(out.map(\.callout.text) == ["Reduce, 115.", "Reduce, 92."])
+    }
+
+    @Test("Speed and countdown callouts carry structured events, not just text")
+    func structuredEvents() {
+        var engine = CalloutEngine()
+        var settings = CalloutSettings.defaults
+        settings.driftEnabled = false
+        let speed = run(&engine, 0...10) { second in
+            input(at: second, delta: 40, currentKnots: 120, requiredKnots: 100, settings: settings, speedUnit: .mph)
+        }
+        #expect(speed.first?.callout.event == .speed(increase: false, target: 115, unit: .mph))
+
+        var countdown = CalloutEngine()
+        let tot = Self.start.addingTimeInterval(11)
+        let marks = run(&countdown, 0...12) { input(at: $0, tot: tot) }
+        #expect(marks.map(\.callout.event) == [.countdown(secondsToToT: 10), .countdown(secondsToToT: 5),
+                                               .countdown(secondsToToT: 4), .countdown(secondsToToT: 3),
+                                               .countdown(secondsToToT: 2), .countdown(secondsToToT: 1),
+                                               .countdown(secondsToToT: 0)])
     }
 
     @Test("A gap under the threshold gives no advice")

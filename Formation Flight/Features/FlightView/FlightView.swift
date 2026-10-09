@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import CoreLocation
+import FormationFlightCore
 
 private struct LabelValueRow: View {
     let label: String
