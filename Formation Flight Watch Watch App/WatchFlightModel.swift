@@ -7,8 +7,6 @@
 //  plays the haptics it asks for.
 //
 
-// Compiled only once the target links FormationFlightCore (see Formation_Flight_WatchApp.swift).
-#if canImport(FormationFlightCore)
 import Foundation
 import Observation
 import WatchKit
@@ -72,4 +70,3 @@ extension CueHaptic {
         }
     }
 }
-#endif

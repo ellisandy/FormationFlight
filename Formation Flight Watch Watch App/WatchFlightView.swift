@@ -7,8 +7,6 @@
 //  ended.
 //
 
-// Compiled only once the target links FormationFlightCore (see Formation_Flight_WatchApp.swift).
-#if canImport(FormationFlightCore)
 import SwiftUI
 import FormationFlightCore
 
@@ -29,24 +27,35 @@ struct WatchFlightView: View {
 struct WatchFlightScreen: View {
     let display: WatchFlightDisplay
     let now: Date
+    /// False only in previews. Xcode 27's watchOS 27.0 preview agent traps (SIGTRAP in UIKit
+    /// layout) on any ScrollView or List inside a NavigationStack, even a one-line one, while
+    /// the same views run fine in the simulator. Previews therefore draw the content without
+    /// the stack, losing only the navigation title and the full-screen tint.
+    var inNavigationStack = true
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch display.phase {
-                case .idle:
-                    IdleView()
-                case .ended:
-                    EndedView()
-                case .awaitingHack:
-                    AwaitingHackView(display: display)
-                case .active, .stale:
-                    ActiveFlightView(display: display, now: now)
-                }
-            }
-            .navigationTitle(display.phase == .idle || display.phase == .ended ? "" : display.missionName)
-            .containerBackground(backgroundTint.gradient, for: .navigation)
+        if inNavigationStack {
+            NavigationStack { content }
+        } else {
+            content
         }
+    }
+
+    private var content: some View {
+        Group {
+            switch display.phase {
+            case .idle:
+                IdleView()
+            case .ended:
+                EndedView()
+            case .awaitingHack:
+                AwaitingHackView(display: display)
+            case .active, .stale:
+                ActiveFlightView(display: display, now: now)
+            }
+        }
+        .navigationTitle(display.phase == .idle || display.phase == .ended ? "" : display.missionName)
+        .containerBackground(backgroundTint.gradient, for: .navigation)
     }
 
     /// Full-screen status colour (watchOS design language), muted when there is nothing live.
@@ -111,6 +120,8 @@ private struct AwaitingHackView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Standard watch margins, so the content lines up with the navigation title.
+            .scenePadding(.horizontal)
         }
     }
 }
@@ -138,6 +149,8 @@ private struct ActiveFlightView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Standard watch margins, so the content lines up with the navigation title.
+            .scenePadding(.horizontal)
         }
     }
 
@@ -315,7 +328,8 @@ enum WatchPreviewData {
     }
 
     static func screen(_ state: WatchFlightState) -> WatchFlightScreen {
-        WatchFlightScreen(display: WatchFlightDisplay(state: state, now: .now), now: .now)
+        WatchFlightScreen(display: WatchFlightDisplay(state: state, now: .now), now: .now,
+                          inNavigationStack: false)
     }
 }
 
@@ -349,5 +363,4 @@ enum WatchPreviewData {
     WatchPreviewData.screen(WatchPreviewData.state(totIn: 1000, groundSpeed: 100, isFixStale: true,
                                                    cue: .gpsLost))
 }
-#endif
 #endif

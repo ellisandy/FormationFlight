@@ -7,8 +7,6 @@
 //  tested without rendering.
 //
 
-// Compiled only once the target links FormationFlightCore (see Formation_Flight_WatchApp.swift).
-#if canImport(FormationFlightCore)
 import Foundation
 import FormationFlightCore
 
@@ -191,4 +189,3 @@ struct WatchFlightDisplay: Equatable {
         Duration.seconds(Int(seconds)).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
     }
 }
-#endif

@@ -13,6 +13,7 @@
 		C2F0F19730795BE600BCA3AC /* Formation Flight Watch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2F0F17930795BE500BCA3AC /* Formation Flight Watch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C2F0F1A430795C0800BCA3AC /* FormationFlightCore in Frameworks */ = {isa = PBXBuildFile; productRef = C2F0F1A330795C0800BCA3AC /* FormationFlightCore */; };
 		C2F0F1A630795C3C00BCA3AC /* FormationFlightCore in Frameworks */ = {isa = PBXBuildFile; productRef = C2F0F1A530795C3C00BCA3AC /* FormationFlightCore */; };
+		C2F0F1C0307991B000BCA3AC /* FormationFlightCore in Frameworks */ = {isa = PBXBuildFile; productRef = C2F0F1BF307991B000BCA3AC /* FormationFlightCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -196,6 +197,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C2F0F1C0307991B000BCA3AC /* FormationFlightCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -367,6 +369,7 @@
 			);
 			name = "Formation Flight Watch Watch App";
 			packageProductDependencies = (
+				C2F0F1BF307991B000BCA3AC /* FormationFlightCore */,
 			);
 			productName = "Formation Flight Watch Watch App";
 			productReference = C2F0F17930795BE500BCA3AC /* Formation Flight Watch Watch App.app */;
@@ -1066,7 +1069,7 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Formation Flight Watch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Formation Flight Watch Watch App";
-				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -1089,7 +1092,7 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Formation Flight Watch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Formation Flight Watch Watch App";
-				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -1111,7 +1114,7 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				TEST_TARGET_NAME = "Formation Flight Watch Watch App";
-				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -1133,7 +1136,7 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				TEST_TARGET_NAME = "Formation Flight Watch Watch App";
-				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -1227,6 +1230,11 @@
 			productName = FormationFlightCore;
 		};
 		C2F0F1A530795C3C00BCA3AC /* FormationFlightCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C2F0F1A230795C0800BCA3AC /* XCLocalSwiftPackageReference "Packages/FormationFlightCore" */;
+			productName = FormationFlightCore;
+		};
+		C2F0F1BF307991B000BCA3AC /* FormationFlightCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C2F0F1A230795C0800BCA3AC /* XCLocalSwiftPackageReference "Packages/FormationFlightCore" */;
 			productName = FormationFlightCore;

@@ -8,7 +8,6 @@
 
 import SwiftUI
 
-#if canImport(FormationFlightCore)
 @main
 struct Formation_Flight_Watch_Watch_AppApp: App {
     @State private var model: WatchFlightModel
@@ -32,19 +31,3 @@ struct Formation_Flight_Watch_Watch_AppApp: App {
         }
     }
 }
-#else
-// The watch app's sources are all written against FormationFlightCore, and are compiled out
-// until the package product is linked: target "Formation Flight Watch Watch App" > General >
-// Frameworks, Libraries, and Embedded Content > + > FormationFlightCore. Until then this
-// placeholder keeps the iPhone app (which embeds the watch app) building.
-#warning("F-02: link FormationFlightCore to the Formation Flight Watch Watch App target")
-
-@main
-struct Formation_Flight_Watch_Watch_AppApp: App {
-    var body: some Scene {
-        WindowGroup {
-            Text(verbatim: "FormationFlightCore not linked")
-        }
-    }
-}
-#endif

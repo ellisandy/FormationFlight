@@ -7,8 +7,6 @@
 //  actor. Read-only in v1: the watch never sends anything back.
 //
 
-// Compiled only once the target links FormationFlightCore (see Formation_Flight_WatchApp.swift).
-#if canImport(FormationFlightCore)
 import Foundation
 import os
 import WatchConnectivity
@@ -81,4 +79,3 @@ extension PhoneConnection: WCSessionDelegate {
         deliver(applicationContext)
     }
 }
-#endif

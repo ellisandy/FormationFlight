@@ -6,8 +6,6 @@
 //  haptic rules themselves are covered by the package's `WatchFlightStateTests`.
 //
 
-// Compiled only once the target links FormationFlightCore (see Formation_Flight_WatchApp.swift).
-#if canImport(FormationFlightCore)
 import Foundation
 import Testing
 import WatchKit
@@ -80,4 +78,3 @@ struct WatchFlightModelTests {
         #expect(WatchFlightDisplay(state: state, now: Self.start.addingTimeInterval(40)).countdownMinutesText == "<1 min")
     }
 }
-#endif
