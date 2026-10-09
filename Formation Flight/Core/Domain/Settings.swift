@@ -6,6 +6,8 @@ public struct Settings: Codable, Equatable {
     public var yellowTolerance: Int
     public var redTolerance: Int
     public var instrumentSettings: [InstrumentSetting]
+    /// In-flight banner and voice callouts (F-01).
+    public var callouts: CalloutSettings
     
     public func getUnitSpeed() -> UnitSpeed {
         switch speedUnit {
@@ -83,7 +85,8 @@ public struct Settings: Codable, Equatable {
                 InstrumentSetting(type: .distance, isEnabled: true),
                 InstrumentSetting(type: .bearing, isEnabled: true),
                 InstrumentSetting(type: .track, isEnabled: true),
-            ]
+            ],
+            callouts: .defaults
         )
     }
     
@@ -96,6 +99,7 @@ public struct Settings: Codable, Equatable {
         if copy.yellowTolerance > copy.redTolerance {
             copy.redTolerance = copy.yellowTolerance
         }
+        copy.callouts = copy.callouts.validated()
         return copy
     }
 
@@ -106,6 +110,7 @@ public struct Settings: Codable, Equatable {
         case yellowTolerance
         case redTolerance
         case instrumentSettings
+        case callouts
     }
     
     // Explicit init(from:) to avoid any synthesis issues
@@ -116,6 +121,8 @@ public struct Settings: Codable, Equatable {
         self.yellowTolerance = try container.decode(Int.self, forKey: .yellowTolerance)
         self.redTolerance = try container.decode(Int.self, forKey: .redTolerance)
         self.instrumentSettings = try container.decode([InstrumentSetting].self, forKey: .instrumentSettings)
+        // Absent in data written before F-01.
+        self.callouts = try container.decodeIfPresent(CalloutSettings.self, forKey: .callouts) ?? .defaults
     }
     
     // Explicit encode(to:)
@@ -126,6 +133,7 @@ public struct Settings: Codable, Equatable {
         try container.encode(yellowTolerance, forKey: .yellowTolerance)
         try container.encode(redTolerance, forKey: .redTolerance)
         try container.encode(instrumentSettings, forKey: .instrumentSettings)
+        try container.encode(callouts, forKey: .callouts)
     }
     
     // Explicit Equatable to avoid synthesis pitfalls
@@ -134,7 +142,8 @@ public struct Settings: Codable, Equatable {
         lhs.distanceUnit == rhs.distanceUnit &&
         lhs.yellowTolerance == rhs.yellowTolerance &&
         lhs.redTolerance == rhs.redTolerance &&
-        lhs.instrumentSettings == rhs.instrumentSettings
+        lhs.instrumentSettings == rhs.instrumentSettings &&
+        lhs.callouts == rhs.callouts
     }
     
     // Public memberwise initializer
@@ -143,13 +152,15 @@ public struct Settings: Codable, Equatable {
         distanceUnit: DistanceUnit,
         yellowTolerance: Int,
         redTolerance: Int,
-        instrumentSettings: [InstrumentSetting]
+        instrumentSettings: [InstrumentSetting],
+        callouts: CalloutSettings = .defaults
     ) {
         self.speedUnit = speedUnit
         self.distanceUnit = distanceUnit
         self.yellowTolerance = yellowTolerance
         self.redTolerance = redTolerance
         self.instrumentSettings = instrumentSettings
+        self.callouts = callouts
     }
 }
 
@@ -159,6 +170,7 @@ extension Settings {
     private static let yellowToleranceUDK = "yellowTolerance"
     private static let redToleranceUDK = "redTolerance"
     private static let instrumentSettingsUDK = "instrumentSettings"
+    private static let calloutsUDK = "callouts"
     
     public static func load(from userDefaults: UserDefaults) -> Settings {
         let speedUnitString = userDefaults.string(forKey: speedUnitUDK) ?? SpeedUnit.kts.rawValue
@@ -186,13 +198,18 @@ extension Settings {
             }
             return mergeInstrumentSettings(saved: decoded.compactMap(\.setting))
         }()
+
+        // Missing or unreadable callout settings fall back to the defaults (F-01).
+        let callouts = userDefaults.data(forKey: calloutsUDK)
+            .flatMap { try? JSONDecoder().decode(CalloutSettings.self, from: $0) } ?? .defaults
         
         return Settings(
             speedUnit: speedUnit,
             distanceUnit: distanceUnit,
             yellowTolerance: yellowTolerance,
             redTolerance: redTolerance,
-            instrumentSettings: instrumentSettings
+            instrumentSettings: instrumentSettings,
+            callouts: callouts
         ).validated()
     }
     
@@ -236,6 +253,9 @@ extension Settings {
         
         if let encoded = try? JSONEncoder().encode(instrumentSettings) {
             userDefaults.set(encoded, forKey: Self.instrumentSettingsUDK)
+        }
+        if let encoded = try? JSONEncoder().encode(callouts) {
+            userDefaults.set(encoded, forKey: Self.calloutsUDK)
         }
     }
 }

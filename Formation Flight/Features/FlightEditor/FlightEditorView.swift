@@ -216,7 +216,8 @@ struct FlightEditorView: View {
                                                       missionType: missionType,
                                                       missionDate: viewModel.timeEntry,
                                                       hackTime: Double(viewModel.hackDurationSeconds),
-                                                      settings: Settings.load(from: UserDefaults.standard)
+                                                      settings: Settings.load(from: UserDefaults.standard),
+                                                      speaker: SystemCalloutSpeaker()
                                                      ))
             } else {
                 // Safety net: the cover must never be empty and undismissable.

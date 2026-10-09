@@ -286,6 +286,33 @@ private struct MissionDetailsSection: View {
     }
 }
 
+/// Transient callout banner (F-01), shown at the top of the flight screen. It overlays the
+/// content rather than insetting it, so the readouts never shift under the pilot's eye.
+private struct CalloutBanner: View {
+    let callout: Callout
+
+    var body: some View {
+        Label(callout.text, systemImage: symbol)
+            .font(.title2.bold())
+            .lineLimit(2)
+            .minimumScaleFactor(0.7)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .glassEffect(.regular, in: Capsule())
+            .accessibilityIdentifier("calloutBanner")
+    }
+
+    private var symbol: String {
+        switch callout.kind {
+        case .countdown: "timer"
+        case .turnIn: "arrow.turn.up.right"
+        case .gps: "location.slash"
+        case .drift: "clock"
+        case .speed: "gauge.with.needle"
+        }
+    }
+}
+
 // MARK: - Main View
 
 struct FlightView: View {
@@ -368,6 +395,15 @@ struct FlightView: View {
 
             }
             .readableScrollContent()
+            .overlay(alignment: .top) {
+                if let callout = viewModel.activeCallout {
+                    CalloutBanner(callout: callout)
+                        .padding(.horizontal, Design.Padding.horizontal)
+                        .padding(.top, 4)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: viewModel.activeCallout)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
                     if viewModel.missionType == .hackTime {
@@ -511,6 +547,12 @@ struct FlightView: View {
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
             viewModel.stop()
+        }
+        // With voice off, VoiceOver users still hear callouts. With voice on they would hear
+        // them twice, so the announcement is skipped.
+        .onChange(of: viewModel.activeCallout) { _, callout in
+            guard let callout, !viewModel.settings.callouts.voiceEnabled else { return }
+            AccessibilityNotification.Announcement(callout.text).post()
         }
     }
 }

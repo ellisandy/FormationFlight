@@ -392,5 +392,53 @@ struct SettingsTests {
         #expect(decoded.redTolerance == 2)
         #expect(decoded.instrumentSettings.count == 5)
     }
-}
 
+    // MARK: - Callouts (F-01)
+    @Test("Callouts default to everything on, voice included, with a 10 kt threshold")
+    func testCalloutDefaults() {
+        let c = Settings.empty().callouts
+        #expect(c.voiceEnabled && c.countdownEnabled && c.turnInEnabled && c.driftEnabled && c.speedAndGPSEnabled)
+        #expect(c.speedThresholdKnots == 10)
+    }
+
+    @Test("Callout settings round-trip through UserDefaults")
+    func testCalloutPersistence() throws {
+        let suiteName = "SettingsTests.testCalloutPersistence"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        var s = Settings.empty()
+        s.callouts.voiceEnabled = false
+        s.callouts.driftEnabled = false
+        s.callouts.speedThresholdKnots = 22
+        s.save(to: defaults)
+        #expect(Settings.load(from: defaults).callouts == s.callouts)
+    }
+
+    @Test("Settings JSON from before callouts decodes with the default callouts")
+    func testDecodingWithoutCallouts() throws {
+        let json = """
+        {"speedUnit": "kts", "distanceUnit": "nm", "yellowTolerance": 1, "redTolerance": 2, "instrumentSettings": []}
+        """.data(using: .utf8)!
+        #expect(try makeDecoder().decode(Settings.self, from: json).callouts == .defaults)
+    }
+
+    @Test("Callout settings decode leniently, keeping known keys and defaulting the rest")
+    func testCalloutLenientDecoding() throws {
+        let json = #"{"voiceEnabled": false, "speedThresholdKnots": "bad", "futureKey": 1}"#.data(using: .utf8)!
+        let decoded = try makeDecoder().decode(CalloutSettings.self, from: json)
+        #expect(decoded.voiceEnabled == false)
+        #expect(decoded.countdownEnabled == true)
+        #expect(decoded.speedThresholdKnots == CalloutSettings.defaultSpeedThresholdKnots)
+    }
+
+    @Test("validated() clamps the speed threshold to 5 – 30 kt")
+    func testCalloutThresholdClamp() {
+        var s = Settings.empty()
+        s.callouts.speedThresholdKnots = 100
+        #expect(s.validated().callouts.speedThresholdKnots == 30)
+        s.callouts.speedThresholdKnots = 1
+        #expect(s.validated().callouts.speedThresholdKnots == 5)
+    }
+}

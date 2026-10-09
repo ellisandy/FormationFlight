@@ -41,6 +41,10 @@ final class FlightViewModel: ObservableObject {
     /// Trk card (B-45).
     @Published private(set) var turnDirection: TurnToTarget.Direction?
 
+    /// The callout banner on screen (F-01), cleared `calloutBannerDuration` after it appears.
+    @Published private(set) var activeCallout: Callout?
+    static let calloutBannerDuration: TimeInterval = 4
+
     /// ETE row caption (B-45): the turn the ETE assumes, e.g. "TURN 0:45 R"; nil with no turn.
     var turnCaption: String? {
         guard let turnDuration, let turnInDirection else { return nil }
@@ -95,6 +99,15 @@ final class FlightViewModel: ObservableObject {
     private var lastLocationUpdate: Date?
     /// Tracks the sign of the heading rate across fixes to tell which way we are orbiting (B-25).
     private var turnDetector = TurnDetector()
+    /// Seconds of modelled turn left before pointing at the target, unrounded; nil when the
+    /// geometry is unknown. Feeds the turn cues (F-01), which need "pointed at it" (0) as a value.
+    private var turnRemaining: TimeInterval?
+
+    // MARK: - Callouts (F-01)
+    private var calloutEngine = CalloutEngine()
+    /// Nil in tests and previews, so they never speak.
+    private let speaker: CalloutSpeaking?
+    private var calloutShownAt: Date?
 
     // MARK: - Private
     private let timerScheduler: TimerScheduling
@@ -113,10 +126,12 @@ final class FlightViewModel: ObservableObject {
          settings: Settings,
          locationProvider: LocationProviding = LocationProvider.shared,
          timerScheduler: TimerScheduling = DefaultTimerScheduler(),
+         speaker: CalloutSpeaking? = nil,
          now: @escaping () -> Date = { Date() }) {
         self.settings = settings
         self.locationProvider = locationProvider
         self.timerScheduler = timerScheduler
+        self.speaker = speaker
         self.now = now
 
         // Derived Data
@@ -142,10 +157,12 @@ final class FlightViewModel: ObservableObject {
          settings: Settings = Settings.empty(),
          locationProvider: LocationProviding = LocationProvider.shared,
          timerScheduler: TimerScheduling = DefaultTimerScheduler(),
+         speaker: CalloutSpeaking? = nil,
          now: @escaping () -> Date = { Date() }) {
         self.settings = settings
         self.locationProvider = locationProvider
         self.timerScheduler = timerScheduler
+        self.speaker = speaker
         self.now = now
 
         self.missionName = missionName
@@ -190,6 +207,7 @@ final class FlightViewModel: ObservableObject {
         timerToken = nil
         locationProvider.updateDelegate = nil
         locationProvider.stopMonitoring()
+        speaker?.stop()
     }
 
     // MARK: - Public API (UI Intents)
@@ -244,8 +262,8 @@ final class FlightViewModel: ObservableObject {
         // the status fall through to their "nothing to judge" branches below, so the pilot
         // sees placeholders instead of numbers counting down on a frozen speed. Distance and
         // bearing are kept: the last known position is still the best position estimate.
-        if let lastFix = lastLocationUpdate,
-           wallClock.timeIntervalSince(lastFix) > Self.staleFixThreshold {
+        let isFixStale = lastLocationUpdate.map { wallClock.timeIntervalSince($0) > Self.staleFixThreshold } ?? false
+        if isFixStale {
             self.currentGroundSpeed = nil
             self.track = nil
             turnDetector.reset()
@@ -268,16 +286,19 @@ final class FlightViewModel: ObservableObject {
                 let turnSeconds = solution.turnDuration.rounded(.down)
                 self.turnDuration = turnSeconds >= 1 ? turnSeconds : nil
                 self.turnInDirection = turnSeconds >= 1 ? solution.direction : nil
+                self.turnRemaining = solution.isDirectFallback ? nil : solution.turnDuration
             } else {
                 rawETE = dist / gs
                 self.turnDuration = nil
                 self.turnInDirection = nil
+                self.turnRemaining = nil
             }
             self.ete = rawETE.isFinite ? rawETE.rounded(.down) : nil
         } else {
             self.ete = nil
             self.turnDuration = nil
             self.turnInDirection = nil
+            self.turnRemaining = nil
         }
 
         // Set ETA from the floored clock and the truncated ETE so Time + ETE == ETA on screen.
@@ -348,6 +369,38 @@ final class FlightViewModel: ObservableObject {
             }
         } else {
             statusColor = .unknown
+        }
+
+        updateCallouts(at: flooredClock, isFixStale: isFixStale)
+    }
+
+    /// Runs the callout rules for this tick (F-01): shows the banner, speaks it when voice is
+    /// on, and clears an expired banner.
+    private func updateCallouts(at clock: Date, isFixStale: Bool) {
+        if let shownAt = calloutShownAt, clock.timeIntervalSince(shownAt) >= Self.calloutBannerDuration {
+            activeCallout = nil
+            calloutShownAt = nil
+        }
+        let input = CalloutEngine.Input(
+            now: clock,
+            tot: tot,
+            delta: delta,
+            yellowTolerance: settings.yellowTolerance,
+            redTolerance: settings.redTolerance,
+            turnDirection: turnDirection,
+            turnInDirection: turnInDirection,
+            turnRemaining: turnRemaining,
+            currentGroundSpeed: currentGroundSpeed,
+            requiredGroundSpeed: requiredGroundSpeed,
+            isFixStale: isFixStale,
+            settings: settings.callouts,
+            speedUnit: settings.speedUnit
+        )
+        guard let callout = calloutEngine.evaluate(input) else { return }
+        activeCallout = callout
+        calloutShownAt = clock
+        if settings.callouts.voiceEnabled {
+            speaker?.speak(callout.text)
         }
     }
     

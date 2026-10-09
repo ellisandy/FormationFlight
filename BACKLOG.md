@@ -16,6 +16,7 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 | D-10 | D | Go Fly, the editor's primary action, is a pale neutral glass pill. | No |
 | D-11 | D | iPad: window-resize grabber in every screenshot; large empty area below the 700 pt column. | No |
 | D-12 | D | Map thumbnail clips a highway shield at its edge. | No |
+| F-01 | F | In-flight callouts: banner plus optional voice for the ToT countdown, turn cues, drift, speed advice and GPS loss (`feature/callouts`). Built and unit-tested; needs an in-aircraft or simulated-GPS check of the audio and the turn-cue timing. | No |
 
 Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full UI suite passes on iPad Pro 13-inch, so 13-inch screenshots are required); an Icon Composer `.icon` for the full Liquid Glass treatment needs layered artwork and ships later.
 
@@ -436,6 +437,17 @@ Rendered from the `#Preview`s on iPhone 18 Pro (iOS 27) in light and dark appear
 - **Where:** `Core/UI Shared/TargetMapThumbnail.swift` (`MKMapSnapshotter.Options`).
 - **What:** On the Rose Bowl target an I-210 shield is cut off at the thumbnail's top-right corner. POIs are excluded but road shields and labels are not, and at ~80×50 pt they are mostly clutter.
 - **Fix:** Use `mapType = .mutedStandard` (or a `preferredConfiguration` with labels reduced), or tighten the region so the pin dominates. Check the Rose Bowl and Lake Mead seeds after the change.
+
+---
+
+## F — Features
+
+### F-01 · In-flight callouts (banner and voice)
+- **Where:** `Core/Domain/CalloutSettings.swift`, `Features/FlightView/CalloutEngine.swift` (rules), `CalloutSpeaker.swift` (audio), wired in `FlightViewModel.updateCallouts`, banner in `FlightView`, Settings ▸ Callouts.
+- **Product decisions (2026-10-07):** only while the flight screen is open (an in-app banner, no system notifications, no background location). Short radio-style phrases. Voice ducks other audio and plays even with the silent switch on. Settings: a master Voice switch, one toggle per event type (banners follow them), and a speed advisory threshold of 5 – 30 kt, shown in the pilot's unit. Everything is on by default. Hack missions call nothing time-based until Hack! is pressed. The safety disclaimer is unchanged.
+- **Events:** ToT countdown (5 min, 1 min, 30 s, 10, 5 – 1, Mark); turn cues ("Turn left/right now" when, flying straight, turning in now first comes within the yellow tolerance; "Roll out now" about 3 s before pointing at the target in an orbit with no full orbit to spare); drift ("Early, 12." / "Late, 1 minute, 5 seconds." / "On time."); speed ("Increase, 140." / "Reduce, 120."); "GPS lost." / "GPS restored."
+- **Noise rules:** priority is countdown, then turn, GPS, drift, speed. Countdown and turn cues are never held back; everything else waits 5 s after any callout. Drift needs 3 s in a new band and 15 s between calls, and an on-time first reading is silent. Speed advice is given only outside yellow, after 3 s, at most every 30 s, and not repeated for an unchanged target. The final 15 s before ToT are countdown-only, and after ToT only GPS callouts remain. Blocked callouts are re-evaluated, not queued, so nothing stale is spoken.
+- **Open:** verify the audio ducking and the turn-cue lead in flight or with a GPX route.
 
 ---
 
