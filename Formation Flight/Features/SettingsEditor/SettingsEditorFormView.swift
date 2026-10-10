@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FormationFlightCore
 
 struct SettingsEditorFormView: View {
     @Bindable var viewModel: SettingsEditorViewModel
@@ -50,6 +51,32 @@ struct SettingsEditorFormView: View {
                 Text("Seconds early or late before the time-on-target readout turns yellow, then red. Red is never below yellow.")
             }
             
+            // F-01: in-flight callouts. Banners follow the per-event toggles; Voice also speaks them.
+            Section {
+                Toggle("Voice", isOn: $viewModel.settings.callouts.voiceEnabled)
+                    .accessibilityIdentifier("calloutVoiceToggle")
+                Toggle("ToT Countdown", isOn: $viewModel.settings.callouts.countdownEnabled)
+                    .accessibilityIdentifier("calloutCountdownToggle")
+                Toggle("Turn-In Cue", isOn: $viewModel.settings.callouts.turnInEnabled)
+                    .accessibilityIdentifier("calloutTurnInToggle")
+                Toggle("Drift", isOn: $viewModel.settings.callouts.driftEnabled)
+                    .accessibilityIdentifier("calloutDriftToggle")
+                Toggle("Speed and GPS", isOn: $viewModel.settings.callouts.speedAndGPSEnabled)
+                    .accessibilityIdentifier("calloutSpeedToggle")
+                Stepper(value: Binding(
+                    get: { viewModel.speedThresholdDisplay },
+                    set: { viewModel.setSpeedThreshold(display: $0) }
+                ), in: viewModel.speedThresholdRange, step: 1) {
+                    Text("Speed Advisory ±\(viewModel.speedThresholdDisplay) \(viewModel.settings.speedUnit.symbol)")
+                }
+                .disabled(!viewModel.settings.callouts.speedAndGPSEnabled)
+                .accessibilityIdentifier("calloutSpeedThresholdStepper")
+            } header: {
+                Text("Callouts")
+            } footer: {
+                Text("Callouts appear as a banner on the flight screen. With Voice on they are also spoken, even when the phone is set to silent, and other audio is lowered while they play. A speed advisory is given when required and current ground speed differ by at least the amount set, while outside the yellow tolerance.")
+            }
+
             Section("Instruments") {
                 if viewModel.settings.instrumentSettings.isEmpty {
                     Text("No instruments available")

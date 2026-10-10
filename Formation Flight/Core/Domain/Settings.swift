@@ -1,4 +1,5 @@
 import Foundation
+import FormationFlightCore
 
 public struct Settings: Codable, Equatable {
     public var speedUnit: SpeedUnit
@@ -6,6 +7,8 @@ public struct Settings: Codable, Equatable {
     public var yellowTolerance: Int
     public var redTolerance: Int
     public var instrumentSettings: [InstrumentSetting]
+    /// In-flight banner and voice callouts (F-01).
+    public var callouts: CalloutSettings
     
     public func getUnitSpeed() -> UnitSpeed {
         switch speedUnit {
@@ -29,37 +32,11 @@ public struct Settings: Codable, Equatable {
         }
     }
     
-    /// Raw values are the persisted encoding and must not change; `symbol` is what the UI shows.
-    public enum SpeedUnit: String, CaseIterable, Identifiable, Codable, Equatable {
-        case kts, kph, mph
-        public var id: Self { self }
-
-        /// Displayed unit symbol, shared by Settings and the flight screen (D-09). Aviation
-        /// convention for knots is "kt".
-        public var symbol: String {
-            switch self {
-            case .kts: return "kt"
-            case .kph: return "km/h"
-            case .mph: return "mph"
-            }
-        }
-    }
-
-    /// Raw values are the persisted encoding and must not change; `symbol` is what the UI shows.
-    public enum DistanceUnit: String, CaseIterable, Identifiable, Codable, Equatable {
-        case km, mi, nm
-        public var id: Self { self }
-
-        /// Displayed unit symbol, shared by Settings and the flight screen (D-09). Aviation
-        /// convention for nautical miles is "NM".
-        public var symbol: String {
-            switch self {
-            case .km: return "km"
-            case .mi: return "mi"
-            case .nm: return "NM"
-            }
-        }
-    }
+    /// The display units live in FormationFlightCore so the callout engine, the Live Activity
+    /// and the watch can use them; these aliases keep `Settings.SpeedUnit` working at call
+    /// sites. Raw values and Codable shape are unchanged, so saved settings still decode.
+    public typealias SpeedUnit = FormationFlightCore.SpeedUnit
+    public typealias DistanceUnit = FormationFlightCore.DistanceUnit
     
     /// Default ToT drift tolerances, in seconds. A fresh install must not treat every
     /// non-zero delta as red, so these are deliberately non-zero with yellow <= red.
@@ -83,7 +60,8 @@ public struct Settings: Codable, Equatable {
                 InstrumentSetting(type: .distance, isEnabled: true),
                 InstrumentSetting(type: .bearing, isEnabled: true),
                 InstrumentSetting(type: .track, isEnabled: true),
-            ]
+            ],
+            callouts: .defaults
         )
     }
     
@@ -96,6 +74,7 @@ public struct Settings: Codable, Equatable {
         if copy.yellowTolerance > copy.redTolerance {
             copy.redTolerance = copy.yellowTolerance
         }
+        copy.callouts = copy.callouts.validated()
         return copy
     }
 
@@ -106,6 +85,7 @@ public struct Settings: Codable, Equatable {
         case yellowTolerance
         case redTolerance
         case instrumentSettings
+        case callouts
     }
     
     // Explicit init(from:) to avoid any synthesis issues
@@ -116,6 +96,8 @@ public struct Settings: Codable, Equatable {
         self.yellowTolerance = try container.decode(Int.self, forKey: .yellowTolerance)
         self.redTolerance = try container.decode(Int.self, forKey: .redTolerance)
         self.instrumentSettings = try container.decode([InstrumentSetting].self, forKey: .instrumentSettings)
+        // Absent in data written before F-01.
+        self.callouts = try container.decodeIfPresent(CalloutSettings.self, forKey: .callouts) ?? .defaults
     }
     
     // Explicit encode(to:)
@@ -126,6 +108,7 @@ public struct Settings: Codable, Equatable {
         try container.encode(yellowTolerance, forKey: .yellowTolerance)
         try container.encode(redTolerance, forKey: .redTolerance)
         try container.encode(instrumentSettings, forKey: .instrumentSettings)
+        try container.encode(callouts, forKey: .callouts)
     }
     
     // Explicit Equatable to avoid synthesis pitfalls
@@ -134,7 +117,8 @@ public struct Settings: Codable, Equatable {
         lhs.distanceUnit == rhs.distanceUnit &&
         lhs.yellowTolerance == rhs.yellowTolerance &&
         lhs.redTolerance == rhs.redTolerance &&
-        lhs.instrumentSettings == rhs.instrumentSettings
+        lhs.instrumentSettings == rhs.instrumentSettings &&
+        lhs.callouts == rhs.callouts
     }
     
     // Public memberwise initializer
@@ -143,13 +127,15 @@ public struct Settings: Codable, Equatable {
         distanceUnit: DistanceUnit,
         yellowTolerance: Int,
         redTolerance: Int,
-        instrumentSettings: [InstrumentSetting]
+        instrumentSettings: [InstrumentSetting],
+        callouts: CalloutSettings = .defaults
     ) {
         self.speedUnit = speedUnit
         self.distanceUnit = distanceUnit
         self.yellowTolerance = yellowTolerance
         self.redTolerance = redTolerance
         self.instrumentSettings = instrumentSettings
+        self.callouts = callouts
     }
 }
 
@@ -159,6 +145,7 @@ extension Settings {
     private static let yellowToleranceUDK = "yellowTolerance"
     private static let redToleranceUDK = "redTolerance"
     private static let instrumentSettingsUDK = "instrumentSettings"
+    private static let calloutsUDK = "callouts"
     
     public static func load(from userDefaults: UserDefaults) -> Settings {
         let speedUnitString = userDefaults.string(forKey: speedUnitUDK) ?? SpeedUnit.kts.rawValue
@@ -186,13 +173,18 @@ extension Settings {
             }
             return mergeInstrumentSettings(saved: decoded.compactMap(\.setting))
         }()
+
+        // Missing or unreadable callout settings fall back to the defaults (F-01).
+        let callouts = userDefaults.data(forKey: calloutsUDK)
+            .flatMap { try? JSONDecoder().decode(CalloutSettings.self, from: $0) } ?? .defaults
         
         return Settings(
             speedUnit: speedUnit,
             distanceUnit: distanceUnit,
             yellowTolerance: yellowTolerance,
             redTolerance: redTolerance,
-            instrumentSettings: instrumentSettings
+            instrumentSettings: instrumentSettings,
+            callouts: callouts
         ).validated()
     }
     
@@ -236,6 +228,9 @@ extension Settings {
         
         if let encoded = try? JSONEncoder().encode(instrumentSettings) {
             userDefaults.set(encoded, forKey: Self.instrumentSettingsUDK)
+        }
+        if let encoded = try? JSONEncoder().encode(callouts) {
+            userDefaults.set(encoded, forKey: Self.calloutsUDK)
         }
     }
 }

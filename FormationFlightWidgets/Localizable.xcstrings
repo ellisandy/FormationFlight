@@ -1,0 +1,57 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "AWAITING HACK" : {
+      "comment" : "Live Activity: hack mission, Hack! not pressed yet"
+    },
+    "Callout: %@" : {
+      "comment" : "Live Activity VoiceOver: the latest callout"
+    },
+    "Delta unavailable, stale" : {
+      "comment" : "Live Activity VoiceOver: Δ hidden while stale"
+    },
+    "Delta unknown" : {
+      "comment" : "Live Activity VoiceOver: no Δ yet"
+    },
+    "EARLY" : {
+      "comment" : "Live Activity Δ: ETA is before ToT"
+    },
+    "Early by %@" : {
+      "comment" : "Live Activity VoiceOver: Δ early"
+    },
+    "ETA %@" : {
+      "comment" : "Live Activity: estimated time of arrival, HH:mm:ss"
+    },
+    "LATE" : {
+      "comment" : "Live Activity Δ: ETA is after ToT"
+    },
+    "Late by %@" : {
+      "comment" : "Live Activity VoiceOver: Δ late"
+    },
+    "MARK" : {
+      "comment" : "Live Activity: ToT reached"
+    },
+    "On time" : {
+      "comment" : "Live Activity VoiceOver: Δ zero"
+    },
+    "ON TIME" : {
+      "comment" : "Live Activity Δ: ETA equals ToT"
+    },
+    "Stale" : {
+      "comment" : "Live Activity VoiceOver: data is out of date"
+    },
+    "STALE" : {
+      "comment" : "Live Activity: data is out of date (short)"
+    },
+    "STALE — open Formation Flight" : {
+      "comment" : "Live Activity: data is out of date; open the app to resume"
+    },
+    "Time to ToT" : {
+      "comment" : "Live Activity VoiceOver: label for the ToT countdown"
+    },
+    "Δ %@" : {
+      "comment" : "Live Activity: delta readout, e.g. Δ +0:07"
+    }
+  },
+  "version" : "1.0"
+}

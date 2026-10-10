@@ -6,6 +6,7 @@
 //
 
 import CoreLocation
+import FormationFlightCore
 
 extension CLLocationCoordinate2D {
 

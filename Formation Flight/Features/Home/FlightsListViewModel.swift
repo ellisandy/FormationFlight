@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import FormationFlightCore
 
 @MainActor
 final class FlightsListViewModel: ObservableObject {

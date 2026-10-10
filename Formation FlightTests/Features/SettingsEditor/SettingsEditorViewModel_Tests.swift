@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import Formation_Flight
+import FormationFlightCore
 
 @Suite("SettingsEditorViewModel")
 struct SettingsEditorViewModelTests {
@@ -182,5 +183,40 @@ struct SettingsEditorViewModelTests {
         let vm = SettingsEditorViewModel.from(userDefaults: defaults)
         #expect(vm.settings.speedUnit == .kph)
         #expect(vm.settings.distanceUnit == .km)
+    }
+
+    // MARK: - Speed advisory threshold (F-01)
+    @Test("Threshold range and value follow the speed unit")
+    func speedThresholdInDisplayUnit() {
+        var settings = Settings.empty()
+        settings.speedUnit = .kph
+        let vm = SettingsEditorViewModel(settings: settings)
+        #expect(vm.speedThresholdRange == 9...56)
+        #expect(vm.speedThresholdDisplay == 19)
+        vm.settings.speedUnit = .kts
+        #expect(vm.speedThresholdRange == 5...30)
+        #expect(vm.speedThresholdDisplay == 10)
+    }
+
+    @Test("Every whole display value reads back unchanged")
+    func speedThresholdRoundTrip() {
+        for unit in Settings.SpeedUnit.allCases {
+            var settings = Settings.empty()
+            settings.speedUnit = unit
+            let vm = SettingsEditorViewModel(settings: settings)
+            for value in vm.speedThresholdRange {
+                vm.setSpeedThreshold(display: value)
+                #expect(vm.speedThresholdDisplay == value, "\(unit) \(value)")
+            }
+        }
+    }
+
+    @Test("Out-of-range display values are clamped")
+    func speedThresholdClamped() {
+        let vm = SettingsEditorViewModel(settings: .empty())
+        vm.setSpeedThreshold(display: 100)
+        #expect(vm.settings.callouts.speedThresholdKnots == 30)
+        vm.setSpeedThreshold(display: 0)
+        #expect(vm.settings.callouts.speedThresholdKnots == 5)
     }
 }

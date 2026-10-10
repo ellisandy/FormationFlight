@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import FormationFlightCore
 
 @Observable
 final class SettingsEditorViewModel {
@@ -40,6 +41,41 @@ final class SettingsEditorViewModel {
 
     private static func clampTolerance(_ seconds: Int) -> Int {
         min(max(seconds, toleranceRange.lowerBound), toleranceRange.upperBound)
+    }
+
+    // MARK: - Speed advisory threshold (F-01)
+
+    /// Stepper range for the speed advisory threshold in the pilot's speed unit: the stored
+    /// 5 – 30 kt range converted and rounded to whole units.
+    var speedThresholdRange: ClosedRange<Int> {
+        let knots = CalloutSettings.speedThresholdRangeKnots
+        return Self.displayValue(knots: knots.lowerBound, unit: settings.speedUnit)...Self.displayValue(knots: knots.upperBound, unit: settings.speedUnit)
+    }
+
+    /// The speed advisory threshold in the pilot's speed unit, whole units.
+    var speedThresholdDisplay: Int {
+        Self.displayValue(knots: settings.callouts.speedThresholdKnots, unit: settings.speedUnit)
+    }
+
+    /// Sets the threshold from a value in the pilot's speed unit. Stored in knots so it keeps
+    /// its meaning across unit changes; a whole display value always reads back unchanged.
+    func setSpeedThreshold(display value: Int) {
+        let clamped = min(max(value, speedThresholdRange.lowerBound), speedThresholdRange.upperBound)
+        let knots = Measurement(value: Double(clamped), unit: Self.unitSpeed(settings.speedUnit)).converted(to: .knots).value
+        let range = CalloutSettings.speedThresholdRangeKnots
+        settings.callouts.speedThresholdKnots = min(max(knots, range.lowerBound), range.upperBound)
+    }
+
+    private static func displayValue(knots: Double, unit: Settings.SpeedUnit) -> Int {
+        Int(Measurement(value: knots, unit: UnitSpeed.knots).converted(to: unitSpeed(unit)).value.rounded())
+    }
+
+    private static func unitSpeed(_ unit: Settings.SpeedUnit) -> UnitSpeed {
+        switch unit {
+        case .kts: .knots
+        case .mph: .milesPerHour
+        case .kph: .kilometersPerHour
+        }
     }
 
     func save(userDefaults: UserDefaults) {

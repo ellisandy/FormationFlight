@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreLocation
 import MapKit
+import FormationFlightCore
 
 @MainActor
 struct FlightEditorView: View {
@@ -216,7 +217,9 @@ struct FlightEditorView: View {
                                                       missionType: missionType,
                                                       missionDate: viewModel.timeEntry,
                                                       hackTime: Double(viewModel.hackDurationSeconds),
-                                                      settings: Settings.load(from: UserDefaults.standard)
+                                                      settings: Settings.load(from: UserDefaults.standard),
+                                                      speaker: SystemCalloutSpeaker(),
+                                                      mirrors: FlightMirrors.makeDefault()
                                                      ))
             } else {
                 // Safety net: the cover must never be empty and undismissable.

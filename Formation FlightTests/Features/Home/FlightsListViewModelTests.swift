@@ -3,6 +3,7 @@ import CoreLocation
 import Foundation
 @testable import Formation_Flight
 import SwiftData
+import FormationFlightCore
 
 @MainActor
 @Suite("FlightsListViewModel (Swift Testing) – Extended Coverage")

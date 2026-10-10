@@ -2,6 +2,7 @@ import Foundation
 import CoreLocation
 import MapKit
 import Combine
+import FormationFlightCore
 
 @MainActor
 final class FlightEditorViewModel: ObservableObject {

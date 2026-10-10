@@ -14,6 +14,7 @@
 
 import Foundation
 import CoreLocation
+import FormationFlightCore
 
 /// Cached date formatter(s) configured with an `en_US_POSIX` locale for stable 24-hour time output.
 ///
@@ -54,54 +55,19 @@ public enum Formatting {
         return DateFormatter.hhmmssPOSIX.string(from: date)
     }
     
-    /// Formats a duration in seconds as `HH:mm:ss`.
+    /// Formats a duration in seconds as `HH:mm:ss`; `--:--:--` for nil or non-finite input.
+    /// Negative durations are prefixed with `-`; fractional seconds are truncated, not rounded.
     ///
-    /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
-    ///   returns `--:--:--`.
-    /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude. Negative durations are
-    ///   prefixed with `-` (e.g. `-00:01:05`); non-negative durations carry no sign.
-    ///
-    /// Note: Fractional seconds are truncated, not rounded. The sign follows the sign of the
-    /// input, so `-0.5` renders as `-00:00:00`.
+    /// Forwards to `FlightFormatting` in FormationFlightCore so the watch companion (F-02)
+    /// renders durations exactly as the flight screen does.
     public static func durationHMS(_ seconds: TimeInterval?) -> String {
-        guard let seconds, let components = hmsComponents(seconds) else {
-            return "--:--:--".uppercased()
-        }
-        let sign = seconds < 0 ? "-" : ""
-        return sign + components
+        FlightFormatting.durationHMS(seconds)
     }
 
-    /// Formats a duration in seconds as `HH:mm:ss` with an explicit leading sign.
-    ///
-    /// Intended for early/late (Δ) readouts where the direction of the offset matters and
-    /// an unsigned value would be ambiguous.
-    ///
-    /// - Parameter seconds: The duration in seconds. If `nil` or non-finite (NaN, ±inf),
-    ///   returns `--:--:--`.
-    /// - Returns: A zero-padded `HH:mm:ss` string of the magnitude prefixed with `+` or `-`
-    ///   (e.g. `+00:00:07`, `-00:01:05`). Anything under a whole second either way renders as
-    ///   an unsigned `00:00:00` (B-46): the sign follows the digits shown, not the fraction
-    ///   they drop.
+    /// Formats a duration in seconds as `HH:mm:ss` with an explicit leading sign, for Δ;
+    /// under a whole second renders unsigned (B-46). Forwards to `FlightFormatting` (F-02).
     public static func signedDurationHMS(_ seconds: TimeInterval?) -> String {
-        guard let seconds, let components = hmsComponents(seconds) else {
-            return "--:--:--".uppercased()
-        }
-        guard abs(seconds) >= 1 else { return components }
-        let sign = seconds < 0 ? "-" : "+"
-        return sign + components
-    }
-
-    /// Formats the magnitude of `seconds` as zero-padded `HH:mm:ss`, truncating fractional
-    /// seconds. Returns `nil` when the value is non-finite or too large to represent as `Int`.
-    private static func hmsComponents(_ seconds: TimeInterval) -> String? {
-        let magnitude = abs(seconds)
-        guard magnitude.isFinite, magnitude < Double(Int.max) else { return nil }
-        let total = Int(magnitude)
-        let hours = total / 3600
-        let minutes = total % 3600 / 60
-        let secs = total % 60
-
-        return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+        FlightFormatting.signedDurationHMS(seconds)
     }
 
     /// B-34: `Int(_:)` traps on NaN, ±infinity, and any magnitude at or beyond `Int.max`.

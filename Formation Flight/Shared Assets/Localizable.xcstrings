@@ -1,8 +1,11 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%lldm" : {
-
+    "%lld min" : {
+      "comment" : "Hack time wheel: minutes"
+    },
+    "%lld s" : {
+      "comment" : "Hack time wheel: seconds"
     },
     "Add" : {
 
@@ -21,6 +24,12 @@
     },
     "Before You Fly" : {
       "comment" : "Title of the aviation safety disclaimer shown on first launch"
+    },
+    "Callouts" : {
+
+    },
+    "Callouts appear as a banner on the flight screen. With Voice on they are also spoken, even when the phone is set to silent, and other audio is lowered while they play. A speed advisory is given when required and current ground speed differ by at least the amount set, while outside the yellow tolerance." : {
+
     },
     "Cancel" : {
 
@@ -58,6 +67,9 @@
     "Done" : {
 
     },
+    "Drift" : {
+
+    },
     "EARLY" : {
       "comment" : "Flight Δ row: ETA is before ToT"
     },
@@ -84,6 +96,9 @@
     },
     "Failed to update flight. Please try again." : {
       "comment" : "Shown when persisting changes to an existing flight fails"
+    },
+    "Far outside tolerance" : {
+      "comment" : "Flight status: delta beyond the red tolerance"
     },
     "Flight Editor" : {
 
@@ -126,6 +141,9 @@
     },
     "Keep Editing" : {
 
+    },
+    "L" : {
+      "comment" : "Trk card: orbiting left"
     },
     "Lat: %@" : {
 
@@ -181,6 +199,9 @@
     "Open Settings" : {
 
     },
+    "Outside tolerance" : {
+      "comment" : "Flight status: delta beyond yellow, within red tolerance"
+    },
     "Pick Checkpoint" : {
 
     },
@@ -198,6 +219,9 @@
     },
     "Precise location is off" : {
 
+    },
+    "R" : {
+      "comment" : "Trk card: orbiting right"
     },
     "Red ±%lld s" : {
 
@@ -230,6 +254,19 @@
 
     },
     "Show Safety Disclaimer" : {
+
+    },
+    "Speed Advisory ±%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Speed Advisory ±%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "Speed and GPS" : {
 
     },
     "Speed Unit" : {
@@ -265,14 +302,32 @@
     "TOT" : {
 
     },
+    "ToT Countdown" : {
+
+    },
     "Turn on Precise Location in Settings for accurate distance and timing." : {
 
+    },
+    "Turn-In Cue" : {
+
+    },
+    "Turning left" : {
+      "comment" : "Trk card, VoiceOver: orbiting left"
+    },
+    "Turning right" : {
+      "comment" : "Trk card, VoiceOver: orbiting right"
     },
     "Units" : {
 
     },
     "Validation" : {
 
+    },
+    "Voice" : {
+
+    },
+    "Within tolerance" : {
+      "comment" : "Flight status: delta within the yellow tolerance"
     },
     "Yellow ±%lld s" : {
 

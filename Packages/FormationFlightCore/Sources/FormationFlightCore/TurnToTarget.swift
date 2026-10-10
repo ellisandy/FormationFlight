@@ -1,6 +1,6 @@
 //
 //  TurnToTarget.swift
-//  Formation Flight
+//  FormationFlightCore
 //
 //  B-25: the time-to-target model. The pilot orbits away from the target and watches the
 //  screen to decide between "turn in now" and "go around again". ETE therefore answers:
@@ -21,33 +21,35 @@ import Foundation
 ///
 /// Distances in this app are at most a few tens of nautical miles, for which the planar
 /// approximation errs by well under a second.
-enum TurnToTarget {
+public enum TurnToTarget {
     /// Standard-rate turn, 3° per second (a two-minute turn). Fixed by product decision; the
     /// pilot adjusts speed rather than turn rate to absorb small timing errors.
-    static let standardRateDegreesPerSecond: Double = 3.0
+    public static let standardRateDegreesPerSecond: Double = 3.0
 
     /// Duration of one complete orbit at standard rate: 120 s regardless of speed.
-    static var fullOrbitDuration: TimeInterval { 360 / standardRateDegreesPerSecond }
+    public static var fullOrbitDuration: TimeInterval { 360 / standardRateDegreesPerSecond }
 
-    enum Direction: Equatable, Sendable {
+    /// Raw values are part of the phone-to-watch payload (`FlightSnapshot`, `Callout.Event`)
+    /// and must not change.
+    public enum Direction: String, Codable, Equatable, Hashable, Sendable {
         case left
         case right
     }
 
-    struct Solution: Equatable, Sendable {
+    public struct Solution: Equatable, Sendable {
         /// Which way the aircraft turns onto the target.
-        let direction: Direction
+        public let direction: Direction
         /// Heading change flown in the turn, degrees in `0..<360`.
-        let turnAngleDegrees: Double
+        public let turnAngleDegrees: Double
         /// Time spent turning, seconds.
-        let turnDuration: TimeInterval
+        public let turnDuration: TimeInterval
         /// Straight-line distance from roll-out to the target, metres.
-        let straightDistance: Double
+        public let straightDistance: Double
         /// Turn plus straight segment, seconds.
-        let totalTime: TimeInterval
+        public let totalTime: TimeInterval
         /// `true` when the target lies inside both turn circles and the path degenerates to
         /// distance / speed (the aircraft is effectively on top of the target).
-        let isDirectFallback: Bool
+        public let isDirectFallback: Bool
     }
 
     /// Solves the turn-then-straight path.
@@ -61,7 +63,7 @@ enum TurnToTarget {
     ///     is used even if the other direction is shorter: mid-orbit a reversal is not flown.
     ///   - turnRate: Degrees per second.
     /// - Returns: `nil` for non-positive or non-finite inputs.
-    static func solve(distance: Double,
+    public static func solve(distance: Double,
                       bearing: Double,
                       track: Double,
                       groundSpeed: Double,
@@ -159,7 +161,7 @@ enum TurnToTarget {
     /// speed for the first bracket in which the time crosses `timeRemaining` on one continuous
     /// branch (same turn direction at both ends), and the answer is bisected inside it. The
     /// slowest matching speed is returned: it is the continuation of the turn being flown.
-    static func requiredGroundSpeed(distance: Double,
+    public static func requiredGroundSpeed(distance: Double,
                                     bearing: Double,
                                     track: Double,
                                     timeRemaining: TimeInterval,
@@ -206,7 +208,7 @@ enum TurnToTarget {
 
     /// Number of complete standard-rate orbits that fit before the turn-in point, given how
     /// early the turn-in-now path would arrive. Zero when on time or late.
-    static func surplusOrbits(delta: TimeInterval) -> Int {
+    public static func surplusOrbits(delta: TimeInterval) -> Int {
         guard delta.isFinite, delta < 0 else { return 0 }
         return Int((-delta / fullOrbitDuration).rounded(.down))
     }
@@ -219,25 +221,25 @@ enum TurnToTarget {
 /// `enterTurnDegreesPerSecond` and ends only when it falls to `exitTurnDegreesPerSecond`
 /// (B-43). The gap between the two thresholds stops a rate that jitters around one threshold
 /// from toggling the direction, and with it ETE, ETA, Δ and the ORBIT caption, at 1 Hz.
-struct TurnDetector: Equatable, Sendable {
+public struct TurnDetector: Equatable, Sendable {
     /// Standard rate is 3°/s; straight-flight course jitter is well under 1°/s.
-    static let enterTurnDegreesPerSecond: Double = 1.5
+    public static let enterTurnDegreesPerSecond: Double = 1.5
     /// Below this, in the direction of the turn, the aircraft has rolled out.
-    static let exitTurnDegreesPerSecond: Double = 0.5
+    public static let exitTurnDegreesPerSecond: Double = 0.5
     /// Number of recent rates the median is taken over. Five 1 Hz fixes: a roll-out is
     /// recognised about three seconds after the track stops changing.
-    static let rateWindow = 5
+    public static let rateWindow = 5
     /// Samples further apart than this do not describe the same turn.
-    static let maxSampleGap: TimeInterval = 10
+    public static let maxSampleGap: TimeInterval = 10
 
     private var lastTrack: Double?
     private var lastTime: Date?
     private var recentRates: [Double] = []
 
     /// The detected turn, or `nil` while flying straight or before two usable samples.
-    private(set) var direction: TurnToTarget.Direction?
+    public private(set) var direction: TurnToTarget.Direction?
 
-    init() {}
+    public init() {}
 
     /// Records a track sample measured at `time` and returns the current detected direction.
     ///
@@ -245,7 +247,7 @@ struct TurnDetector: Equatable, Sendable {
     /// delivered (B-44). A sample whose time has not advanced past the previous one (a
     /// duplicate or out-of-order delivery) is ignored rather than treated as a reset.
     @discardableResult
-    mutating func record(track: Double, at time: Date) -> TurnToTarget.Direction? {
+    public mutating func record(track: Double, at time: Date) -> TurnToTarget.Direction? {
         guard track.isFinite else { return direction }
         guard let previousTrack = lastTrack, let previousTime = lastTime else {
             lastTrack = track
@@ -283,7 +285,7 @@ struct TurnDetector: Equatable, Sendable {
     }
 
     /// Forgets all samples (e.g. after a stale-fix blank).
-    mutating func reset() {
+    public mutating func reset() {
         lastTrack = nil
         lastTime = nil
         recentRates = []

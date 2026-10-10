@@ -1,0 +1,90 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld min" : {
+      "comment" : "Watch Always-On: minutes to ToT, rounded up"
+    },
+    "<1 min" : {
+      "comment" : "Watch Always-On: under a minute to ToT"
+    },
+    "AWAITING HACK" : {
+      "comment" : "Watch: hack mission, Hack! not pressed yet"
+    },
+    "Callout: %@" : {
+      "comment" : "Watch VoiceOver: the latest callout"
+    },
+    "Delta unavailable, stale" : {
+      "comment" : "Watch VoiceOver: Δ hidden while stale"
+    },
+    "Delta unknown" : {
+      "comment" : "Watch VoiceOver: no Δ yet"
+    },
+    "EARLY" : {
+      "comment" : "Watch Δ: ETA is before ToT"
+    },
+    "Early by %@" : {
+      "comment" : "Watch VoiceOver: Δ early"
+    },
+    "ETE" : {
+      "comment" : "Watch: estimated time en route"
+    },
+    "Flight ended" : {
+      "comment" : "Watch: the phone ended the flight"
+    },
+    "GS" : {
+      "comment" : "Watch: current ground speed"
+    },
+    "Hack" : {
+      "comment" : "Watch: hack duration label"
+    },
+    "LATE" : {
+      "comment" : "Watch Δ: ETA is after ToT"
+    },
+    "Late by %@" : {
+      "comment" : "Watch VoiceOver: Δ late"
+    },
+    "MARK" : {
+      "comment" : "Watch: ToT reached"
+    },
+    "Mark, at time on target" : {
+      "comment" : "Watch VoiceOver: ToT reached"
+    },
+    "No time on target" : {
+      "comment" : "Watch VoiceOver: no ToT to count to"
+    },
+    "On time" : {
+      "comment" : "Watch VoiceOver: Δ zero"
+    },
+    "ON TIME" : {
+      "comment" : "Watch Δ: ETA equals ToT"
+    },
+    "Open Formation Flight on iPhone" : {
+      "comment" : "Watch STALE: the phone stopped sending"
+    },
+    "Press Hack! on iPhone" : {
+      "comment" : "Watch: how to start the hack countdown"
+    },
+    "Req GS" : {
+      "comment" : "Watch: required ground speed"
+    },
+    "STALE" : {
+      "comment" : "Watch: data is out of date"
+    },
+    "Start a flight on your iPhone" : {
+      "comment" : "Watch idle: no flight open on the phone"
+    },
+    "Time to ToT, %@" : {
+      "comment" : "Watch VoiceOver: countdown to ToT"
+    },
+    "Updated %@ ago" : {
+      "comment" : "Watch STALE: time since the data was last fresh, m:ss"
+    },
+    "Waiting for GPS on iPhone" : {
+      "comment" : "Watch STALE: the phone's GPS fix is stale"
+    },
+    "Δ %@" : {
+      "comment" : "Watch: delta readout, e.g. Δ +0:07"
+    }
+  },
+  "version" : "1.0"
+}

@@ -2,10 +2,11 @@
 //  StatusStyling.swift
 //  Formation Flight
 //
-//  UI styling for FlightViewModel.Status
+//  UI styling for FlightViewModel.Status (`TimingStatus` from FormationFlightCore)
 //
 
 import SwiftUI
+import FormationFlightCore
 
 extension FlightViewModel.Status {
     /// Asset colours with darker light-appearance variants (D-01): the system green and orange

@@ -1,0 +1,57 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Early, %@." : {
+      "comment" : "Callout: early by this many seconds, or minutes and seconds"
+    },
+    "Five minutes." : {
+      "comment" : "Callout: five minutes to ToT"
+    },
+    "GPS lost." : {
+      "comment" : "Callout: the GPS fix has gone stale"
+    },
+    "GPS restored." : {
+      "comment" : "Callout: GPS fixes are arriving again"
+    },
+    "Increase, %lld." : {
+      "comment" : "Callout: speed up to this ground speed, in the pilot's unit"
+    },
+    "Late, %@." : {
+      "comment" : "Callout: late by this many seconds, or minutes and seconds"
+    },
+    "Mark." : {
+      "comment" : "Callout: now at ToT"
+    },
+    "On time." : {
+      "comment" : "Callout: Δ is within the yellow tolerance"
+    },
+    "One minute." : {
+      "comment" : "Callout: one minute to ToT"
+    },
+    "Reduce, %lld." : {
+      "comment" : "Callout: slow down to this ground speed, in the pilot's unit"
+    },
+    "Roll out now." : {
+      "comment" : "Callout: stop turning, now pointed at the target"
+    },
+    "TURN %@ L" : {
+      "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the left"
+    },
+    "TURN %@ R" : {
+      "comment" : "Flight ETE row: modelled turn-in, minutes:seconds, to the right"
+    },
+    "Ten." : {
+      "comment" : "Callout: ten seconds to ToT"
+    },
+    "Thirty seconds." : {
+      "comment" : "Callout: thirty seconds to ToT"
+    },
+    "Turn left now." : {
+      "comment" : "Callout: start the turn onto the target, to the left"
+    },
+    "Turn right now." : {
+      "comment" : "Callout: start the turn onto the target, to the right"
+    }
+  },
+  "version" : "1.0"
+}

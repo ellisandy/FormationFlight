@@ -4,6 +4,7 @@ import CoreLocation
 import SwiftUI
 import Testing
 @testable import Formation_Flight
+import FormationFlightCore
 
 // Protocol-based mock for LocationProviding used by FlightViewModel.
 // This is a standalone class that conforms to the protocol; it does not subclass the

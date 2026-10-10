@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreLocation
+import FormationFlightCore
 
 /// Every consumer (`FlightViewModel`, `FlightsListViewModel`) is MainActor-isolated and the
 /// `updateDelegate` callback drives UI state, so the protocol itself is MainActor. Conforming

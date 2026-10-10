@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Formation_Flight
+@testable import FormationFlightCore
 
 /// B-25: time to target assuming a standard-rate turn onto the target, then straight flight.
 @Suite("TurnToTarget")

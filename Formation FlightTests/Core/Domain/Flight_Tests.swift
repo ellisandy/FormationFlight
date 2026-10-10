@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import Testing
 @testable import Formation_Flight
+import FormationFlightCore
 
 @Suite
 struct FlightTests {

@@ -16,6 +16,8 @@ Paths are relative to `Formation Flight/`. Tests now live in `Formation FlightTe
 | D-10 | D | Go Fly, the editor's primary action, is a pale neutral glass pill. | No |
 | D-11 | D | iPad: window-resize grabber in every screenshot; large empty area below the 700 pt column. | No |
 | D-12 | D | Map thumbnail clips a highway shield at its edge. | No |
+| F-01 | F | In-flight callouts: banner plus optional voice for the ToT countdown, turn cues, drift, speed advice and GPS loss (`feature/callouts`). Built and unit-tested; needs an in-aircraft or simulated-GPS check of the audio and the turn-cue timing. | No |
+| F-02 | F | Apple Watch companion: Live Activity (lock screen, Dynamic Island, Smart Stack) and a native watch app mirroring the flight with haptic cues over WatchConnectivity (`feature/watch-companion`, phases 0 – 2). Built and tested (package, app and watch unit tests, watch UI tests); needs on-device checks. | No |
 
 Deferred by decision: deployment target stays at 26.0; iPad stays enabled (full UI suite passes on iPad Pro 13-inch, so 13-inch screenshots are required); an Icon Composer `.icon` for the full Liquid Glass treatment needs layered artwork and ships later.
 
@@ -436,6 +438,30 @@ Rendered from the `#Preview`s on iPhone 18 Pro (iOS 27) in light and dark appear
 - **Where:** `Core/UI Shared/TargetMapThumbnail.swift` (`MKMapSnapshotter.Options`).
 - **What:** On the Rose Bowl target an I-210 shield is cut off at the thumbnail's top-right corner. POIs are excluded but road shields and labels are not, and at ~80×50 pt they are mostly clutter.
 - **Fix:** Use `mapType = .mutedStandard` (or a `preferredConfiguration` with labels reduced), or tighten the region so the pin dominates. Check the Rose Bowl and Lake Mead seeds after the change.
+
+---
+
+## F — Features
+
+### F-01 · In-flight callouts (banner and voice)
+- **Where:** `Core/Domain/CalloutSettings.swift`, `Features/FlightView/CalloutEngine.swift` (rules), `CalloutSpeaker.swift` (audio), wired in `FlightViewModel.updateCallouts`, banner in `FlightView`, Settings ▸ Callouts.
+- **Product decisions (2026-10-07):** only while the flight screen is open (an in-app banner, no system notifications, no background location). Short radio-style phrases. Voice ducks other audio and plays even with the silent switch on. Settings: a master Voice switch, one toggle per event type (banners follow them), and a speed advisory threshold of 5 – 30 kt, shown in the pilot's unit. Everything is on by default. Hack missions call nothing time-based until Hack! is pressed. The safety disclaimer is unchanged.
+- **Events:** ToT countdown (5 min, 1 min, 30 s, 10, 5 – 1, Mark); turn cues ("Turn left/right now" when, flying straight, turning in now first comes within the yellow tolerance; "Roll out now" about 3 s before pointing at the target in an orbit with no full orbit to spare); drift ("Early, 12." / "Late, 1 minute, 5 seconds." / "On time."); speed ("Increase, 140." / "Reduce, 120."); "GPS lost." / "GPS restored."
+- **Noise rules:** priority is countdown, then turn, GPS, drift, speed. Countdown and turn cues are never held back; everything else waits 5 s after any callout. Drift needs 3 s in a new band and 15 s between calls, and an on-time first reading is silent. Speed advice is given only outside yellow, after 3 s, at most every 30 s, and not repeated for an unchanged target. The final 15 s before ToT are countdown-only, and after ToT only GPS callouts remain. Blocked callouts are re-evaluated, not queued, so nothing stale is spoken.
+- **Open:** verify the audio ducking and the turn-cue lead in flight or with a GPX route.
+
+### F-02 · Apple Watch companion (Live Activity and watch app)
+- **Where:** `Packages/FormationFlightCore` (shared pure logic: `FlightSnapshot`, `TimingEngine`, `Callout`, `FlightActivity`, `WatchMessage`, `WatchSendPolicy`, `WatchFlightState`, `FlightFormatting`); iPhone `Features/FlightView/{FlightMirroring,FlightMirrors,LiveActivityMirror,WatchMirror}.swift`; widget `FormationFlightWidgets/FlightLiveActivity.swift`; watch app `Formation Flight Watch Watch App/`.
+- **Phases (all on `feature/watch-companion`):** 0, the FormationFlightCore package and the new targets; 1, the Live Activity mirror (also shown in the watch Smart Stack); 2, the native watch app over WatchConnectivity.
+- **Product decisions (2026-10-09):** the watch is a read-only phone mirror plus haptic cues, not standalone; the phone is the GPS source and the source of truth, and there are no watch controls (hack from the watch is later). No background location: with the phone app backgrounded or the fix lost the watch and Live Activity show a clear STALE state, never live-looking numbers. Haptics are another output of the F-01 cues through the one mirror hook, not a separate cue system. The phone sends inputs, not strings (`FlightSnapshot`), and the watch ticks on its own clock. No new entitlements or capabilities; no workout or extended-runtime session to keep the watch app alive (App Review risk), so haptics only play while the watch app is frontmost (watchOS "Return to Clock").
+- **Wire format and send policy:** one versioned JSON `WatchMessage` (`.snapshot` or `.callout` with its phone emission time) under a single dictionary key. Snapshots go by `sendMessage` every tick while the watch app is reachable; the application context is refreshed on a visible change (ToT, hack, fix staleness, status band, units, orbit), every 5 s as a keep-alive, and always for the ended snapshot. Cues go by message only and are dropped when unreachable. The latest snapshot is held until `WCSession` activation completes; send errors are logged only.
+- **Watch rules (`WatchFlightState`):** idle / awaiting hack / active / STALE / ended (10 s, then idle). Only a strictly newer `sentAt` wins, so duplicates and a late context are ignored. STALE when the phone is silent for over 15 s ("Open Formation Flight on iPhone") or its fix is stale ("Waiting for GPS on iPhone"); Δ, ETE and speeds blank, the ToT countdown keeps running dimmed. After 30 min of silence the flight is treated as abandoned (idle). A cue plays its haptic only while the phone is still talking, if it is under 3 s old on the watch clock and not a duplicate; a stale fix does not silence "GPS lost.".
+- **Watch UI tests:** `WatchFlightUITests` (15) launch the watch app with `-uiTestScenario <name>` (DEBUG only; `WatchScenario`, shared with the previews), which skips WatchConnectivity and plays a fixed flight built from launch time: idle, awaitingHack, onTime, early (turn caption), lateWithCallout, stalePhoneSilent, staleGPSLost, ended, plus two live transitions (calloutAfterLaunch, goesStale). They check each screen, the ticking countdown, the Δ VoiceOver label, an accessibility text size, and the launch. Elements carry `watch.*` accessibility identifiers (`WatchAccessibilityID`).
+- **Open:**
+  - Previews: Xcode 27's watchOS 27.0 preview agent traps on any ScrollView or List inside a NavigationStack (the app itself runs fine), so the watch previews draw without the stack (`inNavigationStack: false`), without the title and the tint. Drop that once the tooling is fixed.
+  - Live Activity on device: start with the first tick, updates, STALE after the app is backgrounded, end on End Flight; the Smart Stack look on the watch.
+  - WatchConnectivity on device: message latency and reachability with the watch app open, a watch app opened mid-flight catching up from the context, the end of the flight reaching the watch.
+  - Haptics with the wrist down and across the Return to Clock timeout; Always-On (minutes-only countdown, no seconds animation).
 
 ---
 
