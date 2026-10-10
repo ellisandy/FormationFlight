@@ -77,4 +77,32 @@ struct WatchFlightModelTests {
         #expect(WatchFlightDisplay(state: state, now: Self.start).countdownMinutesText == "2 min")
         #expect(WatchFlightDisplay(state: state, now: Self.start.addingTimeInterval(40)).countdownMinutesText == "<1 min")
     }
+
+    /// The UI-test scenarios start in the phase their names promise.
+    @Test func scenariosStartInTheirPhase() {
+        let launch = Self.start
+        func phase(_ scenario: WatchScenario) -> WatchFlightState.Phase {
+            scenario.initialState(launch: launch).phase(at: launch)
+        }
+        #expect(phase(.idle) == .idle)
+        #expect(phase(.awaitingHack) == .awaitingHack)
+        #expect(phase(.onTime) == .active)
+        #expect(phase(.early) == .active)
+        #expect(phase(.lateWithCallout) == .active)
+        #expect(phase(.stalePhoneSilent) == .stale(.phoneSilent(since: launch.addingTimeInterval(-42))))
+        #expect(phase(.staleGPSLost) == .stale(.fixLost(since: launch.addingTimeInterval(-20))))
+        #expect(phase(.ended) == .ended)
+        #expect(phase(.calloutAfterLaunch) == .active)
+        #expect(phase(.goesStale) == .active)
+        #expect(WatchScenario.goesStale.initialState(launch: launch).phase(at: launch.addingTimeInterval(8)) != .active)
+
+        let early = WatchFlightDisplay(state: WatchScenario.early.initialState(launch: launch), now: launch)
+        #expect(early.relationWord == "EARLY")
+        #expect(early.turnCaption != nil)
+        let late = WatchFlightDisplay(state: WatchScenario.lateWithCallout.initialState(launch: launch), now: launch)
+        #expect(late.relationWord == "LATE")
+        #expect(late.bannerText == Callout(WatchScenario.lateCue).text)
+        #expect(WatchScenario(arguments: ["app", "-uiTestScenario", "staleGPSLost"]) == .staleGPSLost)
+        #expect(WatchScenario(arguments: ["app"]) == nil)
+    }
 }

@@ -81,8 +81,11 @@ private struct IdleView: View {
             Text("Start a flight on your iPhone", comment: "Watch idle: no flight open on the phone")
                 .font(.headline)
                 .multilineTextAlignment(.center)
+                .accessibilityIdentifier(WatchAccessibilityID.idleMessage)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(WatchAccessibilityID.idleScreen)
     }
 }
 
@@ -95,8 +98,11 @@ private struct EndedView: View {
                 .accessibilityHidden(true)
             Text("Flight ended", comment: "Watch: the phone ended the flight")
                 .font(.headline)
+                .accessibilityIdentifier(WatchAccessibilityID.endedMessage)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(WatchAccessibilityID.endedScreen)
     }
 }
 
@@ -111,18 +117,22 @@ private struct AwaitingHackView: View {
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+                    .accessibilityIdentifier(WatchAccessibilityID.awaitingHackTitle)
                 Text("Press Hack! on iPhone", comment: "Watch: how to start the hack countdown")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(WatchAccessibilityID.awaitingHackMessage)
                 if let hack = display.hackTimeText {
                     ReadoutRow(label: String(localized: "Hack", comment: "Watch: hack duration label"),
-                               value: hack)
+                               value: hack, identifier: WatchAccessibilityID.hackTime)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // Standard watch margins, so the content lines up with the navigation title.
             .scenePadding(.horizontal)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(WatchAccessibilityID.awaitingHackScreen)
     }
 }
 
@@ -152,6 +162,8 @@ private struct ActiveFlightView: View {
             // Standard watch margins, so the content lines up with the navigation title.
             .scenePadding(.horizontal)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(display.isStale ? WatchAccessibilityID.staleScreen : WatchAccessibilityID.activeScreen)
     }
 
     /// The ToT is an absolute time, so the countdown keeps running while STALE, dimmed with
@@ -165,17 +177,21 @@ private struct ActiveFlightView: View {
             .contentTransition(isLuminanceReduced ? .identity : .numericText(countsDown: true))
             .opacity(display.isStale ? 0.5 : 1)
             .accessibilityLabel(display.countdownAccessibilityLabel)
+            .accessibilityIdentifier(WatchAccessibilityID.countdown)
     }
 
     private var readouts: some View {
         VStack(alignment: .leading, spacing: 2) {
             ReadoutRow(label: String(localized: "ETE", comment: "Watch: estimated time en route"),
                        value: display.eteText,
-                       caption: display.turnCaption)
+                       caption: display.turnCaption,
+                       identifier: WatchAccessibilityID.ete)
             ReadoutRow(label: String(localized: "Req GS", comment: "Watch: required ground speed"),
-                       value: display.requiredSpeedText)
+                       value: display.requiredSpeedText,
+                       identifier: WatchAccessibilityID.requiredGroundSpeed)
             ReadoutRow(label: String(localized: "GS", comment: "Watch: current ground speed"),
-                       value: display.currentSpeedText)
+                       value: display.currentSpeedText,
+                       identifier: WatchAccessibilityID.groundSpeed)
         }
     }
 }
@@ -201,8 +217,10 @@ private struct DeltaRow: View {
             }
         }
         .foregroundStyle(display.status.tint)
+        // One element whose label carries the side in words ("Late by 7 seconds").
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(display.deltaAccessibilityLabel)
+        .accessibilityIdentifier(WatchAccessibilityID.delta)
     }
 }
 
@@ -220,17 +238,19 @@ private struct StaleBlock: View {
             }
             .font(.headline.weight(.heavy))
             .foregroundStyle(Color(.statusWarning))
+            .accessibilityIdentifier(WatchAccessibilityID.staleBadge)
             if let instruction = display.staleInstruction {
                 Text(instruction)
                     .font(.footnote)
+                    .accessibilityIdentifier(WatchAccessibilityID.staleInstruction)
             }
             if let age = display.staleAgeText(at: now) {
                 Text(age)
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(WatchAccessibilityID.staleAge)
             }
         }
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -250,6 +270,7 @@ private struct BannerView: View {
                     .glassEffect(.regular, in: .capsule)
                     .transition(.opacity)
                     .accessibilityLabel(Text("Callout: \(text)", comment: "Watch VoiceOver: the latest callout"))
+                    .accessibilityIdentifier(WatchAccessibilityID.banner)
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: text)
@@ -260,6 +281,7 @@ private struct ReadoutRow: View {
     let label: String
     let value: String
     var caption: String? = nil
+    let identifier: String
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -279,7 +301,11 @@ private struct ReadoutRow: View {
                 }
             }
         }
-        .accessibilityElement(children: .combine)
+        // Read as "ETE, 16:40, TURN 0:45 L": the caption belongs to its value.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(caption.map { "\(value), \($0)" } ?? value)
+        .accessibilityIdentifier(identifier)
     }
 }
 
@@ -298,69 +324,44 @@ extension TimingStatus {
 // MARK: - Previews
 
 #if DEBUG
+/// Previews draw the UI-test scenarios (`WatchScenario`) at their launch instant.
 enum WatchPreviewData {
-    /// A flight `totIn` s from ToT and 1000 s out at `groundSpeed` m/s (plus a modelled turn
-    /// when `track` points away from the target, which lies due north), sent `age` s ago.
-    static func state(totIn: TimeInterval = 100,
-                      groundSpeed: Double = 10,
-                      track: Double? = nil,
-                      age: TimeInterval = 0,
-                      isHackPending: Bool = false,
-                      isFixStale: Bool = false,
-                      cue: Callout.Event? = nil) -> WatchFlightState {
+    static func screen(_ scenario: WatchScenario) -> WatchFlightScreen {
         let now = Date.now
-        let sentAt = now.addingTimeInterval(-age)
-        var state = WatchFlightState()
-        state.receive(FlightSnapshot(
-            sentAt: sentAt, missionName: "Rose Bowl Flyover",
-            missionType: isHackPending ? .hackTime : .tot,
-            tot: isHackPending ? nil : now.addingTimeInterval(totIn),
-            hackTime: isHackPending ? 270 : nil, isHackPending: isHackPending,
-            fixTime: isHackPending ? nil : sentAt.addingTimeInterval(isFixStale ? -20 : 0),
-            distance: groundSpeed * 1000, groundSpeed: isHackPending ? nil : groundSpeed,
-            track: track, bearing: track == nil ? nil : 0, turnDirection: nil,
-            isFixStale: isFixStale, yellowTolerance: 5, redTolerance: 10,
-            speedUnit: .kts, distanceUnit: .nm))
-        if let cue {
-            _ = state.receive(Callout(cue), emittedAt: sentAt, at: now)
-        }
-        return state
-    }
-
-    static func screen(_ state: WatchFlightState) -> WatchFlightScreen {
-        WatchFlightScreen(display: WatchFlightDisplay(state: state, now: .now), now: .now,
-                          inNavigationStack: false)
+        return WatchFlightScreen(display: WatchFlightDisplay(state: scenario.initialState(launch: now), now: now),
+                                 now: now, inNavigationStack: false)
     }
 }
 
 #Preview("Idle") {
-    WatchPreviewData.screen(WatchFlightState())
+    WatchPreviewData.screen(.idle)
 }
 
 #Preview("Awaiting hack") {
-    WatchPreviewData.screen(WatchPreviewData.state(isHackPending: true))
+    WatchPreviewData.screen(.awaitingHack)
 }
 
 #Preview("On time") {
-    WatchPreviewData.screen(WatchPreviewData.state(totIn: 1000, groundSpeed: 100))
+    WatchPreviewData.screen(.onTime)
 }
 
 #Preview("Early, turning") {
-    WatchPreviewData.screen(WatchPreviewData.state(totIn: 1300, groundSpeed: 100, track: 135,
-                                                   cue: .drift(seconds: 120, relation: .early)))
+    WatchPreviewData.screen(.early)
 }
 
 #Preview("Late with callout") {
-    WatchPreviewData.screen(WatchPreviewData.state(totIn: 993, groundSpeed: 100,
-                                                   cue: .speed(increase: true, target: 196, unit: .kts)))
+    WatchPreviewData.screen(.lateWithCallout)
 }
 
 #Preview("Stale, phone silent") {
-    WatchPreviewData.screen(WatchPreviewData.state(totIn: 1000, groundSpeed: 100, age: 42))
+    WatchPreviewData.screen(.stalePhoneSilent)
 }
 
 #Preview("Stale, GPS lost") {
-    WatchPreviewData.screen(WatchPreviewData.state(totIn: 1000, groundSpeed: 100, isFixStale: true,
-                                                   cue: .gpsLost))
+    WatchPreviewData.screen(.staleGPSLost)
+}
+
+#Preview("Ended") {
+    WatchPreviewData.screen(.ended)
 }
 #endif
