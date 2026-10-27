@@ -83,7 +83,9 @@ struct Formation_FlightApp: App {
             get: { didResetStore && !hasDismissedStoreResetNotice },
             set: { isPresented in
                 if !isPresented {
-                    hasDismissedStoreResetNotice = true
+                    Task { @MainActor in
+                        hasDismissedStoreResetNotice = true
+                    }
                 }
             }
         )

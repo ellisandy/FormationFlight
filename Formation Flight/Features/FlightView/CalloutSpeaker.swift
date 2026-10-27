@@ -28,6 +28,9 @@ final class SystemCalloutSpeaker: NSObject, CalloutSpeaking {
     /// cancel callback must not end the ducking for the one that replaced it.
     private var outstanding = 0
     private var isSessionConfigured = false
+    private var isSessionActive = false
+    private var activationInProgress = false
+    private var pendingText: String?
 
     override init() {
         super.init()
@@ -35,7 +38,71 @@ final class SystemCalloutSpeaker: NSObject, CalloutSpeaking {
     }
 
     func speak(_ text: String) {
-        activateSession()
+        pendingText = text
+        if isSessionActive {
+            speakPendingText()
+        } else {
+            activateSession()
+        }
+    }
+
+    func stop() {
+        pendingText = nil
+        synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    private func activateSession() {
+        guard !activationInProgress else { return }
+        let session = AVAudioSession.sharedInstance()
+        do {
+            if !isSessionConfigured {
+                try session.setCategory(.playback, mode: .voicePrompt,
+                                        options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers])
+                isSessionConfigured = true
+            }
+        } catch {
+            AppLogger.flight.error("Callout audio session configuration failed: \(error.localizedDescription)")
+            pendingText = nil
+            return
+        }
+
+        activationInProgress = true
+        if #available(iOS 27.0, *) {
+            session.activate { [weak self] success, error in
+                Task { @MainActor [weak self] in
+                    self?.activationCompleted(success: success, error: error)
+                }
+            }
+        } else {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                do {
+                    try AVAudioSession.sharedInstance().setActive(true)
+                    Task { @MainActor [weak self] in
+                        self?.activationCompleted(success: true, error: nil)
+                    }
+                } catch {
+                    Task { @MainActor [weak self] in
+                        self?.activationCompleted(success: false, error: error)
+                    }
+                }
+            }
+        }
+    }
+
+    private func activationCompleted(success: Bool, error: Error?) {
+        activationInProgress = false
+        isSessionActive = success
+        if let error {
+            AppLogger.flight.error("Callout audio session activation failed: \(error.localizedDescription)")
+            pendingText = nil
+        } else {
+            speakPendingText()
+        }
+    }
+
+    private func speakPendingText() {
+        guard let text = pendingText else { return }
+        pendingText = nil
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
@@ -46,31 +113,41 @@ final class SystemCalloutSpeaker: NSObject, CalloutSpeaking {
         synthesizer.speak(utterance)
     }
 
-    func stop() {
-        synthesizer.stopSpeaking(at: .immediate)
-    }
-
-    private func activateSession() {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            if !isSessionConfigured {
-                try session.setCategory(.playback, mode: .voicePrompt,
-                                        options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers])
-                isSessionConfigured = true
+    fileprivate func utteranceEnded() {
+        outstanding = max(0, outstanding - 1)
+        guard outstanding == 0, isSessionActive else { return }
+        if #available(iOS 27.0, *) {
+            AVAudioSession.sharedInstance().deactivate(options: .notifyOthersOnDeactivation) { [weak self] success, error in
+                Task { @MainActor [weak self] in
+                    self?.deactivationCompleted(success: success, error: error)
+                }
             }
-            try session.setActive(true)
-        } catch {
-            AppLogger.flight.error("Callout audio session activation failed: \(error.localizedDescription)")
+        } else {
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                do {
+                    try AVAudioSession.sharedInstance().setActive(
+                        false,
+                        options: .notifyOthersOnDeactivation
+                    )
+                    Task { @MainActor [weak self] in
+                        self?.deactivationCompleted(success: true, error: nil)
+                    }
+                } catch {
+                    Task { @MainActor [weak self] in
+                        self?.deactivationCompleted(success: false, error: error)
+                    }
+                }
+            }
         }
     }
 
-    fileprivate func utteranceEnded() {
-        outstanding = max(0, outstanding - 1)
-        guard outstanding == 0 else { return }
-        do {
-            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } catch {
+    private func deactivationCompleted(success: Bool, error: Error?) {
+        isSessionActive = !success
+        if let error {
             AppLogger.flight.error("Callout audio session deactivation failed: \(error.localizedDescription)")
+        }
+        if pendingText != nil {
+            activateSession()
         }
     }
 }

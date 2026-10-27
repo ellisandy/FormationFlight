@@ -5,15 +5,21 @@ import FormationFlightCore
 @Observable
 final class SettingsEditorViewModel {
     var settings: Settings
+    var diagnosticsEnabled: Bool
 
-    init(settings: Settings = .empty()) {
+    init(
+        settings: Settings = .empty(),
+        diagnosticsEnabled: Bool = DiagnosticPreferences.isEnabled()
+    ) {
         self.settings = settings
+        self.diagnosticsEnabled = diagnosticsEnabled
     }
 
     func reset(userDefaults: UserDefaults) {
         // Reload from persistence into `settings`
         let persisted = Settings.load(from: userDefaults)
         self.settings = persisted
+        diagnosticsEnabled = DiagnosticPreferences.isEnabled(in: userDefaults)
     }
 
     // MARK: - Tolerance steppers (B-13)
@@ -83,6 +89,7 @@ final class SettingsEditorViewModel {
         // and reflect the normalised values back into the editor.
         settings = settings.validated()
         settings.save(to: userDefaults)
+        DiagnosticPreferences.setEnabled(diagnosticsEnabled, in: userDefaults)
     }
 }
 

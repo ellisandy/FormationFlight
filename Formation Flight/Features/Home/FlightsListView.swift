@@ -14,6 +14,10 @@ private struct FlightsListRowView: View {
     let flight: Flight
     let onEdit: () -> Void
     let onDelete: () -> Void
+
+    private var shareFile: FlightShareFile? {
+        try? FlightShareFile(flight: flight)
+    }
     
     var body: some View {
         HStack {
@@ -26,12 +30,40 @@ private struct FlightsListRowView: View {
             .accessibilityIdentifier("flightRowButton_\(flight.id.uuidString)")
         }
         .contentShape(Rectangle())
-        .swipeActions {
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            if let shareFile {
+                ShareLink(
+                    item: shareFile,
+                    preview: SharePreview(flight.missionName)
+                ) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .tint(.blue)
+                .accessibilityIdentifier("flightRowShare_\(flight.id.uuidString)")
+            }
+        }
+        .swipeActions(edge: .trailing) {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete", systemImage: "trash")
             }
             .tint(.red)
             .accessibilityIdentifier("flightRowDelete_\(flight.id.uuidString)")
+        }
+        .contextMenu {
+            Button(action: onEdit) {
+                Label("Edit", systemImage: "pencil")
+            }
+            if let shareFile {
+                ShareLink(
+                    item: shareFile,
+                    preview: SharePreview(flight.missionName)
+                ) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+            }
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
         }
         .accessibilityIdentifier("flightRow_\(flight.id.uuidString)")
     }
@@ -88,6 +120,9 @@ struct FlightsListView: View {
     // acknowledged before the app can be used.
     private let safetyDisclaimerStore = SafetyDisclaimerStore()
     @State private var showsSafetyDisclaimer = false
+    @State private var pendingFlightImport: FlightTransferPayload?
+    @State private var pendingPreferencesImport: PreferencesTransferPayload?
+    @State private var transferMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -166,13 +201,71 @@ struct FlightsListView: View {
                 showsSafetyDisclaimer = true
             }
         }
+        .onOpenURL(perform: prepareImport)
+        .alert(
+            "Import Flight?",
+            isPresented: Binding(
+                get: { pendingFlightImport != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        Task { @MainActor in pendingFlightImport = nil }
+                    }
+                }
+            )
+        ) {
+            Button("Import") {
+                importPendingFlight()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingFlightImport = nil
+            }
+        } message: {
+            Text("This adds “\(pendingFlightImport?.missionName ?? "")” as a new, independent flight. Existing flights will not change.")
+        }
+        .alert(
+            "Replace Your Preferences?",
+            isPresented: Binding(
+                get: { pendingPreferencesImport != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        Task { @MainActor in pendingPreferencesImport = nil }
+                    }
+                }
+            )
+        ) {
+            Button("Replace") {
+                importPendingPreferences()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingPreferencesImport = nil
+            }
+        } message: {
+            Text("This replaces your units, tolerances, callouts, and instrument layout. Flights will not be affected.")
+        }
+        .alert(
+            "Formation Flight",
+            isPresented: Binding(
+                get: { transferMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        Task { @MainActor in transferMessage = nil }
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(transferMessage ?? "")
+        }
         .alert(
             "Validation",
             isPresented: Binding(
                 get: { viewModel.validationMessage != nil },
                 set: { isPresented in
                     if !isPresented {
-                        viewModel.validationMessage = nil
+                        Task { @MainActor in
+                            viewModel.validationMessage = nil
+                        }
                     }
                 }
             )
@@ -186,15 +279,28 @@ struct FlightsListView: View {
         // touches a `Flight` that has already been deleted from the context.
         .alert(
             "Delete Flight?",
-            isPresented: $viewModel.showDeleteConfirmation
+            isPresented: Binding(
+                get: { viewModel.showDeleteConfirmation },
+                set: { isPresented in
+                    if !isPresented {
+                        Task { @MainActor in
+                            viewModel.showDeleteConfirmation = false
+                        }
+                    }
+                }
+            )
         ) {
             Button("Delete", role: .destructive) {
-                withAnimation {
-                    viewModel.confirmDelete(modelContext: modelContext)
+                Task { @MainActor in
+                    withAnimation {
+                        viewModel.confirmDelete(modelContext: modelContext)
+                    }
                 }
             }
             Button("Cancel", role: .cancel) {
-                viewModel.cancelDelete()
+                Task { @MainActor in
+                    viewModel.cancelDelete()
+                }
             }
         } message: {
             Text("Are you sure you want to delete \(viewModel.pendingDeleteFlightName ?? "")? This action cannot be undone.")
@@ -202,6 +308,54 @@ struct FlightsListView: View {
         .accessibilityIdentifier("FlightsListViewRoot")
     }
     
+    private func prepareImport(from url: URL) {
+        do {
+            switch try ImportedTransferFile.read(from: url) {
+            case .flight(let payload):
+                _ = try payload.makeFlight()
+                pendingFlightImport = payload
+            case .preferences(let payload):
+                _ = try payload.importedSettings()
+                pendingPreferencesImport = payload
+            }
+        } catch {
+            transferMessage = error.localizedDescription
+        }
+    }
+
+    private func importPendingFlight() {
+        guard let payload = pendingFlightImport else { return }
+        pendingFlightImport = nil
+        do {
+            let flight = try payload.makeFlight()
+            modelContext.insert(flight)
+            try modelContext.save()
+            transferMessage = String(
+                localized: "Imported “\(flight.missionName)”.",
+                comment: "Success message after importing a shared flight"
+            )
+        } catch {
+            modelContext.rollback()
+            transferMessage = error.localizedDescription
+        }
+    }
+
+    private func importPendingPreferences() {
+        guard let payload = pendingPreferencesImport else { return }
+        pendingPreferencesImport = nil
+        do {
+            let settings = try payload.importedSettings()
+            settings.save(to: UserDefaults.standard)
+            viewModel.settings = settings
+            transferMessage = String(
+                localized: "Preferences imported.",
+                comment: "Success message after importing shared preferences"
+            )
+        } catch {
+            transferMessage = error.localizedDescription
+        }
+    }
+
     private var listContent: some View {
         List {
             ForEach(flights, id: \.id) { flight in
