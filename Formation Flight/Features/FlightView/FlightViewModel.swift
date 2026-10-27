@@ -104,6 +104,7 @@ final class FlightViewModel: ObservableObject {
     /// Hack!), every callout the banner gets, and the end of the flight. Empty in tests and
     /// previews unless a test injects a fake.
     private let mirrors: [any FlightMirroring]
+    private var diagnosticRecorder: DiagnosticSessionRecorder?
 
     // MARK: - Private
     private let timerScheduler: TimerScheduling
@@ -145,6 +146,14 @@ final class FlightViewModel: ObservableObject {
         if self.missionType == .tot {
             self.tot = flight.missionDate
         }
+        self.diagnosticRecorder = DiagnosticSessionStore.shared.makeRecorder(
+            missionName: flight.missionName,
+            missionType: flight.missionType,
+            missionDate: flight.missionDate,
+            hackTime: flight.hackTime,
+            target: self.target,
+            settings: settings
+        )
     }
     
     init(missionName: String = "",
@@ -174,6 +183,14 @@ final class FlightViewModel: ObservableObject {
         if self.missionType == .tot {
             self.tot = missionDate
         }
+        self.diagnosticRecorder = DiagnosticSessionStore.shared.makeRecorder(
+            missionName: missionName,
+            missionType: missionType,
+            missionDate: missionDate,
+            hackTime: hackTime,
+            target: target,
+            settings: settings
+        )
     }
 
     /// Safety net only: if a started VM is released without `stop()`, make sure the
@@ -217,6 +234,8 @@ final class FlightViewModel: ObservableObject {
                 mirror.flightDidEnd()
             }
         }
+        diagnosticRecorder?.finish()
+        diagnosticRecorder = nil
     }
 
     // MARK: - Public API (UI Intents)
@@ -245,6 +264,7 @@ final class FlightViewModel: ObservableObject {
         guard let _hackTime = hackTime else { return }
         let pressed = TimingEngine.floorToSecond(now())
         tot = pressed.addingTimeInterval(_hackTime)
+        diagnosticRecorder?.record(kind: "hackPressed", detail: "TOT anchored from hack duration")
         // Mirrors learn the new ToT now rather than up to a second later on the next tick.
         sendSnapshot()
     }
@@ -252,7 +272,13 @@ final class FlightViewModel: ObservableObject {
     // MARK: - Location Updates
     func onLocationUpdate() {
         AppLogger.viewModel.debug("Location update received from LocationProvider")
-        lastLocationUpdate = now()
+        let receivedAt = now()
+        lastLocationUpdate = receivedAt
+        if let location = locationProvider.currentLocation {
+            diagnosticRecorder?.recordLocation(location, receivedAt: receivedAt)
+        } else {
+            diagnosticRecorder?.record(kind: "locationCallbackWithoutFix")
+        }
         updateInstruments()
     }
     
@@ -312,6 +338,22 @@ final class FlightViewModel: ObservableObject {
         }
 
         statusColor = timing.status
+        diagnosticRecorder?.recordCalculation(
+            at: wallClock,
+            tot: tot,
+            distanceMeters: distance?.converted(to: .meters).value,
+            bearingDegrees: bearing?.converted(to: .degrees).value,
+            trackDegrees: track?.converted(to: .degrees).value,
+            ete: ete,
+            eta: eta,
+            delta: delta,
+            requiredGroundSpeed: requiredGroundSpeed?.converted(to: .metersPerSecond).value,
+            status: String(describing: timing.status),
+            isFixStale: isFixStale,
+            turnDirection: turnDirection.map { String(describing: $0) },
+            turnInDirection: turnInDirection.map { String(describing: $0) },
+            turnDuration: turnDuration
+        )
 
         // Mirrors get this tick's inputs before any callout from it, so a watch already shows
         // the state the cue refers to when the haptic plays.
@@ -342,6 +384,7 @@ final class FlightViewModel: ObservableObject {
             speedUnit: settings.speedUnit
         )
         guard let callout = calloutEngine.evaluate(input) else { return }
+        diagnosticRecorder?.record(kind: "callout", detail: "\(callout.kind): \(callout.text)")
         deliver(callout, at: clock)
     }
 

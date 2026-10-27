@@ -11,6 +11,13 @@ import FormationFlightCore
 struct SettingsEditorFormView: View {
     @Bindable var viewModel: SettingsEditorViewModel
     @State private var showsSafetyDisclaimer = false
+    @State private var diagnosticStore = DiagnosticSessionStore.shared
+    @State private var showsDeleteDiagnosticsConfirmation = false
+    @State private var diagnosticsError: String?
+
+    private var preferencesShareFile: PreferencesShareFile? {
+        try? PreferencesShareFile(settings: viewModel.settings)
+    }
 
     var body: some View {
         Form {
@@ -93,6 +100,56 @@ struct SettingsEditorFormView: View {
                 }
             }
 
+            Section {
+                Toggle("Diagnostics Mode", isOn: $viewModel.diagnosticsEnabled)
+                    .accessibilityIdentifier("diagnosticsModeToggle")
+
+                if diagnosticStore.sessions.isEmpty {
+                    Text("No diagnostic flights recorded in the last 14 days.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(diagnosticStore.sessions) { session in
+                        ShareLink(
+                            item: DiagnosticShareFile(fileURL: session.fileURL),
+                            preview: SharePreview(session.missionName)
+                        ) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(session.missionName)
+                                    .foregroundStyle(.primary)
+                                Text(session.startedAt, format: .dateTime.month().day().year().hour().minute())
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("Flight time: \(formattedDuration(session.durationSeconds))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityLabel("Share diagnostics for \(session.missionName)")
+                    }
+
+                    Button("Delete All Diagnostics", role: .destructive) {
+                        showsDeleteDiagnosticsConfirmation = true
+                    }
+                    .accessibilityIdentifier("deleteAllDiagnosticsButton")
+                }
+            } header: {
+                Text("Diagnostics")
+            } footer: {
+                Text("When enabled, each flight records precise location, timing calculations, and app decisions. Select a recent flight to share its JSON report. Reports are deleted after 14 days.")
+            }
+
+            Section("Transfer") {
+                if let preferencesShareFile {
+                    ShareLink(
+                        item: preferencesShareFile,
+                        preview: SharePreview("Formation Flight Preferences")
+                    ) {
+                        Label("Share Preferences", systemImage: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("sharePreferencesButton")
+                }
+            }
+
             // R-07: persistent safety reminder plus a way to re-read the full
             // disclaimer after the first-launch acknowledgement.
             Section {
@@ -109,6 +166,36 @@ struct SettingsEditorFormView: View {
             }
         }
         .readableScrollContent()
+        .onAppear {
+            diagnosticStore.refresh()
+        }
+        .alert("Delete All Diagnostics?", isPresented: $showsDeleteDiagnosticsConfirmation) {
+            Button("Delete", role: .destructive) {
+                do {
+                    try diagnosticStore.deleteAll()
+                } catch {
+                    diagnosticsError = error.localizedDescription
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This permanently deletes every saved diagnostic flight.")
+        }
+        .alert(
+            "Could Not Delete Diagnostics",
+            isPresented: Binding(
+                get: { diagnosticsError != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        Task { @MainActor in diagnosticsError = nil }
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(diagnosticsError ?? "")
+        }
         .sheet(isPresented: $showsSafetyDisclaimer) {
             // Read-only re-display: the pilot already acknowledged at first
             // launch, so the button simply dismisses.
@@ -116,6 +203,14 @@ struct SettingsEditorFormView: View {
                 showsSafetyDisclaimer = false
             }
         }
+    }
+
+    private func formattedDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(duration.rounded()))
+        let hours = totalSeconds / 3_600
+        let minutes = (totalSeconds % 3_600) / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
 

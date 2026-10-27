@@ -197,7 +197,9 @@ struct FlightEditorView: View {
             get: { viewModel.validationMessage != nil },
             set: { isPresented in
                 if !isPresented {
-                    viewModel.validationMessage = nil
+                    Task { @MainActor in
+                        viewModel.validationMessage = nil
+                    }
                 }
             }
         )) {
