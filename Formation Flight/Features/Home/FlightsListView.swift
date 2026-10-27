@@ -124,6 +124,12 @@ struct FlightsListView: View {
     @State private var pendingPreferencesImport: PreferencesTransferPayload?
     @State private var transferMessage: String?
 
+    @Binding private var importURL: URL?
+
+    init(importURL: Binding<URL?> = .constant(nil)) {
+        _importURL = importURL
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -201,7 +207,11 @@ struct FlightsListView: View {
                 showsSafetyDisclaimer = true
             }
         }
-        .onOpenURL(perform: prepareImport)
+        .task(id: importURL) {
+            guard let url = importURL else { return }
+            importURL = nil
+            prepareImport(from: url)
+        }
         .alert(
             "Import Flight?",
             isPresented: Binding(
