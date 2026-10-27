@@ -5,8 +5,11 @@ import UniformTypeIdentifiers
 import FormationFlightCore
 
 extension UTType {
-    static let formationFlight = UTType(exportedAs: "com.jackellis.formationflight.flight", conformingTo: .json)
-    static let formationPreferences = UTType(exportedAs: "com.jackellis.formationflight.preferences", conformingTo: .json)
+    // The payload is JSON internally, but these are app-owned document types rather than
+    // public JSON. Declaring JSON conformance makes Messages preview the source text instead
+    // of routing a tap to Formation Flight.
+    static let formationFlight = UTType(exportedAs: "com.jackellis.formationflight.flight", conformingTo: .data)
+    static let formationPreferences = UTType(exportedAs: "com.jackellis.formationflight.preferences", conformingTo: .data)
 }
 
 enum TransferFileError: LocalizedError {
