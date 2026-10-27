@@ -18,6 +18,7 @@ struct Formation_FlightApp: App {
     /// Whether saved flights had to be discarded to open the store.
     private let didResetStore: Bool
     @State private var hasDismissedStoreResetNotice = false
+    @State private var pendingImportURL: URL?
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -60,20 +61,25 @@ struct Formation_FlightApp: App {
 
     var body: some Scene {
         return WindowGroup {
-            if let sharedModelContainer {
-                FlightsListView()
-                    .modelContainer(sharedModelContainer)
-                    .alert("Saved Flights Reset", isPresented: storeResetNoticeBinding) {
-                        Button("OK") { hasDismissedStoreResetNotice = true }
-                    } message: {
-                        Text("Saved flights could not be read and were reset.")
-                    }
-            } else {
-                ContentUnavailableView(
-                    "Storage Unavailable",
-                    systemImage: "externaldrive.badge.exclamationmark",
-                    description: Text("Formation Flight could not open its flight store. Please reinstall the app.")
-                )
+            Group {
+                if let sharedModelContainer {
+                    FlightsListView(importURL: $pendingImportURL)
+                        .modelContainer(sharedModelContainer)
+                        .alert("Saved Flights Reset", isPresented: storeResetNoticeBinding) {
+                            Button("OK") { hasDismissedStoreResetNotice = true }
+                        } message: {
+                            Text("Saved flights could not be read and were reset.")
+                        }
+                } else {
+                    ContentUnavailableView(
+                        "Storage Unavailable",
+                        systemImage: "externaldrive.badge.exclamationmark",
+                        description: Text("Formation Flight could not open its flight store. Please reinstall the app.")
+                    )
+                }
+            }
+            .onOpenURL { url in
+                pendingImportURL = url
             }
         }
     }
