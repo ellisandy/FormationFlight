@@ -49,23 +49,22 @@ struct FlightEditorView: View {
                         .accessibilityIdentifier("missionNameField")
                 }
                 Section("Time Type") {
-                    Picker("Time Type", selection: Binding(
-                        get: { viewModel.useTOT ? 0 : 1 },
-                        set: { newValue in viewModel.useTOT = (newValue == 0) }
-                    )) {
-                        Text("TOT").tag(0)
-                        Text("Hack").tag(1)
+                    Picker("Time Type", selection: $viewModel.missionType) {
+                        Text("TOT").tag(MissionType.tot)
+                        Text("Hack").tag(MissionType.hackTime)
+                        Text("TOT + Hack", comment: "Time type segment: a planned TOT that a Hack! press re-anchors").tag(MissionType.totHack)
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("timeTypeSegmentedControl")
                 }
                 Section("Time Entry") {
-                    if viewModel.useTOT {
+                    if viewModel.missionType.usesPlannedTOT {
                         TOTTimePickerView(date: $viewModel.timeEntry,
                                           hour: $viewModel.hourComponent,
                                           minute: $viewModel.minuteComponent,
                                           second: $viewModel.secondComponent)
-                    } else {
+                    }
+                    if viewModel.missionType.usesHack {
                         HackTimePickerView(
                             hackDurationSeconds: Binding<TimeInterval?>(
                                 get: { TimeInterval(viewModel.hackDurationSeconds) },
@@ -212,7 +211,7 @@ struct FlightEditorView: View {
             viewModel.dismissFlightView()
         },
                          content: {
-            let missionType: MissionType = viewModel.useTOT ? .tot : .hackTime
+            let missionType = viewModel.missionType
             if let target = viewModel.selectedTargetLocation {
                 FlightView(viewModel: FlightViewModel(missionName: viewModel.missionName,
                                                       target: target,

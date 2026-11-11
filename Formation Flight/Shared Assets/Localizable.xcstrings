@@ -154,6 +154,9 @@
     "Hack" : {
 
     },
+    "Hack Due" : {
+      "comment" : "Flight timing row: when to press Hack! on a TOT + Hack mission"
+    },
     "Hack!" : {
 
     },
@@ -246,6 +249,9 @@
     },
     "Pick Checkpoint" : {
 
+    },
+    "Planned TOT" : {
+      "comment" : "Mission details: the TOT entered in the editor, before any Hack!"
     },
     "Please enter a hack time." : {
       "comment" : "Validation message when a hack-time mission has no hack duration or a zero one"
@@ -376,6 +382,9 @@
     },
     "TOT" : {
 
+    },
+    "TOT + Hack" : {
+      "comment" : "Time type segment: a planned TOT that a Hack! press re-anchors"
     },
     "ToT Countdown" : {
 

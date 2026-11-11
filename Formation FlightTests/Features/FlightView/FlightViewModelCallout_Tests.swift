@@ -67,6 +67,34 @@ struct FlightViewModelCalloutTests {
         #expect(speaker.spoken.isEmpty)
     }
 
+    @Test("TOT + Hack: the countdown follows the hacked ToT and skips the planned one")
+    func totHackCountdownFollowsHack() {
+        let clock = MutableClock(Self.start)
+        let timer = MockTimerScheduler()
+        let vm = FlightViewModel(missionName: "MIXED",
+                                 missionType: .totHack,
+                                 missionDate: Self.start.addingTimeInterval(61),
+                                 hackTime: 300,
+                                 settings: Settings.empty(),
+                                 locationProvider: MockLocationProvider(),
+                                 timerScheduler: timer,
+                                 speaker: MockCalloutSpeaker(),
+                                 now: { clock.now })
+        vm.start()
+
+        timer.fire()
+        clock.advance(by: 1)
+        vm.startHack() // ToT moves from start + 61 to start + 301.
+        timer.fire()
+        #expect(vm.activeCallout == nil, "the planned ToT's one-minute mark must not fire after the hack")
+
+        clock.advance(by: 239)
+        timer.fire()
+        clock.advance(by: 1)
+        timer.fire()
+        #expect(vm.activeCallout?.text == "One minute.")
+    }
+
     @Test("stop() silences the speaker")
     func stopSilences() {
         let speaker = MockCalloutSpeaker()

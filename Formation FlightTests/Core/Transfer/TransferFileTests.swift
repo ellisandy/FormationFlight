@@ -41,6 +41,39 @@ struct TransferFileTests {
     }
 
     @Test
+    func totHackRoundTripKeepsPlannedTOTAndHack() throws {
+        let original = Flight(
+            missionName: "Mixed Mission",
+            missionType: .totHack,
+            missionDate: Date(timeIntervalSince1970: 1_700_000_000),
+            target: Target(longitude: -122.4783, latitude: 37.8199),
+            hackTime: 300
+        )
+
+        let encoded = try TransferFileCodec.encoder.encode(FlightTransferPayload(flight: original))
+        let imported = try TransferFileCodec.decoder.decode(FlightTransferPayload.self, from: encoded).makeFlight()
+
+        #expect(imported.missionType == .totHack)
+        #expect(imported.missionDate == original.missionDate)
+        #expect(imported.hackTime == 300)
+    }
+
+    @Test
+    func totHackWithoutHackIsRejected() throws {
+        let original = Flight(
+            missionName: "Mixed Mission",
+            missionType: .totHack,
+            missionDate: Date(timeIntervalSince1970: 1_700_000_000),
+            target: Target(longitude: 0, latitude: 0),
+            hackTime: nil
+        )
+
+        #expect(throws: TransferFileError.self) {
+            try FlightTransferPayload(flight: original).makeFlight()
+        }
+    }
+
+    @Test
     func preferencesRoundTripReplacesWholeSnapshot() throws {
         let settings = Settings(
             speedUnit: .mph,

@@ -8,7 +8,8 @@ import FormationFlightCore
 final class FlightEditorViewModel: ObservableObject {
 
     // MARK: - Published State
-    @Published var useTOT: Bool = true
+    /// The mission type the segmented control selects (TOT, Hack or TOT + Hack).
+    @Published var missionType: MissionType = .tot
     @Published var timeEntry: Date = Date()
     @Published var missionName: String = ""
     @Published var selectedTargetLocation: CLLocationCoordinate2D? = nil
@@ -34,7 +35,7 @@ final class FlightEditorViewModel: ObservableObject {
     ///
     /// `CLLocationCoordinate2D` is not `Equatable`, so the target is stored as two doubles.
     private struct Snapshot: Equatable {
-        var useTOT: Bool
+        var missionType: MissionType
         var missionName: String
         var hackDurationSeconds: Int
         var timeEntry: Date
@@ -44,11 +45,11 @@ final class FlightEditorViewModel: ObservableObject {
 
     /// The state the editor opened with. Always overwritten at the end of `init` and
     /// `mapToValues`, so the initial value is irrelevant.
-    private var baseline = Snapshot(useTOT: true, missionName: "", hackDurationSeconds: 0,
+    private var baseline = Snapshot(missionType: .tot, missionName: "", hackDurationSeconds: 0,
                                     timeEntry: .distantPast, targetLatitude: nil, targetLongitude: nil)
 
     private var currentSnapshot: Snapshot {
-        Snapshot(useTOT: useTOT,
+        Snapshot(missionType: missionType,
                  missionName: missionName,
                  hackDurationSeconds: hackDurationSeconds,
                  timeEntry: timeEntry,
@@ -67,14 +68,13 @@ final class FlightEditorViewModel: ObservableObject {
     /// User-facing message set when `presentFlightView()` is refused because the mission is invalid.
     @Published var validationMessage: String?
 
-    /// The mission type the segmented control currently selects.
-    var missionType: MissionType { useTOT ? .tot : .hackTime }
+    /// `missionDate` as it should be persisted: only a mission with a planned TOT (TOT or
+    /// TOT + Hack) carries one (B-14).
+    var missionDateToSave: Date? { missionType.usesPlannedTOT ? timeEntry : nil }
 
-    /// `missionDate` as it should be persisted: only a TOT mission carries one (B-14).
-    var missionDateToSave: Date? { useTOT ? timeEntry : nil }
-
-    /// `hackTime` as it should be persisted: only a hack mission carries one (B-14).
-    var hackTimeToSave: TimeInterval? { useTOT ? nil : TimeInterval(hackDurationSeconds) }
+    /// `hackTime` as it should be persisted: only a mission with a hack (Hack or TOT + Hack)
+    /// carries one (B-14).
+    var hackTimeToSave: TimeInterval? { missionType.usesHack ? TimeInterval(hackDurationSeconds) : nil }
 
     /// The first failing Go Fly rule as a user-facing message, or `nil` when the mission can be flown.
     ///
@@ -108,11 +108,7 @@ final class FlightEditorViewModel: ObservableObject {
     }
 
     func mapToValues(flight: Flight) {
-        if flight.missionType == .tot {
-            useTOT = true
-        } else {
-            useTOT = false
-        }
+        missionType = flight.missionType
         missionName = flight.missionName
         if let targetCoord = flight.target?.getCLLocation().coordinate {
             selectedTargetLocation = targetCoord

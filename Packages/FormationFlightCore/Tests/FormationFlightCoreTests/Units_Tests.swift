@@ -10,7 +10,7 @@ struct UnitsTests {
     func rawValues() {
         #expect(SpeedUnit.allCases.map(\.rawValue) == ["kts", "kph", "mph"])
         #expect(DistanceUnit.allCases.map(\.rawValue) == ["km", "mi", "nm"])
-        #expect(MissionType.allCases.map(\.rawValue) == ["hack_time", "tot"])
+        #expect(MissionType.allCases.map(\.rawValue) == ["hack_time", "tot", "tot_hack"])
     }
 
     @Test("Codable shape is the bare raw string, as Settings has always stored it")
@@ -31,5 +31,17 @@ struct UnitsTests {
     @Test("The payload version is set")
     func payloadVersion() {
         #expect(CorePayload.version >= 1)
+    }
+
+    @Test("Each mission type uses a planned TOT, a hack, or both")
+    func missionTypeCapabilities() {
+        #expect(MissionType.tot.usesPlannedTOT && !MissionType.tot.usesHack)
+        #expect(!MissionType.hackTime.usesPlannedTOT && MissionType.hackTime.usesHack)
+        #expect(MissionType.totHack.usesPlannedTOT && MissionType.totHack.usesHack)
+    }
+
+    @Test("TOT + Hack decodes from its raw string")
+    func totHackDecodes() throws {
+        #expect(try JSONDecoder().decode(MissionType.self, from: Data(#""tot_hack""#.utf8)) == .totHack)
     }
 }

@@ -167,6 +167,9 @@ private struct TimingSection: View {
     /// "EARLY" / "LATE" / "ON TIME", or nil when there is no delta (B-11).
     let deltaLabel: String?
     let tot: String
+    /// When to press Hack! on a TOT + Hack mission (TOT minus the hack), or nil once hacked
+    /// and for other mission types.
+    var hackDue: String? = nil
     let status: FlightViewModel.Status
 
     var body: some View {
@@ -180,7 +183,12 @@ private struct TimingSection: View {
                           symbol: status.symbolName, symbolDescription: status.accessibilityDescription,
                           identifier: "timingDeltaRow")
             LabelValueRow(label: "TOT", value: tot, identifier: "timingTOTRow")
-                .padding(.bottom, 10)
+                .padding(.bottom, hackDue == nil ? 10 : 0)
+            if let hackDue {
+                LabelValueRow(label: String(localized: "Hack Due", comment: "Flight timing row: when to press Hack! on a TOT + Hack mission"),
+                              value: hackDue, identifier: "timingHackDueRow")
+                    .padding(.bottom, 10)
+            }
         }
         .cardBackground()
         .padding(.horizontal, Design.Padding.horizontal)
@@ -264,21 +272,30 @@ private struct MissionDetailsSection: View {
     let targetName: String?
     let latitude: String
     let longitude: String
-    let isHackTime: Bool
+    let missionType: MissionType
     let hackTime: String
     let tot: String
-    
+    /// The TOT as planned in the editor, shown on a TOT + Hack mission so the pilot can see
+    /// how far Hack! moved it.
+    let plannedTOT: String
+
     var body: some View {
         VStack {
             LabelValueRow(label: "Target", value: targetName)
                 .padding(.top, 10)
             LabelValueRow(label: "Latitude", value: latitude)
             LabelValueRow(label: "Longitude", value: longitude)
-            if isHackTime {
+            switch missionType {
+            case .hackTime:
                 LabelValueRow(label: "Hack Time", value: hackTime)
                     .padding(.bottom, 10)
-            } else {
+            case .tot:
                 LabelValueRow(label: "TOT", value: tot)
+                    .padding(.bottom, 10)
+            case .totHack:
+                LabelValueRow(label: String(localized: "Planned TOT", comment: "Mission details: the TOT entered in the editor, before any Hack!"),
+                              value: plannedTOT, identifier: "missionPlannedTOTRow")
+                LabelValueRow(label: "Hack Time", value: hackTime)
                     .padding(.bottom, 10)
             }
         }
@@ -352,6 +369,7 @@ struct FlightView: View {
                         delta: Formatting.signedDurationHMS(viewModel.delta),
                         deltaLabel: viewModel.deltaLabel,
                         tot: Formatting.timeHHmmss(viewModel.tot),
+                        hackDue: viewModel.hackDue.map { Formatting.timeHHmmss($0) },
                         status: viewModel.statusColor
                     )
                     
@@ -387,9 +405,10 @@ struct FlightView: View {
                         targetName: viewModel.missionName,
                         latitude: Formatting.dms(from: viewModel.target).lat,
                         longitude: Formatting.dms(from: viewModel.target).lon,
-                        isHackTime: viewModel.missionType == .hackTime,
+                        missionType: viewModel.missionType,
                         hackTime: Formatting.durationHMS(viewModel.hackTime),
-                        tot: Formatting.timeHHmmss(viewModel.tot)
+                        tot: Formatting.timeHHmmss(viewModel.tot),
+                        plannedTOT: Formatting.timeHHmmss(viewModel.missionDate)
                     )
 
                 }
@@ -407,7 +426,9 @@ struct FlightView: View {
             .animation(.snappy, value: viewModel.activeCallout)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
-                    if viewModel.missionType == .hackTime {
+                    // A TOT + Hack mission gets Hack! / Edit Hack and Edit TOT, so the pilot can
+                    // fix the plan before the hack and re-hack after a bad call (last press wins).
+                    if viewModel.missionType.usesHack {
                         HStack {
                             Button {
                                 viewModel.startHack()
@@ -426,7 +447,8 @@ struct FlightView: View {
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
-                    } else {
+                    }
+                    if viewModel.missionType.usesPlannedTOT {
                         HStack {
                             Button {
                                 viewModel.presentEditToT()
@@ -438,7 +460,6 @@ struct FlightView: View {
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
-
                     }
                 }
                 .padding(.horizontal, Design.Padding.horizontal)

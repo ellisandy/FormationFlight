@@ -80,6 +80,8 @@ final class FlightViewModel: ObservableObject {
     // MARK: - UI State
     @Published var isEditingToT: Bool = false
     @Published var isEditingHackTime: Bool = false
+    /// `true` once Hack! has been pressed during this flight. Ends the TOT + Hack "Hack due" cue.
+    @Published private(set) var hasHacked: Bool = false
     
     // MARK: - Staleness (B-07)
     /// A fix older than this is no longer trusted for speed-derived readouts. Defined in
@@ -140,10 +142,10 @@ final class FlightViewModel: ObservableObject {
         self.missionDate = flight.missionDate
         self.hackTime = flight.hackTime
 
-        // B-23: only a ToT mission starts with a ToT. A hack mission's ToT is set by
-        // startHack(); the editor may still have written a missionDate (B-14), and that
-        // must not show up as a ToT before Hack! is pressed.
-        if self.missionType == .tot {
+        // B-23: only a mission with a planned ToT (TOT, TOT + Hack) starts with one. A hack
+        // mission's ToT is set by startHack(); the editor may still have written a missionDate
+        // (B-14), and that must not show up as a ToT before Hack! is pressed.
+        if self.missionType.usesPlannedTOT {
             self.tot = flight.missionDate
         }
         self.diagnosticRecorder = DiagnosticSessionStore.shared.makeRecorder(
@@ -180,7 +182,7 @@ final class FlightViewModel: ObservableObject {
         self.missionDate = missionDate
         self.hackTime = hackTime
 
-        if self.missionType == .tot {
+        if self.missionType.usesPlannedTOT {
             self.tot = missionDate
         }
         self.diagnosticRecorder = DiagnosticSessionStore.shared.makeRecorder(
@@ -255,6 +257,14 @@ final class FlightViewModel: ObservableObject {
         isEditingToT = false
     }
     
+    /// When the pilot should press Hack! to arrive on the planned ToT: the ToT minus the hack
+    /// duration. Only for a TOT + Hack mission, and only until the first press; it follows
+    /// Edit TOT and Edit Hack, since both change the plan the cue is derived from.
+    var hackDue: Date? {
+        guard missionType == .totHack, !hasHacked, let tot, let hackTime, hackTime.isFinite else { return nil }
+        return tot.addingTimeInterval(-hackTime)
+    }
+
     /// Anchors the ToT to the moment "Hack!" is pressed. Reads the clock directly rather than
     /// the timer-sampled `currentTime` (B-09): that sample is nil before the first tick and up
     /// to a second stale afterwards, in an app whose tolerances are whole seconds. The press
@@ -264,6 +274,7 @@ final class FlightViewModel: ObservableObject {
         guard let _hackTime = hackTime else { return }
         let pressed = TimingEngine.floorToSecond(now())
         tot = pressed.addingTimeInterval(_hackTime)
+        hasHacked = true
         diagnosticRecorder?.record(kind: "hackPressed", detail: "TOT anchored from hack duration")
         // Mirrors learn the new ToT now rather than up to a second later on the next tick.
         sendSnapshot()
@@ -473,6 +484,7 @@ final class FlightViewModel: ObservableObject {
             missionType: missionType,
             tot: tot,
             hackTime: hackTime,
+            // A TOT + Hack mission always has a ToT, so it is never "awaiting hack".
             isHackPending: missionType == .hackTime && tot == nil,
             fixTime: lastLocationUpdate,
             distance: input.distance,
