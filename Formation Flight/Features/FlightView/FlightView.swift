@@ -345,6 +345,38 @@ struct FlightView: View {
     init(viewModel: @autoclosure @escaping () -> FlightViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel())
     }
+
+    // MARK: Bottom bar buttons
+
+    private func hackButton(font: Font) -> some View {
+        Button {
+            viewModel.startHack()
+        } label: {
+            Text("Hack!").font(font)
+                .frame(maxWidth: .infinity)
+        }
+        .accessibilityIdentifier("hackButton")
+    }
+
+    private func editHackButton(font: Font) -> some View {
+        Button {
+            viewModel.presentEditHackTime()
+        } label: {
+            Text("Edit Hack").font(font)
+                .frame(maxWidth: .infinity)
+        }
+        .accessibilityIdentifier("editHackButton")
+    }
+
+    private func editTOTButton(font: Font) -> some View {
+        Button {
+            viewModel.presentEditToT()
+        } label: {
+            Text("Edit TOT").font(font)
+                .frame(maxWidth: .infinity)
+        }
+        .accessibilityIdentifier("editTOTButton")
+    }
     var body: some View {
         ZStack {
             // A dedicated background with light and dark variants (D-01). It used to be a
@@ -426,39 +458,30 @@ struct FlightView: View {
             .animation(.snappy, value: viewModel.activeCallout)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
-                    // A TOT + Hack mission gets Hack! / Edit Hack and Edit TOT, so the pilot can
-                    // fix the plan before the hack and re-hack after a bad call (last press wins).
-                    if viewModel.missionType.usesHack {
+                    switch viewModel.missionType {
+                    case .tot:
+                        editTOTButton(font: .title)
+                            .controlSize(.large)
+                            .buttonStyle(.glass)
+                    case .hackTime:
                         HStack {
-                            Button {
-                                viewModel.startHack()
-                            } label: {
-                                Text("Hack!").font(.title)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .accessibilityIdentifier("hackButton")
-                            Button {
-                                viewModel.presentEditHackTime()
-                            } label: {
-                                Text("Edit Hack").font(.title)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .accessibilityIdentifier("editHackButton")
+                            hackButton(font: .title)
+                            editHackButton(font: .title)
                         }
                         .controlSize(.large)
                         .buttonStyle(.glass)
-                    }
-                    if viewModel.missionType.usesPlannedTOT {
+                    case .totHack:
+                        // Hack! is the call the pilot is waiting to make, so it is the one big,
+                        // prominent button. The edits are for fixing the plan (or a bad hack)
+                        // and sit smaller underneath. Hack! can be pressed again: last press wins.
+                        hackButton(font: .largeTitle.bold())
+                            .controlSize(.extraLarge)
+                            .buttonStyle(.glassProminent)
                         HStack {
-                            Button {
-                                viewModel.presentEditToT()
-                            } label: {
-                                Text("Edit TOT").font(.title)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .accessibilityIdentifier("editTOTButton")
+                            editHackButton(font: .title3)
+                            editTOTButton(font: .title3)
                         }
-                        .controlSize(.large)
+                        .controlSize(.regular)
                         .buttonStyle(.glass)
                     }
                 }

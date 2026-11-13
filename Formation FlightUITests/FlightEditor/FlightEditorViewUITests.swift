@@ -226,11 +226,17 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(mixedSegment.exists, "TOT + Hack segment should exist")
         mixedSegment.tap()
         XCTAssertTrue(mixedSegment.isSelected, "TOT + Hack segment should be selected after tapping it")
+        // Each wheel set is labelled, so the pilot can tell the TOT from the hack.
+        let header: (String) -> XCUIElement = { title in
+            self.app.staticTexts.element(matching: NSPredicate(format: "label ==[c] %@", title))
+        }
+        XCTAssertTrue(header("Time on Target").exists, "The TOT wheels should be headed Time on Target")
 
         // Both wheels are shown: the TOT wheels and the hack minutes/seconds wheels.
         let hackMinutes = app.pickerWheels.element(matching: NSPredicate(format: "value CONTAINS ' min'"))
         revealInEditorForm(hackMinutes, "hack minutes wheel")
         XCTAssertTrue(hackMinutes.exists, "TOT + Hack should show the hack wheels")
+        XCTAssertTrue(header("Hack Time").exists, "The hack wheels should be headed Hack Time")
         selectTarget()
 
         // A new flight's TOT is "now", which is valid; the hack is 0 s, which is not.
@@ -248,6 +254,10 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertTrue(app.buttons["hackButton"].waitForExistence(timeout: 5), "TOT + Hack should offer Hack!")
         XCTAssertTrue(app.buttons["editHackButton"].exists, "TOT + Hack should offer Edit Hack")
         XCTAssertTrue(app.buttons["editTOTButton"].exists, "TOT + Hack should offer Edit TOT")
+        XCTAssertGreaterThan(app.buttons["hackButton"].frame.height, app.buttons["editTOTButton"].frame.height,
+                             "Hack! should be the biggest button on a TOT + Hack mission")
+        XCTAssertGreaterThan(app.buttons["hackButton"].frame.width, app.buttons["editTOTButton"].frame.width,
+                             "Hack! should span the bar, above the smaller edit buttons")
         XCTAssertTrue(app.descendants(matching: .any)["timingHackDueRow"].exists, "Hack Due should show before Hack!")
 
         app.buttons["hackButton"].tap()

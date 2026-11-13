@@ -157,6 +157,9 @@
     "Hack Due" : {
       "comment" : "Flight timing row: when to press Hack! on a TOT + Hack mission"
     },
+    "Hack Time" : {
+      "comment" : "Flight editor section header above the hack duration wheels"
+    },
     "Hack!" : {
 
     },
@@ -347,6 +350,12 @@
     "Target" : {
 
     },
+    "The countdown from Hack! to the target. Pressing Hack! sets the TOT to now plus this time." : {
+      "comment" : "Flight editor footer under the hack wheels on a TOT + Hack mission"
+    },
+    "The planned clock time over the target. You fly to this time until you press Hack!" : {
+      "comment" : "Flight editor footer under the TOT wheels on a TOT + Hack mission"
+    },
     "The shared flight is incomplete or invalid." : {
 
     },
@@ -368,8 +377,8 @@
     "This will stop tracking and close out the current mission." : {
 
     },
-    "Time Entry" : {
-
+    "Time on Target" : {
+      "comment" : "Flight editor section header above the TOT clock-time wheels"
     },
     "Time on Target Drift Tolerance" : {
 
