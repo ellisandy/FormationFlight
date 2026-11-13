@@ -57,14 +57,26 @@ struct FlightEditorView: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("timeTypeSegmentedControl")
                 }
-                Section("Time Entry") {
-                    if viewModel.missionType.usesPlannedTOT {
+                // One titled section per wheel set, so a TOT + Hack mission shows which wheels
+                // are the clock time over the target and which are the hack countdown.
+                if viewModel.missionType.usesPlannedTOT {
+                    Section {
                         TOTTimePickerView(date: $viewModel.timeEntry,
                                           hour: $viewModel.hourComponent,
                                           minute: $viewModel.minuteComponent,
                                           second: $viewModel.secondComponent)
+                    } header: {
+                        Text("Time on Target", comment: "Flight editor section header above the TOT clock-time wheels")
+                    } footer: {
+                        if viewModel.missionType == .totHack {
+                            Text("The planned clock time over the target. You fly to this time until you press Hack!",
+                                 comment: "Flight editor footer under the TOT wheels on a TOT + Hack mission")
+                        }
                     }
-                    if viewModel.missionType.usesHack {
+                    .accessibilityIdentifier("totTimeSection")
+                }
+                if viewModel.missionType.usesHack {
+                    Section {
                         HackTimePickerView(
                             hackDurationSeconds: Binding<TimeInterval?>(
                                 get: { TimeInterval(viewModel.hackDurationSeconds) },
@@ -75,7 +87,15 @@ struct FlightEditorView: View {
                                 }
                             )
                         )
+                    } header: {
+                        Text("Hack Time", comment: "Flight editor section header above the hack duration wheels")
+                    } footer: {
+                        if viewModel.missionType == .totHack {
+                            Text("The countdown from Hack! to the target. Pressing Hack! sets the TOT to now plus this time.",
+                                 comment: "Flight editor footer under the hack wheels on a TOT + Hack mission")
+                        }
                     }
+                    .accessibilityIdentifier("hackTimeSection")
                 }
                 Section("Target") {
                     NavigationLink {
