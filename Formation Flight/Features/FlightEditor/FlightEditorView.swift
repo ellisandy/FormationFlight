@@ -73,7 +73,6 @@ struct FlightEditorView: View {
                                  comment: "Flight editor footer under the TOT wheels on a TOT + Hack mission")
                         }
                     }
-                    .accessibilityIdentifier("totTimeSection")
                 }
                 if viewModel.missionType.usesHack {
                     Section {
@@ -95,7 +94,6 @@ struct FlightEditorView: View {
                                  comment: "Flight editor footer under the hack wheels on a TOT + Hack mission")
                         }
                     }
-                    .accessibilityIdentifier("hackTimeSection")
                 }
                 Section("Target") {
                     NavigationLink {

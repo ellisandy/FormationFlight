@@ -108,16 +108,22 @@ final class FlightsListViewUITests: XCTestCase {
 
     /// Scrolls the editor form until `element` exists. Rows of a SwiftUI `Form`
     /// are only in the accessibility tree once laid out, so on short screens the
-    /// Target row is not queryable until the form is scrolled. The drag starts
-    /// near the bottom of the window so it never lands on the time-entry wheels,
-    /// which would spin instead of scrolling the form.
-    private func revealInEditorForm(_ element: XCUIElement, _ description: String, maxSwipes: Int = 3) {
+    /// Target row is not queryable until the form is scrolled. The drag runs down
+    /// the form's leading margin, 8 pt from the window edge and outside every row,
+    /// so it never lands on the time-entry wheels, which would spin instead of
+    /// scrolling the form. A drag down the middle of the window did land on them
+    /// on short screens (Xcode Cloud: "targetRow should be reachable"); this matches
+    /// the helper in `FlightEditorViewUITests`. Each drag waits briefly for the
+    /// scroll to settle before checking again.
+    private func revealInEditorForm(_ element: XCUIElement, _ description: String, maxSwipes: Int = 4) {
         let window = app.windows.firstMatch
+        let height = window.frame.height
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        let low = origin.withOffset(CGVector(dx: 8, dy: height * 0.9))
+        let high = origin.withOffset(CGVector(dx: 8, dy: height * 0.3))
         var swipes = 0
-        while !element.exists, swipes < maxSwipes {
-            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
-            let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-            start.press(forDuration: 0.05, thenDragTo: end)
+        while !element.waitForExistence(timeout: 1), swipes < maxSwipes {
+            low.press(forDuration: 0.05, thenDragTo: high)
             swipes += 1
         }
         XCTAssertTrue(element.waitForExistence(timeout: 2), "\(description) should be reachable in the editor form")
