@@ -136,6 +136,27 @@ struct FlightViewModelMirrorTests {
         #expect(snapshot.tot == vm.tot)
     }
 
+    @Test("TOT + Hack is never awaiting hack: it mirrors the planned ToT, then the hacked one")
+    func totHackMirrorsPlannedThenHackedToT() throws {
+        let clock = MutableClock(Self.start)
+        let timer = MockTimerScheduler()
+        let mirror = FakeMirror()
+        let vm = makeVM(missionType: .totHack, missionDate: Self.start.addingTimeInterval(600), hackTime: 300,
+                        mirrors: [mirror], timer: timer, clock: clock)
+
+        timer.fire()
+        let before = try #require(mirror.snapshots.last)
+        #expect(before.missionType == .totHack)
+        #expect(!before.isHackPending)
+        #expect(before.tot == Self.start.addingTimeInterval(600))
+
+        clock.advance(by: 10)
+        vm.startHack()
+        let after = try #require(mirror.snapshots.last)
+        #expect(!after.isHackPending)
+        #expect(after.tot == Self.start.addingTimeInterval(310))
+    }
+
     @Test("Mirrors get the same callout as the banner, after that tick's snapshot")
     func calloutsForwarded() throws {
         let clock = MutableClock(Self.start)

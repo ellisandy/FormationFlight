@@ -64,10 +64,10 @@ struct FlightTransferPayload: Codable, Equatable, Sendable {
               (-180.0...180.0).contains(targetLongitude) else {
             throw TransferFileError.invalidFlight
         }
-        switch missionType {
-        case .tot:
+        if missionType.usesPlannedTOT {
             guard missionDate != nil else { throw TransferFileError.invalidFlight }
-        case .hackTime:
+        }
+        if missionType.usesHack {
             guard let hackTime, hackTime.isFinite, hackTime > 0 else {
                 throw TransferFileError.invalidFlight
             }
@@ -75,9 +75,9 @@ struct FlightTransferPayload: Codable, Equatable, Sendable {
         return Flight(
             missionName: missionName,
             missionType: missionType,
-            missionDate: missionType == .tot ? missionDate : nil,
+            missionDate: missionType.usesPlannedTOT ? missionDate : nil,
             target: Target(longitude: targetLongitude, latitude: targetLatitude),
-            hackTime: missionType == .hackTime ? hackTime : nil
+            hackTime: missionType.usesHack ? hackTime : nil
         )
     }
 }

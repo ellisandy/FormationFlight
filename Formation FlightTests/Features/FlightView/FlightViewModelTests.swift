@@ -880,6 +880,56 @@ struct FlightViewModelTests {
         #expect(vm.target.longitude == -122.4194)
     }
 
+    @Test("init(flight:) seeds ToT from a TOT + Hack flight and keeps the hack")
+    func initFromTOTHackFlightSeedsToT() async throws {
+        let missionDate = Self.fixedNow.addingTimeInterval(600)
+        let flight = Flight(missionName: "Mixed Sortie",
+                            missionType: .totHack,
+                            missionDate: missionDate,
+                            target: Target(longitude: -122.4194, latitude: 37.7749),
+                            hackTime: 300)
+
+        let vm = makeVM(from: flight)
+
+        #expect(vm.missionType == .totHack)
+        #expect(vm.tot == missionDate, "TOT + Hack is guided to the planned ToT before Hack!")
+        #expect(vm.hackTime == 300)
+        #expect(vm.hackDue == Self.fixedNow.addingTimeInterval(300))
+        #expect(vm.hasHacked == false)
+    }
+
+    @Test("TOT + Hack: Hack! replaces the planned ToT, the last press wins, and Hack Due goes away")
+    func totHackRehackLastPressWins() async throws {
+        let clock = MutableClock(Self.fixedNow)
+        let vm = makeVM(settings: makeSettings(), missionType: .totHack,
+                        missionDate: Self.fixedNow.addingTimeInterval(600), hackTime: 300,
+                        now: { clock.now })
+        #expect(vm.hackDue == Self.fixedNow.addingTimeInterval(300))
+
+        // Edit TOT before the hack moves the cue with it.
+        vm.tot = Self.fixedNow.addingTimeInterval(660)
+        #expect(vm.hackDue == Self.fixedNow.addingTimeInterval(360))
+
+        clock.advance(by: 355)
+        vm.startHack()
+        #expect(vm.tot == Self.fixedNow.addingTimeInterval(655))
+        #expect(vm.hasHacked)
+        #expect(vm.hackDue == nil)
+        #expect(vm.missionDate == Self.fixedNow.addingTimeInterval(600), "the planned ToT is kept for display")
+
+        clock.advance(by: 4)
+        vm.startHack()
+        #expect(vm.tot == Self.fixedNow.addingTimeInterval(659))
+    }
+
+    @Test("Hack Due is only shown for TOT + Hack")
+    func hackDueOnlyForTOTHack() async throws {
+        let tot = makeVM(missionType: .tot, missionDate: Self.fixedNow.addingTimeInterval(600), hackTime: 300, now: fixedClock)
+        #expect(tot.hackDue == nil)
+        let hack = makeVM(missionType: .hackTime, hackTime: 300, now: fixedClock)
+        #expect(hack.hackDue == nil)
+    }
+
     @Test("init(flight:) seeds ToT and missionDate from a .tot flight")
     func initFromTOTFlightSeedsToT() async throws {
         let missionDate = Self.fixedNow.addingTimeInterval(300)

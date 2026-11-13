@@ -30,6 +30,7 @@ enum FlightSchemaV1: VersionedSchema {
     /// - Note: `missionType` determines which fields are required for validity:
     ///   - `.hackTime` requires `hackTime` to be non-nil.
     ///   - `.tot` requires `missionDate` to be non-nil.
+    ///   - `.totHack` requires both.
     @Model
     final class Flight: Identifiable, Hashable {
         /// Stable unique identifier for the flight. Marked unique for persistence.
@@ -112,17 +113,19 @@ enum FlightValidation {
         if !hasTarget {
             return missingTargetMessage
         }
-        switch missionType {
-        case .hackTime:
-            guard let hackTime, hackTime.isFinite, hackTime > 0 else {
-                return missingHackTimeMessage
-            }
-        case .tot:
+        // A TOT + Hack mission is checked against both sets of rules, TOT first because the
+        // editor shows the TOT wheels above the hack wheels.
+        if missionType.usesPlannedTOT {
             guard let missionDate else {
                 return missingMissionDateMessage
             }
             if missionDate < now.addingTimeInterval(-pastTOTGrace) {
                 return pastTOTMessage
+            }
+        }
+        if missionType.usesHack {
+            guard let hackTime, hackTime.isFinite, hackTime > 0 else {
+                return missingHackTimeMessage
             }
         }
         return nil

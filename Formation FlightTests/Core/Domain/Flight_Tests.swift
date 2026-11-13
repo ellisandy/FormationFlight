@@ -213,6 +213,26 @@ struct FlightTests {
     #expect(set.contains(flight1))
     #expect(set.contains(flight3))
   }
+
+  // MARK: - TOT + Hack
+
+  @Test
+  func testTOTHackNeedsBothPlannedTOTAndHack() throws {
+    let now = sampleDate
+    let future = now.addingTimeInterval(600)
+    func message(date: Date?, hack: TimeInterval?) -> String? {
+      Flight(missionName: "Mixed", missionType: .totHack, missionDate: date,
+             target: sampleTarget, hackTime: hack).validFlight(now: now).message
+    }
+
+    #expect(message(date: future, hack: 300) == nil)
+    #expect(message(date: nil, hack: 300) == FlightValidation.missingMissionDateMessage)
+    #expect(message(date: now.addingTimeInterval(-120), hack: 300) == FlightValidation.pastTOTMessage)
+    #expect(message(date: future, hack: nil) == FlightValidation.missingHackTimeMessage)
+    #expect(message(date: future, hack: 0) == FlightValidation.missingHackTimeMessage)
+    // The TOT rule is reported first, matching the editor's field order.
+    #expect(message(date: nil, hack: nil) == FlightValidation.missingMissionDateMessage)
+  }
 }
 
 // MARK: - On-disk contract
@@ -225,8 +245,11 @@ struct MissionTypeRawValueTests {
     func testMissionTypeRawValuesArePinned() {
         #expect(MissionType.hackTime.rawValue == "hack_time")
         #expect(MissionType.tot.rawValue == "tot")
+        // Added without a schema change: the column already stores the raw string, so only
+        // rows written by this build carry the new value.
+        #expect(MissionType.totHack.rawValue == "tot_hack")
         // Adding a case needs a migration story; this forces the list above to be revisited.
-        #expect(MissionType.allCases.count == 2)
+        #expect(MissionType.allCases.count == 3)
     }
 }
 
@@ -444,6 +467,26 @@ struct FlightPersistenceTests {
         #expect(try fetchFlights(named: "Round trip", in: ModelContext(second.container)).count == 1)
     }
 
+    @Test("A TOT + Hack flight survives a save and reopen without a schema change")
+    func totHackFlightReopens() throws {
+        let store = try makeTemporaryStore()
+        defer { store.cleanUp() }
+        let planned = Date(timeIntervalSince1970: 1_800_000_000)
+
+        let first = try PersistenceController.makeContainer(schema: Schema([Flight.self]), url: store.url, inMemory: false)
+        let context = ModelContext(first.container)
+        context.insert(Flight(missionName: "Mixed round trip", missionType: .totHack, missionDate: planned,
+                              target: sampleTarget, hackTime: 300))
+        try context.save()
+
+        let second = try PersistenceController.makeContainer(schema: Schema([Flight.self]), url: store.url, inMemory: false)
+        #expect(!second.recovered)
+        let flight = try #require(try fetchFlights(named: "Mixed round trip", in: ModelContext(second.container)).first)
+        #expect(flight.missionType == .totHack)
+        #expect(flight.missionDate == planned)
+        #expect(flight.hackTime == 300)
+    }
+
     // Coverage: the schema is versioned and the migration plan starts at V1.
     @Test("FlightMigrationPlan starts at FlightSchemaV1 and opens a fresh store")
     func migrationPlanStartsAtV1() throws {
@@ -479,4 +522,3 @@ struct FlightPersistenceTests {
         #expect(try fetchFlights(named: "Memory", in: context).count == 1)
     }
 }
-

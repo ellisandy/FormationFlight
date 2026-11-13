@@ -215,6 +215,46 @@ final class FlightEditorViewUITests: XCTestCase {
         XCTAssertFalse(totSegment.isSelected, "TOT segment should be deselected after choosing Hack")
     }
 
+    func testTOTHackGoFlyShowsHackAndEditTOT() throws {
+        launch()
+        openNewFlightEditor()
+
+        enterMissionName("Mixed Mission")
+        let segmented = app.segmentedControls["timeTypeSegmentedControl"]
+        XCTAssertTrue(segmented.waitForExistence(timeout: 5), "timeTypeSegmentedControl should exist in the editor")
+        let mixedSegment = segmented.buttons["TOT + Hack"]
+        XCTAssertTrue(mixedSegment.exists, "TOT + Hack segment should exist")
+        mixedSegment.tap()
+        XCTAssertTrue(mixedSegment.isSelected, "TOT + Hack segment should be selected after tapping it")
+
+        // Both wheels are shown: the TOT wheels and the hack minutes/seconds wheels.
+        let hackMinutes = app.pickerWheels.element(matching: NSPredicate(format: "value CONTAINS ' min'"))
+        revealInEditorForm(hackMinutes, "hack minutes wheel")
+        XCTAssertTrue(hackMinutes.exists, "TOT + Hack should show the hack wheels")
+        selectTarget()
+
+        // A new flight's TOT is "now", which is valid; the hack is 0 s, which is not.
+        let goFly = app.buttons["goFlyButton"]
+        revealInEditorForm(goFly, "goFlyButton")
+        XCTAssertFalse(goFly.isEnabled, "goFlyButton should stay disabled until a hack time is set")
+
+        revealInEditorForm(hackMinutes, "hack minutes wheel", upward: true)
+        hackMinutes.adjust(toPickerWheelValue: "1 min")
+        revealInEditorForm(goFly, "goFlyButton")
+        XCTAssertTrue(goFly.isEnabled, "goFlyButton should be enabled with a TOT and a hack time")
+        goFly.tap()
+
+        XCTAssertTrue(app.otherElements["flightViewRoot"].waitForExistence(timeout: 5), "Go Fly should present FlightView")
+        XCTAssertTrue(app.buttons["hackButton"].waitForExistence(timeout: 5), "TOT + Hack should offer Hack!")
+        XCTAssertTrue(app.buttons["editHackButton"].exists, "TOT + Hack should offer Edit Hack")
+        XCTAssertTrue(app.buttons["editTOTButton"].exists, "TOT + Hack should offer Edit TOT")
+        XCTAssertTrue(app.descendants(matching: .any)["timingHackDueRow"].exists, "Hack Due should show before Hack!")
+
+        app.buttons["hackButton"].tap()
+        XCTAssertFalse(app.descendants(matching: .any)["timingHackDueRow"].waitForExistence(timeout: 1),
+                       "Hack Due should go away after Hack!")
+    }
+
     // MARK: - Location access (B-16)
 
     func testLocationDeniedShowsBannerWithOpenSettings() throws {

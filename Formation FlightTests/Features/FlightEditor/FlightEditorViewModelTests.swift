@@ -11,7 +11,7 @@ final class FlightEditorViewModelTests {
     @Test
     func testDefaultInitializationValues() {
         let vm = FlightEditorViewModel()
-        #expect(vm.useTOT == true)
+        #expect(vm.missionType == .tot)
         #expect(vm.missionName == "")
         #expect(vm.selectedTargetLocation == nil)
         #expect(vm.currentLocation == nil)
@@ -147,7 +147,7 @@ final class FlightEditorViewModelTests {
         let vm = FlightEditorViewModel()
         vm.missionName = "Hack Mission"
         vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
-        vm.useTOT = false
+        vm.missionType = .hackTime
         vm.hackDurationSeconds = 0
         #expect(vm.canGoFly == false)
 
@@ -163,7 +163,7 @@ final class FlightEditorViewModelTests {
         let vm = FlightEditorViewModel()
         vm.missionName = "TOT Mission"
         vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
-        vm.useTOT = true
+        vm.missionType = .tot
         // A TOT mission with a zero hack duration is still valid; timeEntry is always set.
         vm.hackDurationSeconds = 0
         #expect(vm.canGoFly == true)
@@ -176,11 +176,53 @@ final class FlightEditorViewModelTests {
     }
 
     @Test
+    func testTOTHackSavesBothFieldsAndNeedsAHack() throws {
+        let vm = FlightEditorViewModel()
+        vm.missionName = "Mixed"
+        vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
+        vm.missionType = .totHack
+        vm.timeEntry = Date().addingTimeInterval(600)
+        vm.hackDurationSeconds = 0
+
+        #expect(vm.canGoFly == false)
+        #expect(vm.goFlyValidationMessage == FlightValidation.missingHackTimeMessage)
+
+        vm.hackDurationSeconds = 300
+        #expect(vm.canGoFly == true)
+        #expect(vm.missionDateToSave == vm.timeEntry)
+        #expect(vm.hackTimeToSave == 300)
+    }
+
+    @Test
+    func testMapToValuesWithTOTHackFlightRestoresMixedMode() throws {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let flight = Flight(missionName: "Mixed", missionType: .totHack, missionDate: date,
+                            target: Target(longitude: -122.0, latitude: 37.0), hackTime: 300)
+
+        let vm = FlightEditorViewModel(flight: flight)
+
+        #expect(vm.missionType == .totHack)
+        #expect(vm.timeEntry == date)
+        #expect(vm.hackDurationSeconds == 300)
+        #expect(vm.isDirty == false)
+    }
+
+    @Test
+    func testSwitchingToTOTHackMakesEditorDirty() {
+        let vm = FlightEditorViewModel()
+        #expect(vm.isDirty == false)
+
+        vm.missionType = .totHack
+
+        #expect(vm.isDirty == true)
+    }
+
+    @Test
     func testPresentFlightViewValidHackMission_Presents() {
         let vm = FlightEditorViewModel()
         vm.missionName = "Hack Mission"
         vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
-        vm.useTOT = false
+        vm.missionType = .hackTime
         vm.hackDurationSeconds = 90
         #expect(vm.canGoFly == true)
 
@@ -201,7 +243,7 @@ final class FlightEditorViewModelTests {
         let vm = FlightEditorViewModel()
         vm.missionName = "Hack Mission"
         vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
-        vm.useTOT = false
+        vm.missionType = .hackTime
         vm.hackDurationSeconds = 0
 
         let flight = Flight(missionName: "Hack Mission", missionType: .hackTime, missionDate: nil,
@@ -246,7 +288,7 @@ final class FlightEditorViewModelTests {
         let vm = FlightEditorViewModel()
         vm.missionName = "Late"
         vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0))
-        vm.useTOT = true
+        vm.missionType = .tot
         vm.timeEntry = past
 
         let flight = Flight(missionName: "Late", missionType: .tot, missionDate: past,
@@ -283,7 +325,7 @@ final class FlightEditorViewModelTests {
         vm.applyTargetSelection(coordinate: CLLocationCoordinate2D(latitude: 1.0, longitude: 2.0))
         #expect(vm.canGoFly == true)
 
-        vm.useTOT = false
+        vm.missionType = .hackTime
         #expect(vm.canGoFly == false)
 
         vm.hackDurationSeconds = 30
@@ -331,7 +373,7 @@ final class FlightEditorViewModelTests {
     @Test
     func testChangingTimeTypeMakesTheEditorDirty() {
         let vm = FlightEditorViewModel()
-        vm.useTOT = false
+        vm.missionType = .hackTime
         #expect(vm.isDirty == true)
     }
 
@@ -398,7 +440,7 @@ final class FlightEditorViewModelTests {
         let vm = FlightEditorViewModel()
         vm.mapToValues(flight: flight)
 
-        #expect(vm.useTOT == true)
+        #expect(vm.missionType == .tot)
         #expect(vm.missionName == "Mission X")
         let selected = try! #require(vm.selectedTargetLocation)
         #expect(selected.latitude == target.latitude)
@@ -421,14 +463,14 @@ final class FlightEditorViewModelTests {
 
         let vm = FlightEditorViewModel()
         // Prime with different values to ensure mapping overwrites appropriately
-        vm.useTOT = true
+        vm.missionType = .tot
         vm.missionName = "Old"
         vm.hackDurationSeconds = 0
         vm.timeEntry = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1, hour: 0, minute: 0, second: 0))!
 
         vm.mapToValues(flight: flight)
 
-        #expect(vm.useTOT == false)
+        #expect(vm.missionType == .hackTime)
         #expect(vm.missionName == "Hack Mission")
         let selected = try! #require(vm.selectedTargetLocation)
         #expect(selected.latitude == target.latitude)

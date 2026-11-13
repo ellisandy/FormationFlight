@@ -101,7 +101,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = "New Mission"
-        editor.useTOT = true
+        editor.missionType = .tot
         editor.timeEntry = Date()
         editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
 
@@ -122,7 +122,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = "No Target Mission"
-        editor.useTOT = false
+        editor.missionType = .hackTime
         editor.timeEntry = Date()
         editor.selectedTargetLocation = nil // Explicitly missing
 
@@ -143,7 +143,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = "Zero Hack"
-        editor.useTOT = false
+        editor.missionType = .hackTime
         editor.hackDurationSeconds = 0
         editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
 
@@ -162,7 +162,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = ""
-        editor.useTOT = true
+        editor.missionType = .tot
         editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
 
         sut.saveNewFlight(from: editor, modelContext: context)
@@ -195,7 +195,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = "Hack Mission"
-        editor.useTOT = false
+        editor.missionType = .hackTime
         editor.hackDurationSeconds = 90
         editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
 
@@ -215,7 +215,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = "TOT Mission"
-        editor.useTOT = true
+        editor.missionType = .tot
         editor.timeEntry = Date().addingTimeInterval(600)
         // A stale hack duration left over from switching segments must not be persisted.
         editor.hackDurationSeconds = 45
@@ -236,7 +236,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel()
         editor.missionName = "Late"
-        editor.useTOT = true
+        editor.missionType = .tot
         editor.timeEntry = Date().addingTimeInterval(-3_600)
         editor.selectedTargetLocation = .init(latitude: 10, longitude: 20)
 
@@ -258,7 +258,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
         let sut = makeSUT()
         let editor = FlightEditorViewModel(flight: existing)
         editor.missionName = "Updated"
-        editor.useTOT = false
+        editor.missionType = .hackTime
         editor.timeEntry = Date().addingTimeInterval(60)
         editor.selectedTargetLocation = .init(latitude: 1, longitude: 2)
         editor.hackDurationSeconds = 123
@@ -286,7 +286,7 @@ struct FlightsListViewModel_SwiftTests_Extra {
 
         let sut = makeSUT()
         let editor = FlightEditorViewModel(flight: existing)
-        editor.useTOT = true
+        editor.missionType = .tot
         editor.timeEntry = Date().addingTimeInterval(600)
 
         sut.updateFlight(existing, from: editor, modelContext: context)
